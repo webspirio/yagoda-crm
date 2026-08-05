@@ -13,8 +13,8 @@ import {
 } from '@/components/ui/chart'
 import { Eyebrow, PageHeader, StatTile } from '@/components/common/bits'
 import { Sparkline } from '@/components/common/Sparkline'
-import { useStore } from '@/lib/store'
-import { supplierBalance, sum } from '@/lib/calc'
+import { scopedReceptions, useStore } from '@/lib/store'
+import { openDebts, sum } from '@/lib/calc'
 import { addDays, kg, num, shortDate, tonnage, uah } from '@/lib/format'
 import { SEASON_START, TODAY } from '@/lib/seed'
 
@@ -87,12 +87,21 @@ export function DashboardPage() {
 
   const outstanding = React.useMemo(
     () =>
-      sum(
-        suppliers
-          .filter((s) => activePointId === 'all' || s.homePointId === activePointId)
-          .map((s) => ({ v: supplierBalance(s.id, receptions, payouts) })),
-        (x) => x.v,
-      ),
+      (() => {
+        // один прохід замість 208 перефільтрувань усього журналу
+        const byS = new Map<string, typeof receptions>()
+        for (const r of scopedReceptions(receptions, activePointId)) {
+          const list = byS.get(r.supplierId)
+          if (list) list.push(r)
+          else byS.set(r.supplierId, [r])
+        }
+        return sum(
+          suppliers.map((s) => ({
+            v: sum(openDebts(s.id, byS.get(s.id) ?? [], payouts), (o) => o.open),
+          })),
+          (x) => x.v,
+        )
+      })(),
     [suppliers, receptions, payouts, activePointId],
   )
 
@@ -105,9 +114,13 @@ export function DashboardPage() {
     .sort((a, b) => b.net - a.net)
   const maxBerry = Math.max(...byBerry.map((b) => b.net), 1)
 
-  // point comparison always spans every point — that is the whole reason it exists
+  // point comparison always spans every point — that is the whole reason it exists.
+  // Only the five that trade: the other five sit in the registry with no receptions at all,
+  // and a card of zeros next to a real one reads as broken, not as «ready to open» ✓ PART A
   const allInRange = receptions.filter((r) => r.date >= from)
-  const byPoint = points.map((p) => {
+  const tradingPoints = points.filter((p) => p.active)
+  const registryCount = points.length - tradingPoints.length
+  const byPoint = tradingPoints.map((p) => {
     const items = allInRange.filter((r) => r.pointId === p.id)
     const series = days.map((d) =>
       sum(items.filter((r) => r.date === d), (r) => r.net),
@@ -324,7 +337,7 @@ export function DashboardPage() {
           {/* points — small multiples, no colour coding needed */}
           <div>
             <Eyebrow className="mb-2.5">Точки за період — усі, незалежно від фільтра</Eyebrow>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {byPoint.map((p) => (
                 <button
                   key={p.point.id}
@@ -344,6 +357,20 @@ export function DashboardPage() {
                   <Sparkline values={p.series} className="mt-2" height={34} />
                 </button>
               ))}
+              {/* «від 5 до 10» ✓ PART A — усі десять уже стоять у довіднику */}
+              {registryCount ? (
+                <button
+                  onClick={() => go({ name: 'points' })}
+                  className="rounded-xl border border-dashed border-border p-4 text-left transition-colors hover:border-foreground/25"
+                >
+                  <div className="text-sm font-medium text-muted-foreground">
+                    +{registryCount} у реєстрі
+                  </div>
+                  <div className="mt-1 text-xs leading-snug text-muted-foreground">
+                    точки з вашого списку, які ще не відкриті — зведення підхопить їх саме
+                  </div>
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
@@ -404,7 +431,7 @@ export function DashboardPage() {
                         <span className="truncate text-sm">{t.supplier.name}</span>
                         {t.supplier.wholesale ? (
                           <Badge variant="secondary" className="h-4 shrink-0 px-1.5 text-[10px]">
-                            опт
+                            ОПТ
                           </Badge>
                         ) : null}
                       </span>

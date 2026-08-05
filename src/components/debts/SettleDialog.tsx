@@ -12,7 +12,13 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useStore } from '@/lib/store'
-import { allocatePayout, openDebts, originDates, round2 } from '@/lib/calc'
+import {
+  allocatePayout,
+  openDebts,
+  originDates,
+  parseNumeric,
+  round2,
+} from '@/lib/calc'
 import { longDate, shortDate, uah, uahAuto } from '@/lib/format'
 import { OPERATORS, TODAY } from '@/lib/seed'
 import { toast } from 'sonner'
@@ -33,10 +39,18 @@ export function SettleDialog({
   const activePointId = useStore((s) => s.activePointId)
 
   const supplier = suppliers.find((s) => s.id === supplierId)
-  const open_ = React.useMemo(
-    () => (supplierId ? openDebts(supplierId, receptions, payouts) : []),
-    [supplierId, receptions, payouts],
+  // книга кожного пункту своя: видача тут закриває ягоду, прийняту САМЕ тут, і рівно ту
+  // суму, яку показав рядок у «Залишках». Керівник в режимі «Усі точки» бачить мережу.
+  const scopePointId = activePointId === 'all' ? undefined : activePointId
+  const scoped = React.useMemo(
+    () => (scopePointId ? receptions.filter((r) => r.pointId === scopePointId) : receptions),
+    [receptions, scopePointId],
   )
+  const open_ = React.useMemo(
+    () => (supplierId ? openDebts(supplierId, scoped, payouts) : []),
+    [supplierId, scoped, payouts],
+  )
+  // openDebts() уже зводить переплати, тому Σ решток дорівнює боргу цього пункту
   const total = round2(open_.reduce((s, o) => s + o.open, 0))
   const [amount, setAmount] = React.useState('')
 
@@ -44,7 +58,7 @@ export function SettleDialog({
     if (open) setAmount(String(total))
   }, [open, total])
 
-  const value = Math.max(0, Math.min(total, Number(amount.replace(',', '.')) || 0))
+  const value = Math.max(0, Math.min(total, parseNumeric(amount)))
   const preview = allocatePayout(value, open_)
 
   function submit() {
@@ -52,7 +66,9 @@ export function SettleDialog({
       toast.error('Вкажіть суму видачі')
       return
     }
-    const pointId = activePointId === 'all' ? (supplier?.homePointId ?? 'p1') : activePointId
+    // у режимі «Усі точки» гроші не можуть виходити з каси, яка людини не бачила:
+    // беремо пункт найстарішого відкритого залишку
+    const pointId = scopePointId ?? open_[0]?.reception.pointId ?? 'p1'
     const operator = OPERATORS[pointId] ?? 'Каса'
     const payout = addPayout({
       date: TODAY,
@@ -60,6 +76,7 @@ export function SettleDialog({
       supplierId,
       amount: value,
       operator,
+      scopePointId,
     })
     onOpenChange(false)
     if (payout) {

@@ -2,6 +2,7 @@ import * as React from 'react'
 import { ArrowLeft, HandCoins, Phone, Receipt, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { Eyebrow, StatTile } from '@/components/common/bits'
 import { ReceiptDialog } from '@/components/reception/ReceiptDialog'
 import { SettleDialog } from '@/components/debts/SettleDialog'
@@ -10,6 +11,7 @@ import { openDebts, originDates, supplierBalance, sum } from '@/lib/calc'
 import { daysBetween, daysWord, kg, longDate, num, shortDate, uah, uahAuto } from '@/lib/format'
 import { TODAY } from '@/lib/seed'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 import type { Reception } from '@/lib/types'
 
 export function SupplierPage({ id }: { id: string }) {
@@ -19,8 +21,10 @@ export function SupplierPage({ id }: { id: string }) {
   const berries = useStore((s) => s.berries)
   const points = useStore((s) => s.points)
   const go = useStore((s) => s.go)
+  const updateSupplier = useStore((s) => s.updateSupplier)
   const [receipt, setReceipt] = React.useState<Reception | null>(null)
   const [settle, setSettle] = React.useState(false)
+  const [phoneDraft, setPhoneDraft] = React.useState('')
 
   const supplier = suppliers.find((s) => s.id === id)
   if (!supplier) {
@@ -62,14 +66,17 @@ export function SupplierPage({ id }: { id: string }) {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="font-display text-2xl leading-tight font-medium">{supplier.name}</h1>
-            {supplier.wholesale ? (
-              <Badge variant="secondary">опт · надбавка +{supplier.bonus} ₴/кг</Badge>
-            ) : null}
+            {/* Дод. ціна живе на рядку прийомки (їхня колонка J) ✓ M7 — на людині її немає */}
+            {supplier.wholesale ? <Badge variant="secondary">ОПТ</Badge> : null}
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <Phone className="size-3.5" />
-              <span className="font-mono">{supplier.phone}</span>
+              {supplier.phone ? (
+                <span className="font-mono">{supplier.phone}</span>
+              ) : (
+                <span className="text-muted-foreground/70">телефон не вказано</span>
+              )}
             </span>
             <span>{supplier.village}</span>
             <span>·</span>
@@ -102,6 +109,39 @@ export function SupplierPage({ id }: { id: string }) {
           }
         />
       </div>
+
+      {/* Довідник!B порожній у 209 з 209 рядків ✓ PART C 7, H5 — тому контактів немає
+          ні в кого, і жоден канал сповіщень тут не обіцяємо */}
+      {supplier.phone ? null : (
+        <div className="mb-5 rounded-xl border border-dashed border-border p-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+              Телефон не вказано. У вашій таблиці він порожній у 209 з 209 записів, тому
+              контактних даних сьогодні немає ні в кого. Номер можна дописати тут, у картці.
+            </p>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <Input
+                value={phoneDraft}
+                onChange={(e) => setPhoneDraft(e.target.value)}
+                placeholder="+380…"
+                inputMode="tel"
+                className="h-9 w-[160px] font-mono"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!phoneDraft.trim()}
+                onClick={() => {
+                  updateSupplier(id, { phone: phoneDraft.trim() })
+                  toast.success('Телефон збережено')
+                }}
+              >
+                Додати
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {open.length ? (
         <div className="mb-5 rounded-xl bg-card p-4 ring-1 ring-foreground/10">
@@ -162,9 +202,15 @@ export function SupplierPage({ id }: { id: string }) {
                       <span className="block font-mono text-sm font-medium">
                         {uah(row.r.amount)}
                       </span>
-                      {row.r.debt > 0 ? (
+                      {row.r.debt > 0.009 ? (
                         <span className="block font-mono text-[11px] text-[var(--amber)]">
                           у залишок {uahAuto(row.r.debt)}
+                        </span>
+                      ) : row.r.debt < -0.009 ? (
+                        // переплата: вона зводиться в найстаріші залишки, і без цього рядка
+                        // «Відкриті залишки» вище не сходились би зі своєю ж арифметикою
+                        <span className="block font-mono text-[11px] text-[var(--leaf)]">
+                          переплата {uahAuto(-row.r.debt)}
                         </span>
                       ) : null}
                     </span>

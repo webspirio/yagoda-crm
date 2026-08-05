@@ -12,6 +12,18 @@ dist
 dist-ssr
 *.local
 
+# Client source data — 208 real supplier names, never publishable
+input/
+*.xlsx
+*.xls
+
+# Analysis and briefs. Eight of these files quote real surnames out of the client's
+# non-anonymised workbook (434 occurrences), and even the name-free ones describe the
+# client's own data problems — their books being out by 38 949,50 ₴, their file arriving
+# un-anonymised. This repo is public and serves GitHub Pages, so one `git add -A` would
+# publish all of it for good. The audit page goes to the client directly, not via GitHub.
+docs/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

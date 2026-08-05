@@ -6,7 +6,9 @@ import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
@@ -23,7 +25,7 @@ import { ReceiptDialog } from '@/components/reception/ReceiptDialog'
 import { useStore } from '@/lib/store'
 import { sum } from '@/lib/calc'
 import { addDays, kg, num, shortDate, tonnage, uah } from '@/lib/format'
-import { SEASON_START, TODAY } from '@/lib/seed'
+import { PRODUCTS, SEASON_START, TODAY } from '@/lib/seed'
 import { toast } from 'sonner'
 import type { Reception } from '@/lib/types'
 
@@ -47,6 +49,15 @@ export function JournalPage() {
   const [q, setQ] = React.useState('')
   const [limit, setLimit] = React.useState(150)
   const [receipt, setReceipt] = React.useState<Reception | null>(null)
+
+  const berryGroups = React.useMemo(
+    () =>
+      PRODUCTS.map((p) => ({
+        product: p,
+        grades: berries.filter((b) => b.product === p.name),
+      })).filter((g) => g.grades.length > 0),
+    [berries],
+  )
 
   const { rows, ms } = React.useMemo(() => {
     const t0 = performance.now()
@@ -77,19 +88,24 @@ export function JournalPage() {
   }
 
   function exportCsv() {
+    // колонки в порядку їхнього ж аркуша: Товар, Сорт, Вага з тарою, Піддон (G), Чиста вага,
+    // Ціна (I), Дод. ціна (J), Сума, Виплачено, Залишок ✓ PART B
     const head = [
-      'Дата', 'Час', 'Квитанція', 'Точка', 'Постачальник', 'Сорт',
-      'Брутто', 'Тара', 'Нетто', 'Ціна', 'Надбавка', 'Нараховано', 'Видано', 'Залишок',
+      'Дата', 'Час', 'Квитанція', 'Точка', 'Постачальник', 'Товар', 'Сорт',
+      'Брутто', 'Піддон', 'Тара', 'Нетто', 'Ціна', 'Дод. ціна',
+      'Нараховано', 'Видано', 'Залишок', 'Приймав',
     ]
-    const lines = rows.map((r) =>
-      [
+    const lines = rows.map((r) => {
+      const berry = berries.find((b) => b.id === r.berryId)
+      return [
         r.date, r.time, r.code,
         points.find((p) => p.id === r.pointId)?.name ?? '',
         suppliers.find((s) => s.id === r.supplierId)?.name ?? '',
-        berries.find((b) => b.id === r.berryId)?.name ?? '',
-        r.gross, r.tareWeight, r.net, r.price, r.bonus, r.amount, r.paid, r.debt,
-      ].join(';'),
-    )
+        berry?.product ?? '', berry?.name ?? '',
+        r.gross, r.pallet, r.tareWeight, r.net, r.price, r.bonus,
+        r.amount, r.paid, r.debt, r.operator,
+      ].join(';')
+    })
     const blob = new Blob(['﻿' + [head.join(';'), ...lines].join('\n')], {
       type: 'text/csv;charset=utf-8',
     })
@@ -155,10 +171,16 @@ export function JournalPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Усі сорти</SelectItem>
-            {berries.map((b) => (
-              <SelectItem key={b.id} value={b.id}>
-                {b.name}
-              </SelectItem>
+            {/* Товар → Сорт, 9 → 17 ✓ PART A: фільтр іде по сорту, товар — заголовок групи */}
+            {berryGroups.map((g) => (
+              <SelectGroup key={g.product.id}>
+                <SelectLabel>{g.product.name}</SelectLabel>
+                {g.grades.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             ))}
           </SelectContent>
         </Select>
@@ -195,6 +217,7 @@ export function JournalPage() {
               <TableHead>Постачальник</TableHead>
               <TableHead>Сорт</TableHead>
               <TableHead className="text-right">Брутто</TableHead>
+              <TableHead className="text-right">Піддон</TableHead>
               <TableHead className="text-right">Тара</TableHead>
               <TableHead className="text-right">Нетто</TableHead>
               <TableHead className="text-right">Ціна</TableHead>
@@ -220,14 +243,27 @@ export function JournalPage() {
                 <TableCell className="text-right font-mono text-xs text-muted-foreground">
                   {num(r.gross, 2)}
                 </TableCell>
+                {/* Піддон знімається до тари, як їхня колонка G ✓ PART B — стоїть
+                    у поодиноких палетних рядках, тому решта лишається порожньою */}
+                <TableCell className="text-right font-mono text-xs text-muted-foreground">
+                  {r.pallet > 0 ? `−${num(r.pallet, 2)}` : '—'}
+                </TableCell>
                 <TableCell className="text-right font-mono text-xs text-muted-foreground">
                   −{num(r.tareWeight, 2)}
                 </TableCell>
                 <TableCell className="text-right font-mono text-sm font-medium">
                   {kg(r.net, 2)}
                 </TableCell>
-                <TableCell className="text-right font-mono text-xs">
-                  {num(r.price + r.bonus)}
+                {/* Ціна (I) і Дод. ціна (J) — дві різні колонки в їхньому файлі, і саме J
+                    є предметом контролю ✓ M7, тому не складаємо їх в одне число */}
+                <TableCell className="text-right font-mono text-xs whitespace-nowrap">
+                  {num(r.price)}
+                  {r.bonus ? (
+                    <span className={r.bonus > 0 ? 'text-[var(--leaf)]' : 'text-[var(--amber)]'}>
+                      {' '}
+                      {r.bonus > 0 ? '+' : '−'} {num(Math.abs(r.bonus))}
+                    </span>
+                  ) : null}
                 </TableCell>
                 <TableCell className="text-right font-mono text-sm">{uah(r.amount)}</TableCell>
                 <TableCell className="text-right font-mono text-sm text-muted-foreground">

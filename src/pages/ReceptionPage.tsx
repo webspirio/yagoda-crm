@@ -22,19 +22,46 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { ScaleTerminal } from '@/components/reception/ScaleTerminal'
 import { SupplierPicker } from '@/components/reception/SupplierPicker'
 import { ReceiptDialog } from '@/components/reception/ReceiptDialog'
 import { NumPad } from '@/components/reception/NumPad'
-import { SettleDialog } from '@/components/debts/SettleDialog'
 import { Eyebrow, EmptyState } from '@/components/common/bits'
 import { useStore } from '@/lib/store'
-import { openDebts, reconcileDay, round2, supplierBalance, weigh } from '@/lib/calc'
-import { kg, longDate, num, shortDate, tonnage, uah, uahAuto } from '@/lib/format'
-import { OPERATORS, TODAY } from '@/lib/seed'
+import {
+  allocatePayout,
+  checkSurcharge,
+  maskDecimalInput,
+  openDebts,
+  originDates,
+  parseNumeric,
+  reconcileDay,
+  round2,
+  sum,
+  visitMath,
+  weigh,
+} from '@/lib/calc'
+import { kg, longDate, num, plural, shortDate, tonnage, uah, uahAuto } from '@/lib/format'
+import { DEFAULT_TARE_ID, OPERATORS, TODAY } from '@/lib/seed'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import type { Reception, TareLine } from '@/lib/types'
+import type { VisitLineInput } from '@/lib/store'
+import type { Payout, Reception, TareLine } from '@/lib/types'
+
+/** 284 з 1 369 візитів — багаторядкові, найдовший має 5 позицій ✓ PART C 15 */
+const MAX_LINES = 5
+/** Найбільший рядок сезону — 701,5 кг брутто ✓ PART A; вище цього питаємо, але не блокуємо */
+const GROSS_HINT_KG = 750
+/** Реальне навантаження Чешки — 3…12 кг; поза 2…14 це майже завжди помилка вводу ✓ H7 */
+const PER_CRATE_MIN = 2
+const PER_CRATE_MAX = 14
+
+/** Позиція візиту: те саме, що йде в store.addVisit, плюс ключ і тара в штуках для показу */
+interface DraftLine extends VisitLineInput {
+  key: string
+  tareUnits: number
+}
 
 export function ReceptionPage() {
   const store = useStore()
@@ -44,25 +71,33 @@ export function ReceptionPage() {
     suppliers,
     receptions,
     payouts,
+    prices,
+    settings,
     activePointId,
     points,
     priceFor,
-    addReception,
+    addVisit,
     go,
   } = store
 
   const pointId = activePointId === 'all' ? 'p1' : activePointId
-  const point = points.find((p) => p.id === pointId)!
+  const point = points.find((p) => p.id === pointId) ?? points[0]
 
   const [supplierId, setSupplierId] = React.useState<string>()
   const [berryId, setBerryId] = React.useState<string>()
   const [gross, setGross] = React.useState('')
-  const [tare, setTare] = React.useState<TareLine[]>([{ tareId: 't1', count: 0 }])
+  const [palletInput, setPalletInput] = React.useState('')
+  const [palletOpen, setPalletOpen] = React.useState(false)
+  const [tare, setTare] = React.useState<TareLine[]>([{ tareId: DEFAULT_TARE_ID, count: 0 }])
+  const [bonusInput, setBonusInput] = React.useState('0')
+  const [lines, setLines] = React.useState<DraftLine[]>([])
+  // null = ще не торкались, тоді перемикач стоїть так, як просить M10: увімкнено, якщо є залишок
+  const [includeOverride, setIncludeOverride] = React.useState<boolean | null>(null)
   const [paidInput, setPaidInput] = React.useState('')
   const [paidTouched, setPaidTouched] = React.useState(false)
   const [padOpen, setPadOpen] = React.useState(true)
   const [receipt, setReceipt] = React.useState<Reception | null>(null)
-  const [settleFor, setSettleFor] = React.useState<string | null>(null)
+  const [receiptPayout, setReceiptPayout] = React.useState<Payout>()
 
   const supplier = suppliers.find((s) => s.id === supplierId)
 
@@ -71,80 +106,213 @@ export function ReceptionPage() {
       berries
         .map((b) => ({ berry: b, price: priceFor(TODAY, pointId, b.id) }))
         .filter((x) => x.price !== undefined),
-    [berries, pointId, priceFor],
+    [berries, pointId, priceFor, prices],
   )
 
+  /** Товар → сорти: два рівні на екрані, один плаский `Berry` у коді */
+  const berryGroups = React.useMemo(() => {
+    const groups: { product: string; items: typeof availableBerries }[] = []
+    for (const item of availableBerries) {
+      const group = groups.find((g) => g.product === item.berry.product)
+      if (group) group.items.push(item)
+      else groups.push({ product: item.berry.product, items: [item] })
+    }
+    return groups
+  }, [availableBerries])
+
   React.useEffect(() => {
-    if (!berryId && availableBerries.length) setBerryId(availableBerries[0].berry.id)
-  }, [availableBerries, berryId])
+    // сорт підставляється сам тільки для першої позиції — далі його обирають свідомо
+    if (!berryId && !lines.length && availableBerries.length) {
+      setBerryId(availableBerries[0].berry.id)
+    }
+  }, [availableBerries, berryId, lines.length])
 
   const price = berryId ? (priceFor(TODAY, pointId, berryId) ?? 0) : 0
-  const bonus = supplier?.bonus ?? 0
-  const grossNum = Number(gross.replace(',', '.')) || 0
+  const bonusNum = parseNumeric(bonusInput)
+  const surcharge = checkSurcharge(bonusNum, settings)
+  // понад межу значення НЕ обрізається тихо: позиція йде без надбавки, а різниця — керівнику (M7)
+  const bonus = surcharge.ok ? bonusNum : 0
+  const grossNum = parseNumeric(gross)
+  const palletNum = parseNumeric(palletInput)
 
-  const result = weigh({ gross: grossNum, tare, price, bonus }, tareTypes)
+  const result = weigh({ gross: grossNum, pallet: palletNum, tare, price, bonus }, tareTypes)
+
+  const draft: DraftLine | null =
+    berryId && result.net > 0
+      ? {
+          key: 'draft',
+          berryId,
+          gross: result.gross,
+          pallet: result.pallet,
+          tare: tare.filter((t) => t.count > 0),
+          tareWeight: result.tareWeight,
+          tareUnits: result.tareUnits,
+          net: result.net,
+          price,
+          bonus,
+          amount: result.amount,
+        }
+      : null
+
+  // позиція, яку саме вводять, рахується в «Разом» одразу — інакше 79 % однорядкових
+  // візитів отримали б зайвий клік «додати позицію» ні за що
+  const allLines = draft ? [...lines, draft] : lines
+  const netTotal = sum(allLines, (l) => l.net)
+
+  // книга кожного пункту своя — у їхньому світі це буквально окрема таблиця, — тому
+  // «Попередній залишок» і FIFO беруться по прийомках ЦЬОГО пункту. Інакше видача тут
+  // гасила б ягоду, прийняту на іншому пункті, і жоден денний звіт не зійшовся б.
+  const pointReceptions = React.useMemo(
+    () => receptions.filter((r) => r.pointId === pointId),
+    [receptions, pointId],
+  )
+  const supplierOpen = supplier ? openDebts(supplier.id, pointReceptions, payouts) : []
+  const balance = sum(supplierOpen, (o) => o.open)
+  const openDates = [...new Set(supplierOpen.map((o) => shortDate(o.reception.date)))]
+  const openDatesText = openDates.join(', ')
+  /** У постачальника на 47 квитанцій буває 15 відкритих дат — називаємо найстаріші, решту рахуємо */
+  const openDatesShort =
+    openDates.length > 4
+      ? `${openDates.slice(0, 3).join(', ')} і ще ${openDates.length - 3}`
+      : openDatesText
+  const includeBalance = includeOverride ?? balance > 0.009
+
+  const math = visitMath({
+    lineAmounts: allLines.map((l) => l.amount),
+    balance,
+    includeBalance,
+    paidInput: parseNumeric(paidInput),
+  })
 
   React.useEffect(() => {
-    if (!paidTouched) setPaidInput(result.amount > 0 ? String(result.amount) : '')
-  }, [result.amount, paidTouched])
+    // «Видано готівкою» за замовчуванням — уся сума РАЗОМ, як вона й видається найчастіше
+    if (!paidTouched) setPaidInput(math.total > 0 ? String(math.total) : '')
+  }, [math.total, paidTouched])
 
-  const paid = Math.max(0, Math.min(result.amount, Number(paidInput.replace(',', '.')) || 0))
-  const debt = round2(result.amount - paid)
+  // які саме залишки закриє надлишок — той самий FIFO, що потім зробить addPayout,
+  // тому на екрані стоять рівно ті дати, які спишуться, а не всі відкриті
+  const willCloseDates =
+    math.paidToPast > 0.009
+      ? originDates(allocatePayout(math.paidToPast, supplierOpen)).map(shortDate).join(', ')
+      : ''
 
-  const balance = supplier ? supplierBalance(supplier.id, receptions, payouts) : 0
-  const supplierOpen = supplier ? openDebts(supplier.id, receptions, payouts) : []
+  const tareUnits = result.tareUnits
+  const perCrate = tareUnits > 0 && result.net > 0 ? result.net / tareUnits : 0
+  // D і F — найпомилковіші поля бізнесу, і в їхньому файлі на них нема жодної перевірки ✓ H7
+  const grossHint =
+    grossNum > GROSS_HINT_KG
+      ? `${num(grossNum, 2)} кг — більше за найбільший рядок сезону (701,5 кг). Перевірте брутто.`
+      : grossNum > 0 && tareUnits === 0
+        ? 'Тару не додано — брутто пішло б у чисту вагу цілком. Перевірте кількість тари.'
+        : perCrate && (perCrate > PER_CRATE_MAX || perCrate < PER_CRATE_MIN)
+          ? `${num(perCrate, 1)} кг у ящику. Перевірте брутто або кількість тари.`
+          : ''
 
-  const ready = Boolean(supplierId && berryId && result.net > 0)
+  const showPallet = palletOpen || palletNum > 0 || tareUnits >= 20
+  const atCap = lines.length >= MAX_LINES - 1
+  // вага введена, але позиція незавершена — без цього «Прийняти» тихо викинуло б її
+  const draftIncomplete = grossNum > 0 && (!draft || tareUnits === 0)
+  const draftHint = !draftIncomplete
+    ? ''
+    : !berryId
+      ? 'Оберіть сорт для цієї позиції — інакше вона не потрапить у квитанцію.'
+      : tareUnits === 0
+        ? 'Вкажіть кількість тари — без неї брутто пішло б у чисту вагу цілком.'
+        : 'Чиста вага виходить нульова: піддон і тара зʼїдають усе брутто.'
+  const ready = Boolean(supplierId) && allLines.length > 0 && !draftIncomplete
 
   const todayReceptions = receptions
     .filter((r) => r.date === TODAY && r.pointId === pointId)
     .sort((a, b) => b.time.localeCompare(a.time))
+  /** Візит — це один рядок у журналі дня, скільки б позицій у ньому не було (M5) */
+  const todayVisits = (() => {
+    const groups = new Map<string, Reception[]>()
+    for (const r of todayReceptions) {
+      const list = groups.get(r.visitId ?? r.id) ?? []
+      list.push(r)
+      groups.set(r.visitId ?? r.id, list)
+    }
+    return [...groups.values()].map((rows) => [...rows].sort((a, b) => a.code.localeCompare(b.code)))
+  })()
+
   const day = reconcileDay(
     TODAY,
     receptions.filter((r) => r.pointId === pointId),
     payouts.filter((p) => p.pointId === pointId),
   )
 
+  function clearDraft() {
+    setGross('')
+    setPalletInput('')
+    setPalletOpen(false)
+    setTare([{ tareId: DEFAULT_TARE_ID, count: 0 }])
+    setBonusInput('0')
+  }
+
   function reset() {
     setSupplierId(undefined)
-    setGross('')
-    setTare([{ tareId: 't1', count: 0 }])
+    setBerryId(undefined)
+    setLines([])
+    setIncludeOverride(null)
     setPaidInput('')
     setPaidTouched(false)
+    clearDraft()
+  }
+
+  function addLine() {
+    if (!draft) {
+      toast.error('Спочатку заповніть цю позицію')
+      return
+    }
+    setLines((prev) => [...prev, { ...draft, key: `l_${Math.random().toString(36).slice(2, 8)}` }])
+    setBerryId(undefined)
+    clearDraft()
   }
 
   function save() {
-    if (!supplierId || !berryId) {
-      toast.error('Оберіть постачальника і сорт')
+    if (!supplierId) {
+      toast.error('Оберіть постачальника')
       return
     }
-    if (result.net <= 0) {
-      toast.error('Введіть брутто більше за тару')
+    if (!allLines.length) {
+      toast.error('Оберіть сорт і введіть брутто більше за тару')
       return
     }
-    const created = addReception({
+    const { receptions: created, payout } = addVisit({
       date: TODAY,
       pointId,
       supplierId,
-      berryId,
-      gross: result.gross,
-      tare: tare.filter((t) => t.count > 0),
-      tareWeight: result.tareWeight,
-      net: result.net,
-      price,
-      bonus,
-      amount: result.amount,
-      paid,
       operator: OPERATORS[pointId] ?? point.name,
+      carriedIn: math.carriedIn,
+      paid: math.paid,
+      lines: allLines.map(({ berryId: id, gross: g, pallet, tare: t, tareWeight, net, price: p, bonus: b, amount }) => ({
+        berryId: id,
+        gross: g,
+        pallet,
+        tare: t,
+        tareWeight,
+        net,
+        price: p,
+        bonus: b,
+        amount,
+      })),
     })
-    setReceipt(created)
-    toast.success(`Прийнято ${kg(result.net)} — ${uah(result.amount)}`, {
-      description: debt > 0 ? `Залишок за нами: ${uah(debt)}` : 'Розраховано повністю',
+    // квитанція візиту: діалог сам збирає всі його позиції за visitId
+    setReceipt(created[0])
+    setReceiptPayout(payout)
+    toast.success(`Прийнято ${kg(netTotal)} — ${uahAuto(math.accrued)}`, {
+      description:
+        math.paidToPast > 0.009
+          ? `З них ${uahAuto(math.paidToPast)} на попередні залишки`
+          : math.remainder > 0.009
+            ? `Залишок за нами: ${uahAuto(math.remainder)}`
+            : 'Розраховано повністю',
     })
     reset()
   }
 
   const tareTypeName = tareTypes.find((t) => t.id === tare[0]?.tareId)?.name ?? ''
+  const positionsWord = plural(allLines.length, 'позиція', 'позиції', 'позицій')
 
   return (
     <div className="mx-auto max-w-[1500px]">
@@ -189,6 +357,7 @@ export function ReceptionPage() {
             <ScaleTerminal
               berryName={berries.find((b) => b.id === berryId)?.name}
               gross={result.gross}
+              pallet={result.pallet}
               tareWeight={result.tareWeight}
               tareUnits={result.tareUnits}
               tareLabel={tareTypeName}
@@ -196,7 +365,7 @@ export function ReceptionPage() {
               price={price}
               bonus={bonus}
               amount={result.amount}
-              ready={ready}
+              ready={Boolean(draft)}
             />
 
             <div className="rounded-xl bg-card ring-1 ring-foreground/10">
@@ -206,88 +375,110 @@ export function ReceptionPage() {
                   <Eyebrow>1 · Постачальник</Eyebrow>
                   {supplier ? (
                     <span className="font-mono text-xs text-muted-foreground">
-                      {supplier.phone}
+                      {supplier.phone ?? 'телефон не вказано'}
                     </span>
                   ) : null}
                 </div>
-                <SupplierPicker value={supplierId} onChange={setSupplierId} pointId={pointId} />
+                <SupplierPicker
+                  value={supplierId}
+                  onChange={(id) => {
+                    setSupplierId(id)
+                    setIncludeOverride(null)
+                    setPaidTouched(false)
+                    // позиції належать людині, а не екрану: інший постачальник — новий візит
+                    if (lines.length) {
+                      setLines([])
+                      toast.info('Позиції очищено — вони належали попередньому постачальнику')
+                    }
+                  }}
+                  pointId={pointId}
+                />
 
                 {supplier && balance > 0.009 ? (
                   <div className="mt-2.5 flex flex-wrap items-center gap-2 rounded-lg bg-[var(--amber)]/10 px-3 py-2 text-sm">
                     <HandCoins className="size-4 shrink-0 text-[var(--amber)]" />
                     <span>
-                      Залишок за нами <b className="font-mono">{uahAuto(balance)}</b>
+                      Попередній залишок <b className="font-mono">{uahAuto(balance)}</b>
+                    </span>
+                    <span className="text-xs text-muted-foreground">з {openDatesText}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      додасться в «Разом» нижче
+                    </span>
+                  </div>
+                ) : null}
+                {supplier && balance < -0.009 ? (
+                  <div className="mt-2.5 flex flex-wrap items-center gap-2 rounded-lg bg-[var(--leaf)]/10 px-3 py-2 text-sm">
+                    <HandCoins className="size-4 shrink-0 text-[var(--leaf)]" />
+                    <span>
+                      Переплата за нами <b className="font-mono">{uahAuto(Math.abs(balance))}</b>
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      з {[...new Set(supplierOpen.map((o) => shortDate(o.reception.date)))].join(', ')}
+                      видано наперед — у «Разом» не додається
                     </span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="ml-auto"
-                      onClick={() => setSettleFor(supplier.id)}
-                    >
-                      Видати зараз
-                    </Button>
                   </div>
                 ) : null}
               </div>
 
-              {/* berry */}
+              {/* weight — M9 диктує: спочатку вага, і тільки потім сорт */}
               <div className="border-b border-border/70 p-4">
-                <Eyebrow className="mb-2">2 · Сорт і ціна дня</Eyebrow>
-                <div className="flex flex-wrap gap-2">
-                  {availableBerries.map(({ berry, price: p }) => {
-                    const active = berryId === berry.id
-                    return (
-                      <button
-                        key={berry.id}
-                        onClick={() => setBerryId(berry.id)}
-                        className={cn(
-                          'flex min-w-[128px] flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left transition-colors',
-                          active
-                            ? 'border-primary bg-primary/8 ring-1 ring-primary'
-                            : 'border-border bg-background hover:bg-muted',
-                        )}
-                      >
-                        <span className="text-sm font-medium">{berry.name}</span>
-                        <span
-                          className={cn(
-                            'font-mono text-xs',
-                            active ? 'text-primary' : 'text-muted-foreground',
-                          )}
-                        >
-                          {num(p!)} ₴/кг
-                          {bonus ? ` +${num(bonus)}` : ''}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* weight */}
-              <div className="border-b border-border/70 p-4">
-                <Eyebrow className="mb-2">3 · Вага</Eyebrow>
+                <Eyebrow className="mb-2">2 · Вага з тарою</Eyebrow>
                 <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
                   <div className="flex flex-col gap-3">
                     <div className="grid gap-1.5">
                       <Label htmlFor="gross" className="text-xs text-muted-foreground">
                         Брутто — ягода разом із тарою
                       </Label>
-                      <div className="relative">
-                        <Input
-                          id="gross"
-                          value={gross}
-                          onChange={(e) => setGross(e.target.value.replace(',', '.'))}
-                          inputMode="decimal"
-                          placeholder="0.00"
-                          className="h-14 pr-12 font-mono text-2xl font-semibold"
-                        />
-                        <span className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 font-mono text-sm text-muted-foreground">
-                          кг
-                        </span>
+                      <div className="flex flex-wrap items-start gap-2">
+                        <div className="relative min-w-[180px] flex-1">
+                          <Input
+                            id="gross"
+                            value={gross.replace('.', ',')}
+                            onChange={(e) => setGross(maskDecimalInput(e.target.value))}
+                            inputMode="decimal"
+                            placeholder="0,00"
+                            className="h-14 pr-12 font-mono text-2xl font-semibold"
+                          />
+                          <span className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 font-mono text-sm text-muted-foreground">
+                            кг
+                          </span>
+                        </div>
+                        {showPallet ? (
+                          <div className="grid gap-1">
+                            <Label htmlFor="pallet" className="text-xs text-muted-foreground">
+                              Піддон
+                            </Label>
+                            <div className="relative w-[124px]">
+                              <Input
+                                id="pallet"
+                                value={palletInput.replace('.', ',')}
+                                onChange={(e) => setPalletInput(maskDecimalInput(e.target.value))}
+                                inputMode="decimal"
+                                placeholder="0,0"
+                                className="h-10 pr-9 font-mono text-base font-semibold"
+                              />
+                              <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 font-mono text-xs text-muted-foreground">
+                                кг
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="mt-6 text-muted-foreground"
+                            onClick={() => setPalletOpen(true)}
+                          >
+                            <Plus className="size-3.5" />
+                            Піддон
+                          </Button>
+                        )}
                       </div>
+                      {grossHint || draftHint ? (
+                        <div className="flex items-start gap-2 text-xs text-[var(--amber)]">
+                          <AlertTriangle className="mt-px size-3.5 shrink-0" />
+                          <span>{grossHint || draftHint}</span>
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="grid gap-1.5">
@@ -297,7 +488,7 @@ export function ReceptionPage() {
                       {tare.map((line, idx) => {
                         const t = tareTypes.find((x) => x.id === line.tareId)
                         return (
-                          <div key={idx} className="flex items-center gap-2">
+                          <div key={line.tareId} className="flex items-center gap-2">
                             <Select
                               value={line.tareId}
                               onValueChange={(v) =>
@@ -392,9 +583,12 @@ export function ReceptionPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() =>
-                            setTare((prev) => [...prev, { tareId: 't3', count: 0 }])
-                          }
+                          // всі чотири види вже в кошику — інакше додався б другий рядок Чешки
+                          disabled={tare.length >= tareTypes.length}
+                          onClick={() => {
+                            const free = tareTypes.find((t) => !tare.some((l) => l.tareId === t.id))
+                            if (free) setTare((prev) => [...prev, { tareId: free.id, count: 0 }])
+                          }}
                         >
                           <Package className="size-3.5" />
                           Інша тара
@@ -418,95 +612,326 @@ export function ReceptionPage() {
                 </div>
               </div>
 
-              {/* payout */}
+              {/* berry + surcharge */}
+              <div className="border-b border-border/70 p-4">
+                <Eyebrow className="mb-2">3 · Товар, сорт і ціна дня</Eyebrow>
+                <div className="flex flex-col gap-2.5">
+                  {berryGroups.map((group) => (
+                    <div key={group.product}>
+                      <div className="mb-1.5 text-xs text-muted-foreground">{group.product}</div>
+                      <div className="flex flex-wrap gap-2">
+                        {group.items.map(({ berry, price: p }) => {
+                          const active = berryId === berry.id
+                          return (
+                            <button
+                              key={berry.id}
+                              onClick={() => setBerryId(berry.id)}
+                              className={cn(
+                                'flex min-w-[128px] flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left transition-colors',
+                                active
+                                  ? 'border-primary bg-primary/8 ring-1 ring-primary'
+                                  : 'border-border bg-background hover:bg-muted',
+                              )}
+                            >
+                              <span className="text-sm font-medium">{berry.name}</span>
+                              <span
+                                className={cn(
+                                  'font-mono text-xs',
+                                  active ? 'text-primary' : 'text-muted-foreground',
+                                )}
+                              >
+                                {num(p!)} ₴/кг
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-end gap-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="bonus" className="text-xs text-muted-foreground">
+                      Дод. ціна — на цю позицію, ₴/кг
+                    </Label>
+                    <div
+                      className={cn(
+                        'flex items-center gap-1 rounded-lg border bg-background p-1',
+                        surcharge.ok ? 'border-border' : 'border-[var(--amber)]',
+                      )}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() =>
+                          setBonusInput(
+                            String(Math.max(settings.surchargeMin, round2(bonusNum - 1))),
+                          )
+                        }
+                      >
+                        <Minus className="size-3.5" />
+                      </Button>
+                      <input
+                        id="bonus"
+                        value={bonusInput}
+                        onChange={(e) => setBonusInput(maskDecimalInput(e.target.value, 2, true))}
+                        inputMode="decimal"
+                        className="w-16 bg-transparent text-center font-mono text-base font-semibold outline-none"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() =>
+                          setBonusInput(
+                            String(Math.min(settings.surchargeMax, round2(bonusNum + 1))),
+                          )
+                        }
+                      >
+                        <Plus className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="pb-2 text-xs text-muted-foreground">
+                    межі керівника: {num(settings.surchargeMin)} … +{num(settings.surchargeMax)} ₴/кг
+                  </div>
+                </div>
+                {!surcharge.ok ? (
+                  <div className="mt-2 flex items-start gap-2 rounded-lg bg-[var(--amber)]/10 px-3 py-2 text-xs">
+                    <AlertTriangle className="mt-px size-3.5 shrink-0 text-[var(--amber)]" />
+                    <span>
+                      <b className="font-mono">{num(bonusNum, 2)} ₴/кг</b>{' '}
+                      {surcharge.over
+                        ? `понад стелю +${num(settings.surchargeMax)} ₴`
+                        : `нижче межі ${num(settings.surchargeMin)} ₴`}
+                      . Понад межу — потрібен дозвіл керівника — позиція поки рахується без Дод. ціни.
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* basket — M5: один постачальник, N позицій, один «Разом» */}
+              <div className="border-b border-border/70 p-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button variant="outline" onClick={addLine} disabled={!draft || atCap}>
+                    <Plus className="size-4" />
+                    Ще позиція
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    {atCap
+                      ? 'У реальних даних максимум 5 позицій на візит — більше не додаємо.'
+                      : 'Кілька сортів від одного постачальника підбиваються в один «Разом» і один чек.'}
+                  </span>
+                  {lines.length ? (
+                    <span className="ml-auto font-mono text-xs text-muted-foreground">
+                      {allLines.length} {positionsWord} · {kg(netTotal)}
+                    </span>
+                  ) : null}
+                </div>
+
+                {lines.length ? (
+                  <div className="mt-3 overflow-x-auto">
+                    <div className="min-w-[560px]">
+                      <div className="grid grid-cols-[minmax(110px,1.6fr)_repeat(6,minmax(50px,1fr))_28px] gap-2 px-2 pb-1 text-[10px] font-medium tracking-[0.12em] text-muted-foreground uppercase">
+                        <span>Сорт</span>
+                        <span className="text-right">Брутто</span>
+                        <span className="text-right">Піддон</span>
+                        <span className="text-right">Тара</span>
+                        <span className="text-right">Нетто</span>
+                        <span className="text-right">Ціна</span>
+                        <span className="text-right">Сума</span>
+                        <span />
+                      </div>
+                      <ul className="divide-y divide-border/60 rounded-lg bg-muted/40">
+                        {lines.map((l) => (
+                          <li
+                            key={l.key}
+                            className="grid grid-cols-[minmax(110px,1.6fr)_repeat(6,minmax(50px,1fr))_28px] items-center gap-2 px-2 py-1.5 font-mono text-xs"
+                          >
+                            <span className="truncate font-sans">
+                              {berries.find((b) => b.id === l.berryId)?.name ?? '—'}
+                            </span>
+                            <span className="text-right">{num(l.gross, 2)}</span>
+                            <span className="text-right text-muted-foreground">
+                              {l.pallet > 0 ? num(l.pallet, 2) : '—'}
+                            </span>
+                            <span className="text-right text-muted-foreground">{l.tareUnits}</span>
+                            <span className="text-right font-semibold">{num(l.net, 2)}</span>
+                            <span className="text-right">
+                              {num(l.price)}
+                              {l.bonus ? (
+                                <span className="text-[var(--amber)]">
+                                  {l.bonus > 0 ? ' +' : ' −'}
+                                  {num(Math.abs(l.bonus))}
+                                </span>
+                              ) : null}
+                            </span>
+                            <span className="text-right font-semibold">{num(l.amount, 2)}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => setLines((prev) => prev.filter((x) => x.key !== l.key))}
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* payout — M10 */}
               <div className="p-4">
                 <Eyebrow className="mb-2">4 · Розрахунок</Eyebrow>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="paid" className="text-xs text-muted-foreground">
-                      Видано готівкою
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="paid"
-                        value={paidInput}
-                        onChange={(e) => {
-                          setPaidTouched(true)
-                          setPaidInput(e.target.value.replace(',', '.'))
-                        }}
-                        inputMode="decimal"
-                        placeholder="0"
-                        className="h-12 pr-9 font-mono text-xl font-semibold"
-                      />
-                      <span className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 font-mono text-sm text-muted-foreground">
-                        ₴
+                <div className="grid gap-4 sm:grid-cols-[minmax(0,1.15fr)_minmax(220px,0.85fr)]">
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-baseline justify-between gap-3 text-sm">
+                      <span className="text-muted-foreground">
+                        Нараховано сьогодні
+                        {allLines.length > 1 ? ` · ${allLines.length} ${positionsWord}` : ''}
+                      </span>
+                      <span className="font-mono">{uah(math.accrued, { decimals: 2 })}</span>
+                    </div>
+
+                    {balance > 0.009 ? (
+                      <div className="flex items-center justify-between gap-3 rounded-lg bg-[var(--amber)]/10 px-3 py-2">
+                        <div className="flex min-w-0 items-center gap-2 text-sm">
+                          <Switch
+                            aria-label="Враховувати залишок"
+                            checked={includeBalance}
+                            onCheckedChange={(v) => {
+                              setIncludeOverride(v)
+                              setPaidTouched(false)
+                            }}
+                          />
+                          <span className="shrink-0">Враховувати залишок</span>
+                          <span className="truncate text-xs text-muted-foreground">
+                            з {openDatesShort}
+                          </span>
+                        </div>
+                        <span
+                          className={cn(
+                            'shrink-0 font-mono text-sm',
+                            includeBalance ? '' : 'text-muted-foreground line-through',
+                          )}
+                        >
+                          + {uah(balance, { decimals: 2 })}
+                        </span>
+                      </div>
+                    ) : null}
+
+                    <div className="my-1 border-t border-foreground/20" />
+
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <Eyebrow>Разом до видачі</Eyebrow>
+                      <span className="font-mono text-[34px] leading-none font-semibold tracking-tight">
+                        {uah(math.total, { decimals: 2 })}
                       </span>
                     </div>
-                    <div className="flex flex-wrap gap-1.5 pt-0.5">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setPaidTouched(true)
-                          setPaidInput(String(result.amount))
-                        }}
-                      >
-                        Уся сума
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setPaidTouched(true)
-                          setPaidInput(String(Math.floor(result.amount / 100) * 100))
-                        }}
-                      >
-                        До сотні
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setPaidTouched(true)
-                          setPaidInput('0')
-                        }}
-                      >
-                        Усе в залишок
-                      </Button>
+
+                    <div className="mt-2 grid gap-1.5">
+                      <Label htmlFor="paid" className="text-xs text-muted-foreground">
+                        Видано готівкою
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="paid"
+                          value={paidInput.replace('.', ',')}
+                          onChange={(e) => {
+                            setPaidTouched(true)
+                            setPaidInput(maskDecimalInput(e.target.value))
+                          }}
+                          inputMode="decimal"
+                          placeholder="0"
+                          className="h-12 pr-9 font-mono text-xl font-semibold"
+                        />
+                        <span className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 font-mono text-sm text-muted-foreground">
+                          ₴
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setPaidTouched(true)
+                            setPaidInput(String(math.total))
+                          }}
+                        >
+                          Уся сума
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          // під 100 ₴ округляти нікуди — інакше кнопка тихо означала б «нічого не видати»
+                          disabled={math.total < 100}
+                          onClick={() => {
+                            setPaidTouched(true)
+                            setPaidInput(String(Math.floor(math.total / 100) * 100))
+                          }}
+                        >
+                          До сотні
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setPaidTouched(true)
+                            setPaidInput('0')
+                          }}
+                        >
+                          Усе в залишок
+                        </Button>
+                      </div>
+                      {math.paidToPast > 0.009 ? (
+                        <div className="text-xs text-muted-foreground">
+                          З них{' '}
+                          <b className="font-mono text-foreground">
+                            {uah(math.paidToPast, { decimals: 2 })}
+                          </b>{' '}
+                          закриють попередні залишки — {willCloseDates}
+                        </div>
+                      ) : null}
+                      {parseNumeric(paidInput) > math.payCap + 0.009 ? (
+                        <div className="text-xs text-[var(--amber)]">
+                          Більше за РАЗОМ видати не можна — рахуємо{' '}
+                          <b className="font-mono">{uah(math.paid, { decimals: 2 })}</b>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
 
                   <div
                     className={cn(
                       'flex flex-col justify-center rounded-lg px-4 py-3',
-                      debt > 0.009 ? 'bg-[var(--amber)]/10' : 'bg-[var(--leaf)]/10',
+                      math.remainder > 0.009 ? 'bg-[var(--amber)]/10' : 'bg-[var(--leaf)]/10',
                     )}
                   >
-                    <Eyebrow>{debt > 0.009 ? 'Залишок за нами' : 'Розраховано повністю'}</Eyebrow>
+                    <Eyebrow>
+                      {math.remainder > 0.009 ? 'Залишок за нами' : 'Розраховано повністю'}
+                    </Eyebrow>
                     <div
                       className={cn(
-                        'mt-1 font-mono text-3xl font-semibold',
-                        debt > 0.009 ? 'text-[var(--amber)]' : 'text-[var(--leaf)]',
+                        'mt-1 font-mono text-2xl font-semibold',
+                        math.remainder > 0.009 ? 'text-[var(--amber)]' : 'text-[var(--leaf)]',
                       )}
                     >
-                      {debt > 0.009 ? uah(debt, { decimals: 2 }) : uah(0)}
+                      {math.remainder > 0.009 ? uah(math.remainder, { decimals: 2 }) : uah(0)}
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">
-                      {debt > 0.009
-                        ? 'Пристане до картки постачальника з датою сьогодні'
+                      {math.remainder > 0.009
+                        ? 'Додасться до залишку постачальника — датою сьогодні'
                         : 'Нічого не зависає на балансі'}
                     </div>
                   </div>
                 </div>
 
-                <Button
-                  className="mt-4 h-14 w-full text-base"
-                  disabled={!ready}
-                  onClick={save}
-                >
+                <Button className="mt-4 h-14 w-full text-base" disabled={!ready} onClick={save}>
                   <Check className="size-5" />
                   {ready
-                    ? `Прийняти ${num(result.net, 2)} кг · ${uah(result.amount)}`
+                    ? `Прийняти ${allLines.length > 1 ? `${allLines.length} ${positionsWord} · ` : ''}${kg(netTotal)} · видати ${uahAuto(math.paid)}`
                     : 'Прийняти'}
                 </Button>
               </div>
@@ -517,7 +942,7 @@ export function ReceptionPage() {
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-3">
               <MiniStat label="Прийнято сьогодні" value={tonnage(day.netKg)} />
-              <MiniStat label="Квитанцій" value={String(day.receptionCount)} />
+              <MiniStat label="Квитанцій" value={String(todayVisits.length)} />
               <MiniStat label="Видано з каси" value={uah(day.cashOut)} />
               <MiniStat
                 label="Залишків створено"
@@ -530,47 +955,57 @@ export function ReceptionPage() {
               <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
                 <Eyebrow>Сьогоднішні квитанції</Eyebrow>
                 <Badge variant="secondary" className="font-mono">
-                  {todayReceptions.length}
+                  {todayVisits.length}
                 </Badge>
               </div>
               <div className="max-h-[560px] overflow-y-auto">
-                {todayReceptions.length === 0 ? (
+                {todayVisits.length === 0 ? (
                   <div className="px-4 py-10 text-center text-sm text-muted-foreground">
                     Ще нічого не прийнято. Перша квитанція зʼявиться тут.
                   </div>
                 ) : (
                   <ul className="divide-y divide-border/60">
-                    {todayReceptions.map((r) => {
-                      const s = suppliers.find((x) => x.id === r.supplierId)
-                      const b = berries.find((x) => x.id === r.berryId)
+                    {todayVisits.map((rows) => {
+                      const first = rows[0]
+                      const s = suppliers.find((x) => x.id === first.supplierId)
+                      const b = berries.find((x) => x.id === first.berryId)
+                      const visitNet = sum(rows, (r) => r.net)
+                      const visitAmount = sum(rows, (r) => r.amount)
+                      const visitDebt = sum(rows, (r) => r.debt)
                       return (
-                        <li key={r.id}>
+                        <li key={first.id}>
                           <button
-                            onClick={() => setReceipt(r)}
+                            onClick={() => {
+                              setReceipt(first)
+                              setReceiptPayout(undefined)
+                            }}
                             className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-muted/60"
                           >
                             <span className="w-10 shrink-0 font-mono text-xs text-muted-foreground">
-                              {r.time}
+                              {first.time}
                             </span>
                             <span className="min-w-0 flex-1">
                               <span className="block truncate text-sm font-medium">
                                 {s?.name ?? '—'}
                               </span>
                               <span className="block truncate text-xs text-muted-foreground">
-                                {b?.short} · {kg(r.net)}
-                                {r.debt > 0 ? (
+                                {rows.length > 1
+                                  ? `${rows.length} ${plural(rows.length, 'позиція', 'позиції', 'позицій')}`
+                                  : b?.short}{' '}
+                                · {kg(visitNet)}
+                                {visitDebt > 0 ? (
                                   <span className="text-[var(--amber)]">
                                     {' '}
-                                    · залишок {uah(r.debt)}
+                                    · залишок {uah(visitDebt)}
                                   </span>
                                 ) : null}
                               </span>
                             </span>
                             <span className="shrink-0 text-right">
                               <span className="block font-mono text-sm font-medium">
-                                {uah(r.amount)}
+                                {uah(visitAmount)}
                               </span>
-                              {!r.synced ? (
+                              {rows.some((r) => !r.synced) ? (
                                 <span className="block font-mono text-[10px] text-[var(--amber)]">
                                   у черзі
                                 </span>
@@ -591,13 +1026,9 @@ export function ReceptionPage() {
 
       <ReceiptDialog
         reception={receipt}
+        payout={receiptPayout}
         open={Boolean(receipt)}
         onOpenChange={(v) => !v && setReceipt(null)}
-      />
-      <SettleDialog
-        supplierId={settleFor}
-        open={Boolean(settleFor)}
-        onOpenChange={(v) => !v && setSettleFor(null)}
       />
     </div>
   )

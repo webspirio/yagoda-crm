@@ -155,18 +155,24 @@ function DemoPanel() {
           ? 'Приймальник бачить лише свою точку і не має доступу до зведення.'
           : 'Власник бачить усі точки, ціни, залишки та аналітику.'}
       </p>
+      {/* Збережений стан у браузері перебиває свіжий сід — це найкоротший шлях зіпсувати показ,
+          тому кнопка стоїть на видноті й підписана, що саме вона робить */}
       <Button
-        variant="ghost"
         size="sm"
-        className="w-full justify-start text-sidebar-foreground/60 hover:bg-black/25 hover:text-sidebar-accent-foreground"
+        className="w-full justify-start border border-sidebar-foreground/20 bg-black/25 text-sidebar-accent-foreground hover:bg-black/40"
         onClick={() => {
           resetDemo()
-          toast.success('Демо-дані відновлено')
+          toast.success('Демо-дані відновлено', {
+            description: 'Сезон повернувся до початкового стану — пробні квитанції прибрано.',
+          })
         }}
       >
         <RotateCcw className="size-3.5" />
         Скинути демо-дані
       </Button>
+      <p className="mt-2 text-[11px] leading-snug text-sidebar-foreground/50">
+        Демо живе у вашому браузері. Натисніть перед показом — і сезон буде такий, як задумано.
+      </p>
     </div>
   )
 }
@@ -310,6 +316,11 @@ function PointSelect() {
     )
   }
 
+  // Вибрати можна лише точку, яка приймає. Решта п'ять стоять у довіднику готові до
+  // відкриття ✓ PART A («від 5 до 10») — але в них немає ні прийомок, ні каси, і
+  // пропонувати їх як робочі означало б показати порожній екран замість точки
+  const registry = points.filter((p) => !p.active)
+
   return (
     <Select value={activePointId} onValueChange={setActivePoint}>
       <SelectTrigger className="h-8 w-[186px] bg-card text-xs">
@@ -317,12 +328,19 @@ function PointSelect() {
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="all">Усі точки</SelectItem>
-        {points.map((p) => (
-          <SelectItem key={p.id} value={p.id}>
-            {p.name}
-            <span className="ml-1.5 text-muted-foreground">{p.village}</span>
-          </SelectItem>
-        ))}
+        {points
+          .filter((p) => p.active)
+          .map((p) => (
+            <SelectItem key={p.id} value={p.id}>
+              {p.name}
+              <span className="ml-1.5 text-muted-foreground">{p.village}</span>
+            </SelectItem>
+          ))}
+        {registry.length ? (
+          <div className="border-t border-border/70 px-2 pt-1.5 pb-1 text-[11px] leading-snug text-muted-foreground">
+            У реєстрі, ще не відкриті: {registry.map((p) => p.name).join(', ')}
+          </div>
+        ) : null}
       </SelectContent>
     </Select>
   )

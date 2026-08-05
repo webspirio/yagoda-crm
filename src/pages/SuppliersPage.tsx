@@ -29,9 +29,19 @@ export function SuppliersPage() {
   const [addOpen, setAddOpen] = React.useState(false)
   const [onlyDebt, setOnlyDebt] = React.useState(false)
 
+  // на точці видно і своїх за довідником, і всіх, хто сюди реально возив — інакше людина
+  // з'являлася б у «Залишках» пункту, але не в його ж списку постачальників
+  const deliveredHere = React.useMemo(
+    () => new Set(receptions.filter((r) => r.pointId === activePointId).map((r) => r.supplierId)),
+    [receptions, activePointId],
+  )
+
   const rows = React.useMemo(() => {
     return suppliers
-      .filter((s) => activePointId === 'all' || s.homePointId === activePointId)
+      .filter(
+        (s) =>
+          activePointId === 'all' || s.homePointId === activePointId || deliveredHere.has(s.id),
+      )
       .map((s) => {
         const items = receptions.filter((r) => r.supplierId === s.id)
         const last = items.length ? items[items.length - 1] : undefined
@@ -48,14 +58,16 @@ export function SuppliersPage() {
         if (onlyDebt && r.balance <= 0.009) return false
         if (!q.trim()) return true
         const needle = q.toLowerCase()
+        // телефон шукається, лише якщо він узагалі є: у їхньому Довіднику він порожній
+        // у 209 з 209 рядків ✓ PART C 7, тому в жодного сіданого постачальника його немає
         return (
           r.supplier.name.toLowerCase().includes(needle) ||
           r.supplier.village.toLowerCase().includes(needle) ||
-          r.supplier.phone.includes(needle)
+          (r.supplier.phone?.includes(needle) ?? false)
         )
       })
       .sort((a, b) => b.amount - a.amount)
-  }, [suppliers, receptions, payouts, q, onlyDebt, activePointId])
+  }, [suppliers, receptions, payouts, q, onlyDebt, activePointId, deliveredHere])
 
   const totalBalance = sum(rows, (r) => r.balance)
 
@@ -64,7 +76,7 @@ export function SuppliersPage() {
       <PageHeader
         eyebrow={`${rows.length} у списку`}
         title="Постачальники"
-        description="Одна картка на людину. Прізвище пишеться один раз — далі система сама підставляє його в квитанції, тож двійників не буває."
+        description="Одна картка на людину. Квитанція посилається на цей запис, а не на набраний текст, тому описка не роздвоює людину на два залишки — але схожі записи все одно треба звіряти й зливати вручну."
         actions={
           <Button onClick={() => setAddOpen(true)}>
             <Plus className="size-4" />
@@ -79,7 +91,7 @@ export function SuppliersPage() {
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Прізвище, село або телефон"
+            placeholder="Прізвище або село"
             className="h-9 pl-9"
           />
         </div>
@@ -124,14 +136,21 @@ export function SuppliersPage() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="truncate font-medium">{r.supplier.name}</span>
+                        {/* Дод. ціна тепер по рядку прийомки, як їхня колонка J ✓ M7 —
+                            на постачальнику надбавки більше немає, лишається сам ОПТ */}
                         {r.supplier.wholesale ? (
                           <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
-                            опт +{r.supplier.bonus}
+                            ОПТ
                           </Badge>
                         ) : null}
                       </div>
                       <div className="truncate text-xs text-muted-foreground">
-                        {r.supplier.village} · {r.supplier.phone}
+                        {r.supplier.village} ·{' '}
+                        {r.supplier.phone ? (
+                          <span className="font-mono">{r.supplier.phone}</span>
+                        ) : (
+                          <span className="text-muted-foreground/70">телефон не вказано</span>
+                        )}
                       </div>
                     </div>
                   </div>

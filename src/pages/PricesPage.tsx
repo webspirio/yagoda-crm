@@ -24,7 +24,7 @@ import { Eyebrow, PageHeader } from '@/components/common/bits'
 import { Sparkline } from '@/components/common/Sparkline'
 import { useStore } from '@/lib/store'
 import { addDays, longDate, num } from '@/lib/format'
-import { TODAY } from '@/lib/seed'
+import { OWNER, PRODUCTS, TODAY } from '@/lib/seed'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Berry } from '@/lib/types'
@@ -38,13 +38,21 @@ export function PricesPage() {
   const priceHistory = useStore((s) => s.priceHistory)
   const prices = useStore((s) => s.prices)
   const setPrice = useStore((s) => s.setPrice)
+  const settings = useStore((s) => s.settings)
 
   const [editing, setEditing] = React.useState<{ berry: Berry; pointId: string } | null>(null)
   const [value, setValue] = React.useState('')
   const [reason, setReason] = React.useState('')
 
   const activeBerries = berries.filter((b) => TODAY >= b.from && TODAY <= b.to)
-  const visiblePoints = activePointId === 'all' ? points : points.filter((p) => p.id === activePointId)
+  // колонки — тільки ті пункти, що реально приймають: решта п'ять стоять у реєстрі
+  // й ціни в них немає ✓ PART A («від 5 до 10»)
+  const tradingPoints = points.filter((p) => p.active)
+  // Товар → Сорт, 9 → 17 ✓ PART A. Ключем ціни лишається сорт; товар — тільки заголовок
+  const groups = PRODUCTS.map((p) => ({
+    product: p,
+    grades: activeBerries.filter((b) => b.product === p.name),
+  })).filter((g) => g.grades.length > 0)
 
   function openEdit(berry: Berry, pointId: string) {
     setEditing({ berry, pointId })
@@ -64,7 +72,9 @@ export function PricesPage() {
       pointId: editing.pointId,
       berryId: editing.berry.id,
       price: v,
-      author: role === 'owner' ? 'Власник' : 'Приймальник',
+      // той самий підпис, що й у сіді (`OWNER`), інакше журнал цін показував би
+      // одну людину під двома іменами
+      author: role === 'owner' ? OWNER : 'Приймальник',
       reason: reason.trim() || undefined,
     })
     toast.success(`${editing.berry.name} — ${num(v)} ₴/кг`, {
@@ -78,7 +88,7 @@ export function PricesPage() {
       <PageHeader
         eyebrow={longDate(TODAY)}
         title="Ціни дня"
-        description="Ціну ставлять зранку і коригують протягом дня. Кожна зміна лишає слід — видно, хто, коли і чому підняв."
+        description="Ціну виставляє керівник — одну на всі точки, «я виставляю ціну для всіх». Колонка по точці показує лише, де вона вже стоїть. Кожна зміна лишає слід: видно, хто, коли і чому підняв."
       />
 
       {activePointId === 'all' ? (
@@ -88,7 +98,7 @@ export function PricesPage() {
               <TableRow>
                 <TableHead className="w-[200px]">Сорт</TableHead>
                 <TableHead className="w-[150px]">Ціна за 14 днів</TableHead>
-                {points.map((p) => (
+                {tradingPoints.map((p) => (
                   <TableHead key={p.id} className="text-right">
                     {p.name}
                   </TableHead>
@@ -96,108 +106,152 @@ export function PricesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {activeBerries.map((b) => (
-                <TableRow key={b.id}>
-                  <TableCell className="font-medium">{b.name}</TableCell>
-                  <TableCell>
-                    <PriceTrend berryId={b.id} />
-                  </TableCell>
-                  {points.map((p) => {
-                    const price = priceFor(TODAY, p.id, b.id)
-                    const hist = priceHistory(TODAY, p.id, b.id)
-                    const changed = hist.length > 1
-                    return (
-                      <TableCell key={p.id} className="text-right">
-                        {price === undefined ? (
-                          <button
-                            onClick={() => openEdit(b, p.id)}
-                            className="text-xs text-muted-foreground underline decoration-dotted"
-                          >
-                            встановити
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => openEdit(b, p.id)}
-                            className="group inline-flex items-center gap-1.5"
-                          >
-                            <span className="font-mono font-medium">{num(price)} ₴</span>
-                            {changed ? (
-                              <PriceDelta from={hist[0].price} to={price} />
-                            ) : null}
-                            <Pencil className="size-3 opacity-0 transition-opacity group-hover:opacity-50" />
-                          </button>
-                        )}
+              {groups.map((g) => (
+                <React.Fragment key={g.product.id}>
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell
+                      colSpan={2 + tradingPoints.length}
+                      className="bg-muted/40 py-1.5 text-[11px] font-medium tracking-[0.16em] uppercase"
+                    >
+                      {g.product.name}
+                    </TableCell>
+                  </TableRow>
+                  {g.grades.map((b) => (
+                    <TableRow key={b.id}>
+                      <TableCell className="pl-6">
+                        <span className="font-medium">{b.name}</span>
+                        {b.wholesale ? (
+                          <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px]">
+                            ОПТ
+                          </Badge>
+                        ) : null}
                       </TableCell>
-                    )
-                  })}
-                </TableRow>
+                      <TableCell>
+                        <PriceTrend berryId={b.id} />
+                      </TableCell>
+                      {tradingPoints.map((p) => {
+                        const price = priceFor(TODAY, p.id, b.id)
+                        const hist = priceHistory(TODAY, p.id, b.id)
+                        const changed = hist.length > 1
+                        return (
+                          <TableCell key={p.id} className="text-right">
+                            {price === undefined ? (
+                              <button
+                                onClick={() => openEdit(b, p.id)}
+                                className="text-xs text-muted-foreground underline decoration-dotted"
+                              >
+                                встановити
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => openEdit(b, p.id)}
+                                className="group inline-flex items-center gap-1.5"
+                              >
+                                <span className="font-mono font-medium">{num(price)} ₴</span>
+                                {changed ? (
+                                  <PriceDelta from={hist[0].price} to={price} />
+                                ) : null}
+                                <Pencil className="size-3 opacity-0 transition-opacity group-hover:opacity-50" />
+                              </button>
+                            )}
+                          </TableCell>
+                        )
+                      })}
+                    </TableRow>
+                  ))}
+                </React.Fragment>
               ))}
             </TableBody>
           </Table>
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
-          {activeBerries.map((b) => {
-            const pointId = visiblePoints[0].id
-            const price = priceFor(TODAY, pointId, b.id)
-            const hist = priceHistory(TODAY, pointId, b.id)
-            return (
-              <div key={b.id} className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="font-medium">{b.name}</div>
-                    <div className="mt-1 flex items-baseline gap-2">
-                      <span className="font-mono text-3xl font-semibold">
-                        {price !== undefined ? num(price) : '—'}
-                      </span>
-                      <span className="text-sm text-muted-foreground">₴/кг</span>
-                      {hist.length > 1 ? <PriceDelta from={hist[0].price} to={price!} /> : null}
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => openEdit(b, pointId)}>
-                    <Pencil className="size-3.5" />
-                    Змінити
-                  </Button>
-                </div>
+        <div className="flex flex-col gap-5">
+          {groups.map((g) => (
+            <div key={g.product.id}>
+              <Eyebrow className="mb-2">{g.product.name}</Eyebrow>
+              <div className="grid gap-3 md:grid-cols-2">
+                {g.grades.map((b) => {
+                  const pointId = activePointId
+                  const price = priceFor(TODAY, pointId, b.id)
+                  const hist = priceHistory(TODAY, pointId, b.id)
+                  return (
+                    <div
+                      key={b.id}
+                      className="rounded-xl bg-card p-4 ring-1 ring-foreground/10"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium">{b.name}</span>
+                            {b.wholesale ? (
+                              <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+                                ОПТ
+                              </Badge>
+                            ) : null}
+                          </div>
+                          <div className="mt-1 flex items-baseline gap-2">
+                            <span className="font-mono text-3xl font-semibold">
+                              {price !== undefined ? num(price) : '—'}
+                            </span>
+                            <span className="text-sm text-muted-foreground">₴/кг</span>
+                            {hist.length > 1 ? (
+                              <PriceDelta from={hist[0].price} to={price!} />
+                            ) : null}
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => openEdit(b, pointId)}>
+                          <Pencil className="size-3.5" />
+                          Змінити
+                        </Button>
+                      </div>
 
-                {hist.length ? (
-                  <div className="mt-4 border-t border-border/70 pt-3">
-                    <Eyebrow className="mb-2">Історія за сьогодні</Eyebrow>
-                    <ul className="flex flex-col gap-1.5">
-                      {hist.map((h) => (
-                        <li key={h.id} className="flex items-start gap-2 text-xs">
-                          <Clock className="mt-0.5 size-3 shrink-0 text-muted-foreground" />
-                          <span className="font-mono text-muted-foreground">{h.time}</span>
-                          <span className="font-mono font-medium">{num(h.price)} ₴</span>
-                          <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                            {h.reason ? `— ${h.reason}` : ''}
-                          </span>
-                          <span className="shrink-0 text-muted-foreground">{h.author}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
+                      {hist.length ? (
+                        <div className="mt-4 border-t border-border/70 pt-3">
+                          <Eyebrow className="mb-2">Історія за сьогодні</Eyebrow>
+                          <ul className="flex flex-col gap-1.5">
+                            {hist.map((h) => (
+                              <li key={h.id} className="flex items-start gap-2 text-xs">
+                                <Clock className="mt-0.5 size-3 shrink-0 text-muted-foreground" />
+                                <span className="font-mono text-muted-foreground">{h.time}</span>
+                                <span className="font-mono font-medium">{num(h.price)} ₴</span>
+                                <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                                  {h.reason ? `— ${h.reason}` : ''}
+                                </span>
+                                <span className="shrink-0 text-muted-foreground">{h.author}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </div>
+                  )
+                })}
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
       )}
 
       {activePointId === 'all' ? <IntradayChanges /> : null}
 
+      {/* Надбавка більше не властивість постачальника: Дод. ціна — по рядку прийомки,
+          як їхня колонка J ✓ M7, PART F #4. Межі задає керівник у «Тара і сорти» */}
       <div className="mt-5 rounded-xl border border-dashed border-border p-4">
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <Badge variant="secondary">Надбавки оптовикам</Badge>
-          <span className="text-muted-foreground">
-            Оптовик має свою надбавку в картці — вона додається до ціни дня автоматично, окремо
-            перераховувати нічого не треба.
+        <div className="flex flex-wrap items-baseline gap-2 text-sm">
+          <Badge variant="secondary">Дод. ціна</Badge>
+          <span className="max-w-3xl text-muted-foreground">
+            Надбавка ставиться на кожен рядок окремо, а не на постачальника: «не 100, а 105 чи
+            110». Межі — від {num(settings.surchargeMin)} до {num(settings.surchargeMax)} ₴/кг,
+            задає керівник. Понад межу поле значення не приймає — запит іде на підтвердження.
           </span>
         </div>
       </div>
 
-      <div className="mt-2 text-xs text-muted-foreground">
-        Записів про ціни в базі: <span className="font-mono">{prices.length}</span>
+      <div className="mt-2 max-w-3xl text-xs leading-relaxed text-muted-foreground">
+        Записів про ціни в базі: <span className="font-mono">{prices.length}</span>. Одна дата й
+        один сорт можуть мати кілька записів — у вашому файлі так було в 64 зі 175 комбінацій, до
+        трьох різних цін на один сорт за день. В Excel це дефект, тут це журнал: квитанції до
+        зміни лишаються за старою ціною.
       </div>
 
       <Dialog open={Boolean(editing)} onOpenChange={(v) => !v && setEditing(null)}>

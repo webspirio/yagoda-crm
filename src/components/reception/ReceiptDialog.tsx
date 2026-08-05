@@ -8,9 +8,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useStore } from '@/lib/store'
-import { supplierBalance } from '@/lib/calc'
-import { kg, longDate, num, uah } from '@/lib/format'
-import type { Reception } from '@/lib/types'
+import { round2, sum, supplierBalance } from '@/lib/calc'
+import { kg, longDate, num, plural, uah, uahAuto } from '@/lib/format'
+import type { Payout, Reception } from '@/lib/types'
 
 function Row({
   label,
@@ -33,10 +33,13 @@ function Row({
 
 export function ReceiptDialog({
   reception,
+  payout,
   open,
   onOpenChange,
 }: {
   reception: Reception | null
+  /** Виплата за попередні залишки, породжена цим самим візитом */
+  payout?: Payout
   open: boolean
   onOpenChange: (v: boolean) => void
 }) {
@@ -49,15 +52,37 @@ export function ReceiptDialog({
 
   if (!reception) return null
   const supplier = suppliers.find((s) => s.id === reception.supplierId)
-  const berry = berries.find((b) => b.id === reception.berryId)
   const point = points.find((p) => p.id === reception.pointId)
   const balance = supplier ? supplierBalance(supplier.id, receptions, payouts) : 0
+
+  // один візит — один чек: позиції збираються тут, а не приходять пропом, щоб інші
+  // сторінки могли й далі відкривати чек однією квитанцією (M5)
+  const lines = reception.visitId
+    ? receptions
+        .filter((r) => r.visitId === reception.visitId)
+        .sort((a, b) => a.code.localeCompare(b.code))
+    : [reception]
+
+  const accrued = sum(lines, (l) => l.amount)
+  const carriedIn = sum(lines, (l) => l.carriedIn)
+  const total = round2(accrued + carriedIn)
+  // Виплату НЕ вгадуємо: вона несе visitId того візиту, надлишком якого вона є.
+  // Інакше людина, що приїхала двічі за день, отримала б на першому чеку гроші,
+  // видані на другому — або погашення зі сторінки «Залишки» потрапило б у чужий чек.
+  const visitPayout =
+    payout ?? (reception.visitId ? payouts.find((p) => p.visitId === reception.visitId) : undefined)
+  const paidCash = round2(sum(lines, (l) => l.paid) + (visitPayout?.amount ?? 0))
+  const remainder = round2(total - paidCash)
+  const codeLabel =
+    lines.length > 1
+      ? `${lines[0].code} · ${lines.length} ${plural(lines.length, 'позиція', 'позиції', 'позицій')}`
+      : reception.code
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>Квитанція {reception.code}</DialogTitle>
+          <DialogTitle>Квитанція {codeLabel}</DialogTitle>
         </DialogHeader>
 
         <div
@@ -75,47 +100,67 @@ export function ReceiptDialog({
 
           <div className="my-3 border-t border-dashed border-neutral-300" />
 
-          <Row label="Квитанція" value={reception.code} />
+          <Row label="Квитанція" value={codeLabel} />
           <Row label="Дата" value={`${longDate(reception.date)}, ${reception.time}`} />
           <Row label="Постачальник" value={supplier?.name ?? '—'} />
 
+          {lines.map((line) => (
+            <div key={line.id}>
+              <div className="my-3 border-t border-dashed border-neutral-300" />
+
+              <Row label={berries.find((b) => b.id === line.berryId)?.name ?? 'Ягода'} value="" muted />
+              <Row label="Брутто" value={kg(line.gross)} />
+              {line.pallet > 0 ? <Row label="Піддон" value={`− ${kg(line.pallet)}`} /> : null}
+              <Row
+                label={`Тара (${line.tare
+                  .map((t) => `${t.count} × ${tareTypes.find((x) => x.id === t.tareId)?.name ?? ''}`)
+                  .join(', ')})`}
+                value={`− ${kg(line.tareWeight)}`}
+              />
+              <div className="my-1.5 border-t border-neutral-900" />
+              <Row label="Нетто" value={kg(line.net)} strong />
+              <Row
+                label="Ціна за кг"
+                value={
+                  line.bonus
+                    ? `${num(line.price)} + ${num(line.bonus)} = ${num(line.price + line.bonus)} ₴`
+                    : `${num(line.price)} ₴`
+                }
+              />
+              {lines.length > 1 ? <Row label="Сума" value={uah(line.amount, { decimals: 2 })} /> : null}
+            </div>
+          ))}
+
           <div className="my-3 border-t border-dashed border-neutral-300" />
 
-          <Row label={berry?.name ?? 'Ягода'} value="" muted />
-          <Row label="Брутто" value={kg(reception.gross)} />
-          <Row
-            label={`Тара (${reception.tare
-              .map((t) => `${t.count} × ${tareTypes.find((x) => x.id === t.tareId)?.name ?? ''}`)
-              .join(', ')})`}
-            value={`− ${kg(reception.tareWeight)}`}
-          />
-          <div className="my-1.5 border-t border-neutral-900" />
-          <Row label="Нетто" value={kg(reception.net)} strong />
-          <Row
-            label="Ціна за кг"
-            value={
-              reception.bonus
-                ? `${num(reception.price)} + ${num(reception.bonus)} = ${num(reception.price + reception.bonus)} ₴`
-                : `${num(reception.price)} ₴`
-            }
-          />
-
-          <div className="my-3 border-t border-dashed border-neutral-300" />
-
-          <Row label="Нараховано" value={uah(reception.amount, { decimals: 2 })} strong />
-          <Row label="Видано готівкою" value={uah(reception.paid, { decimals: 2 })} />
-          {reception.debt > 0 ? (
-            <Row label="Залишок за нами" value={uah(reception.debt, { decimals: 2 })} strong />
+          <Row label="Нараховано" value={uah(accrued, { decimals: 2 })} strong />
+          {carriedIn > 0.009 ? (
+            <>
+              <Row label="Попередній залишок" value={uah(carriedIn, { decimals: 2 })} />
+              <Row label="РАЗОМ" value={uah(total, { decimals: 2 })} strong />
+            </>
+          ) : null}
+          <Row label="Видано готівкою" value={uah(paidCash, { decimals: 2 })} />
+          {visitPayout ? (
+            <Row
+              label="з них на попередні залишки"
+              value={uah(visitPayout.amount, { decimals: 2 })}
+              muted
+            />
+          ) : null}
+          {remainder > 0.009 ? (
+            <Row label="Залишок за нами" value={uah(remainder, { decimals: 2 })} strong />
           ) : null}
 
           <div className="my-3 border-t border-dashed border-neutral-300" />
 
-          <Row label="Загальний залишок" value={uah(balance)} />
+          <Row label="Загальний залишок" value={uahAuto(balance)} />
           <Row label="Приймав" value={reception.operator} muted />
 
           <div className="mt-4 text-center text-[10px] text-neutral-400">
             Квитанція збережена в системі. Дублікат можна роздрукувати будь-коли.
           </div>
+
         </div>
 
         <DialogFooter>

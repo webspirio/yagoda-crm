@@ -5,8 +5,8 @@ import { Badge } from '@/components/ui/badge'
 import { Eyebrow, PageHeader, StatTile } from '@/components/common/bits'
 import { ReceiptDialog } from '@/components/reception/ReceiptDialog'
 import { useStore, scopedPayouts, scopedReceptions } from '@/lib/store'
-import { originDates, reconcileDay, sum } from '@/lib/calc'
-import { kg, longDate, shortDate, tonnage, uah, weekday } from '@/lib/format'
+import { originDates, reconcileDay, round2, sum } from '@/lib/calc'
+import { kg, longDate, plural, shortDate, tonnage, uah, uahAuto, weekday } from '@/lib/format'
 import { addDays } from '@/lib/format'
 import { SEASON_START, TODAY } from '@/lib/seed'
 import { cn } from '@/lib/utils'
@@ -31,6 +31,9 @@ export function DayPage() {
     .filter((r) => r.date === workDate)
     .sort((a, b) => a.time.localeCompare(b.time))
   const dayPayouts = scopedP.filter((p) => p.date === workDate)
+  // 20,8 % візитів багаторядкові ✓ PART C 15 — «квитанція» = візит, як і на Прийомці
+  const receiptCount = new Set(dayReceptions.map((r) => r.visitId ?? r.id)).size
+  const receiptsWord = plural(receiptCount, 'квитанція', 'квитанції', 'квитанцій')
 
   const byBerry = berries
     .map((b) => {
@@ -94,12 +97,12 @@ export function DayPage() {
       />
 
       <div className="grid gap-3 pb-5 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile label="Прийнято ягоди" value={tonnage(day.netKg)} hint={`${day.receptionCount} квитанцій`} />
+        <StatTile label="Прийнято ягоди" value={tonnage(day.netKg)} hint={`${receiptCount} ${receiptsWord}`} />
         <StatTile label="Нараховано" value={uah(day.accrued)} hint="вартість прийнятої ягоди" />
         <StatTile
           label="Вийшло з каси"
           value={uah(day.cashOut)}
-          hint="готівка за день, разом з боргами"
+          hint="готівка за день, разом із залишками"
           tone="berry"
         />
         <StatTile
@@ -118,7 +121,7 @@ export function DayPage() {
               Звіт за {longDate(workDate)}
             </div>
             <div className="text-sm text-muted-foreground">
-              {scopeName} · прийнято {tonnage(day.netKg)} у {day.receptionCount} квитанціях
+              {scopeName} · прийнято {tonnage(day.netKg)} у {receiptCount} {plural(receiptCount, 'квитанції', 'квитанціях', 'квитанціях')}
             </div>
           </div>
           <Eyebrow className="mb-4">Звірка каси</Eyebrow>
@@ -130,6 +133,19 @@ export function DayPage() {
               value={-day.paidToday}
               indent
             />
+            {/* Постачальник приїхав удруге того ж дня і ввечері закрив ранковий залишок.
+                Це гроші сьогодні за ягоду сьогодні, тому в блок «за попередні дні» вони
+                не йдуть — інакше звірка не сходилась би на власній арифметиці */}
+            {day.closedHere > 0.009 ? (
+              <LedgerRow label="Погашено того ж дня" value={-day.closedHere} indent />
+            ) : null}
+            {round2(day.settledSameDay - day.closedHere) > 0.009 ? (
+              <LedgerRow
+                label="Погашено за ягоду іншого пункту"
+                value={-round2(day.settledSameDay - day.closedHere)}
+                indent
+              />
+            ) : null}
             <LedgerRow label="Пішло в залишок за нами" value={-day.newDebt} indent tone="amber" />
             <div className="my-2 border-t border-border" />
             <div
@@ -146,6 +162,11 @@ export function DayPage() {
               </span>
               <span className="font-mono text-sm font-semibold">{uah(day.drift, { decimals: 2 })}</span>
             </div>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              Розбіжність — це «Разом мінус Виплачено мінус Залишок» по кожному рядку дня: перевірка,
+              чи сходиться рядок сам із собою. У вашій таблиці ця перевірка не проходить — із 60
+              залишків, набраних руками поверх формули, 20 не відповідають власному рядку.
+            </p>
           </div>
 
           <div className="mt-6">
@@ -168,7 +189,7 @@ export function DayPage() {
                   </div>
                 ))}
                 <div className="mt-1 flex items-center justify-between border-t border-border pt-2">
-                  <span className="text-sm text-muted-foreground">Разом боргів погашено</span>
+                  <span className="text-sm text-muted-foreground">Разом залишків погашено</span>
                   <span className="font-mono font-semibold">{uah(day.paidForPastDays)}</span>
                 </div>
               </div>
@@ -180,7 +201,7 @@ export function DayPage() {
           </div>
 
           <div className="mt-5 flex items-center justify-between rounded-lg bg-foreground px-4 py-3 text-background">
-            <span className="text-sm font-medium">Всього вийшло з каси</span>
+            <span className="text-sm font-medium">Разом вийшло з каси</span>
             <span className="font-mono text-xl font-semibold">{uah(day.cashOut)}</span>
           </div>
 
@@ -268,7 +289,7 @@ export function DayPage() {
                         <span className="min-w-0 flex-1 truncate text-sm">
                           {s?.name}
                           <span className="ml-1.5 text-xs text-[var(--amber)]">
-                            борг {originDates(row.p.allocations).map(shortDate).join(', ')}
+                            залишок {originDates(row.p.allocations).map(shortDate).join(', ')}
                           </span>
                         </span>
                         <span className="w-20 shrink-0 text-right font-mono text-sm">
@@ -333,7 +354,7 @@ function LedgerRow({
           tone === 'amber' && 'text-[var(--amber)]',
         )}
       >
-        {uah(value)}
+        {uahAuto(value)}
       </span>
     </div>
   )

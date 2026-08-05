@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { allocatePayout, openDebts, round2 } from './calc'
-import { buildSeed, nextCode, nowTime, TODAY } from './seed'
+import { allocatePayout, openDebts, round2, splitPaidAcrossLines } from './calc'
+import { buildSeed, DEFAULT_SETTINGS, nextCode, nowTime, TODAY } from './seed'
 import type {
   Berry,
   ISODate,
@@ -10,6 +10,7 @@ import type {
   PriceRecord,
   Reception,
   Role,
+  Settings,
   Supplier,
   TareLine,
   TareType,
@@ -32,6 +33,19 @@ export interface Route {
   id?: string
 }
 
+/** One line of a visit, as the reception screen hands it over. */
+export interface VisitLineInput {
+  berryId: string
+  gross: number
+  pallet: number
+  tare: TareLine[]
+  tareWeight: number
+  net: number
+  price: number
+  bonus: number
+  amount: number
+}
+
 interface State {
   points: Point[]
   berries: Berry[]
@@ -40,6 +54,7 @@ interface State {
   prices: PriceRecord[]
   receptions: Reception[]
   payouts: Payout[]
+  settings: Settings
 
   role: Role
   activePointId: string
@@ -56,6 +71,7 @@ interface State {
   addSupplier: (s: Omit<Supplier, 'id' | 'createdAt'>) => Supplier
   updateSupplier: (id: string, patch: Partial<Supplier>) => void
   updateTareType: (id: string, patch: Partial<TareType>) => void
+  updateSettings: (patch: Partial<Settings>) => void
 
   setPrice: (args: {
     date: ISODate
@@ -68,22 +84,22 @@ interface State {
   priceFor: (date: ISODate, pointId: string, berryId: string) => number | undefined
   priceHistory: (date: ISODate, pointId: string, berryId: string) => PriceRecord[]
 
-  addReception: (r: {
+  /**
+   * One supplier, N lines, one «Разом», one payout decision (M5 + M10).
+   * Cash above today's berry leaves as a separate Payout, so the FIFO allocation
+   * closes the oldest open remainders with their own dates — the engine is untouched.
+   */
+  addVisit: (v: {
     date: ISODate
     pointId: string
     supplierId: string
-    berryId: string
-    gross: number
-    tare: TareLine[]
-    tareWeight: number
-    net: number
-    price: number
-    bonus: number
-    amount: number
-    paid: number
     operator: string
-  }) => Reception
-  removeReception: (id: string) => void
+    /** Попередній залишок folded into «Разом»; 0 when the toggle is off */
+    carriedIn: number
+    /** Видано готівкою — total cash handed over, already capped by visitMath() */
+    paid: number
+    lines: VisitLineInput[]
+  }) => { receptions: Reception[]; payout?: Payout }
 
   addPayout: (args: {
     date: ISODate
@@ -91,10 +107,27 @@ interface State {
     supplierId: string
     amount: number
     operator: string
+    /** set when this payout is a visit's excess over today's berry */
+    visitId?: string
+    /**
+     * Close only remainders booked at this point. Each point keeps its own book —
+     * in their world that is literally a separate spreadsheet — so cash from this
+     * till may not settle berry another point accepted, or neither point's day report
+     * reconciles.
+     */
+    scopePointId?: string
   }) => Payout | undefined
 
   syncAll: () => void
   resetDemo: () => void
+}
+
+// v2 лишався в браузері після перейменування ключа — 450 КБ мертвого стану поруч
+// з живими 1,4 МБ, і разом вони вже підбираються до квоти localStorage
+try {
+  localStorage.removeItem('yagoda-crm-demo-v2')
+} catch {
+  // приватний режим без localStorage — демо однаково працює з пам'яті
 }
 
 const seed = buildSeed()
@@ -103,6 +136,7 @@ export const useStore = create<State>()(
   persist(
     (set, get) => ({
       ...seed,
+      settings: { ...DEFAULT_SETTINGS },
 
       role: 'operator',
       activePointId: 'p1',
@@ -138,6 +172,8 @@ export const useStore = create<State>()(
           tareTypes: st.tareTypes.map((t) => (t.id === id ? { ...t, ...patch } : t)),
         })),
 
+      updateSettings: (patch) => set((st) => ({ settings: { ...st.settings, ...patch } })),
+
       setPrice: ({ date, pointId, berryId, price, author, reason }) =>
         set((st) => ({
           prices: [
@@ -167,26 +203,73 @@ export const useStore = create<State>()(
           .prices.filter((p) => p.date === date && p.pointId === pointId && p.berryId === berryId)
           .sort((a, b) => a.time.localeCompare(b.time)),
 
-      addReception: (r) => {
+      addVisit: ({ date, pointId, supplierId, operator, carriedIn, paid, lines }) => {
         const st = get()
-        const reception: Reception = {
-          ...r,
-          id: `r_${Math.random().toString(36).slice(2, 9)}`,
-          code: nextCode('Ч', st.receptions.map((x) => x.code)),
-          time: nowTime(),
-          debt: round2(r.amount - r.paid),
-          synced: st.online,
-        }
-        set({ receptions: [...st.receptions, reception] })
-        return reception
+        const amounts = lines.map((l) => l.amount)
+        const accrued = round2(amounts.reduce((s, a) => s + a, 0))
+        const paidToday = round2(Math.min(paid, accrued))
+        // the excess can never exceed what is actually open, or a Payout would be
+        // written for money that has nothing to close and the till would under-report
+        const openTotal = round2(
+          openDebts(
+            supplierId,
+            st.receptions.filter((r) => r.pointId === pointId),
+            st.payouts,
+          ).reduce((s, o) => s + o.open, 0),
+        )
+        const paidToPast = round2(Math.min(Math.max(0, paid - accrued), openTotal))
+        const perLine = splitPaidAcrossLines(amounts, paidToday)
+
+        const visitId = `v_${Math.random().toString(36).slice(2, 9)}`
+        const time = nowTime()
+        const codes = st.receptions.map((x) => x.code)
+
+        const created: Reception[] = lines.map((line, i) => {
+          const code = nextCode('Ч', codes)
+          codes.push(code)
+          return {
+            ...line,
+            id: `r_${Math.random().toString(36).slice(2, 9)}`,
+            code,
+            date,
+            time,
+            pointId,
+            supplierId,
+            paid: perLine[i],
+            debt: round2(line.amount - perLine[i]),
+            // the carried balance belongs to the visit, so it sits on its first line only
+            carriedIn: i === 0 ? round2(carriedIn) : 0,
+            visitId,
+            operator,
+            synced: st.online,
+          }
+        })
+
+        set({ receptions: [...st.receptions, ...created] })
+
+        // the excess over today's berry closes older balances — FIFO, original dates kept
+        const payout =
+          paidToPast > 0.009
+            ? get().addPayout({
+                date,
+                pointId,
+                supplierId,
+                amount: paidToPast,
+                operator,
+                visitId,
+                scopePointId: pointId,
+              })
+            : undefined
+
+        return { receptions: created, payout }
       },
 
-      removeReception: (id) =>
-        set((st) => ({ receptions: st.receptions.filter((r) => r.id !== id) })),
-
-      addPayout: ({ date, pointId, supplierId, amount, operator }) => {
+      addPayout: ({ date, pointId, supplierId, amount, operator, visitId, scopePointId }) => {
         const st = get()
-        const open = openDebts(supplierId, st.receptions, st.payouts)
+        const scoped = scopePointId
+          ? st.receptions.filter((r) => r.pointId === scopePointId)
+          : st.receptions
+        const open = openDebts(supplierId, scoped, st.payouts)
         const allocations = allocatePayout(amount, open)
         if (!allocations.length) return undefined
         const payout: Payout = {
@@ -198,6 +281,7 @@ export const useStore = create<State>()(
           supplierId,
           amount: round2(allocations.reduce((s, a) => s + a.amount, 0)),
           allocations,
+          visitId,
           operator,
           synced: st.online,
         }
@@ -215,6 +299,7 @@ export const useStore = create<State>()(
         const fresh = buildSeed()
         set({
           ...fresh,
+          settings: { ...DEFAULT_SETTINGS },
           role: 'operator',
           activePointId: 'p1',
           route: { name: 'reception' },
@@ -224,14 +309,18 @@ export const useStore = create<State>()(
       },
     }),
     {
-      name: 'yagoda-crm-demo-v2',
-      version: 2,
+      // v3: реальні довідники клієнта, Піддон, Дод. ціна на рядку, візити.
+      // Старий стан має форму, якої більше не існує — скидаємо, а не міграємо.
+      name: 'yagoda-crm-demo-v3',
+      version: 3,
+      migrate: () => undefined,
       partialize: (s) => ({
         suppliers: s.suppliers,
         prices: s.prices,
         tareTypes: s.tareTypes,
         receptions: s.receptions,
         payouts: s.payouts,
+        settings: s.settings,
         role: s.role,
         activePointId: s.activePointId,
         online: s.online,

@@ -1,0 +1,260 @@
+/**
+ * 208 заморожених псевдонімів — рівно стільки осіб, скільки в їхньому `Довідник!A`
+ * (209 рядків аркуша, 208 осіб ✓ PART A + H5).
+ *
+ * ПІБ тут ВИГАДАНІ. Мапінгу «псевдонім ↔ реальне ім'я» не існує ніде — ні у файлі, ні в
+ * git, ні в голові: пул імен склали окремо й один раз, реальний реєстр при генерації не
+ * читався. Демонструється СТРУКТУРА, а не зміст:
+ *
+ *   · розподіл форми ПІБ «Прізвище Ім'я» / «Прізвище Ім'я По батькові» (⟡ S5 не виміряно —
+ *     взято 60/40, звірити профайлером по `Довідник!A`);
+ *   · крива візитів — довгий хвіст: кілька ОПТ-палетників, широка середина, і 60+ «бабусь»,
+ *     що приїхали двічі-тричі за сезон (`weight`);
+ *   · кластеризація по селах у КІЛЬКОХ написаннях одночасно ✓ PART C 8;
+ *   · розмах ОПТ проти бабусі ✓ S12;
+ *   · 25 навмисно зіпсованих записів-близнюків ✓ §1.4.3 — щоб екран злиття мав що знаходити.
+ *
+ * Села — реальні топоніми (не персональні дані), навмисно в кількох написаннях: саме так
+ * вони й лежать у файлі. Телефонів немає: `Довідник!B` порожній у 209 з 209 рядків
+ * ✓ PART C 7, H5.
+ *
+ * Масив ЗАМОРОЖЕНИЙ і в рантаймі не генерується: демо однакове на кожному ноутбуці, масив
+ * можна вичитати очима перед публікацією, і жоден скрипт не може випадково перезапуститись
+ * проти реального файлу.
+ */
+export interface SupplierSeed {
+  name: string
+  village: string
+  wholesale: boolean
+  /** relative season volume weight, drives the visit curve */
+  weight: number
+  note?: string
+}
+
+export const SUPPLIER_SEED: SupplierSeed[] = [
+  /* ---------- 159 звичайних записів ---------- */
+  { name: 'Кушнірук Галина', village: 'копайгород', wholesale: true, weight: 13 },
+  { name: 'Каленчук Христина Богданівна', village: 'копайгород', wholesale: false, weight: 3 },
+  { name: 'Лозовик Мирослава Павлівна', village: 'копайгород', wholesale: false, weight: 2 },
+  { name: 'Кирилюк Тарас Лукʼянович', village: 'копайгород', wholesale: true, weight: 19 },
+  { name: 'Ільчук Ніна', village: 'копайгород', wholesale: true, weight: 18 },
+  { name: 'Ткачук Михайло', village: 'копайгород', wholesale: true, weight: 14 },
+  { name: 'Яремчук Василь', village: 'копайгород', wholesale: false, weight: 8 },
+  { name: 'Бондарук Христина Юріївна', village: 'копайгород', wholesale: false, weight: 9 },
+  { name: 'Уманець Ірина', village: 'копайгород', wholesale: false, weight: 2 },
+  { name: 'Пилипчук Наталія', village: 'копайгород', wholesale: false, weight: 5 },
+  { name: 'Ємчук Галина', village: 'копайгород', wholesale: false, weight: 5 },
+  { name: 'Пасюта Наталія', village: 'копайгород', wholesale: false, weight: 8 },
+  { name: 'Марчук Христина Романівна', village: 'копайгород', wholesale: false, weight: 2 },
+  { name: 'Фурман Неля Федорівна', village: 'копайгород', wholesale: true, weight: 16 },
+  { name: 'Шевчук Григорій', village: 'копайгород', wholesale: true, weight: 13 },
+  { name: 'Кабанюк Григорій Тимофійович', village: 'копайгород', wholesale: false, weight: 3 },
+  { name: 'Тендюк Василь', village: 'копайгород', wholesale: false, weight: 5 },
+  { name: 'Нищук Дарія', village: 'копайгород', wholesale: true, weight: 15 },
+  { name: 'Швець Тарас Максимович', village: 'копайгород', wholesale: false, weight: 5 },
+  { name: 'Осадчук Жанна Ярославівна', village: 'копайгород', wholesale: true, weight: 19, note: 'Здає за розпискою' },
+  { name: 'Приймак Марія', village: 'копайгород', wholesale: false, weight: 8 },
+  { name: 'Феськів Руслана', village: 'копайгород', wholesale: false, weight: 1 },
+  { name: 'Харчук Олена', village: 'копайгород', wholesale: true, weight: 23, note: 'Возить палетами' },
+  { name: 'Нищук Христина', village: 'копайгород', wholesale: false, weight: 1 },
+  { name: 'Тендюк Зоя Йосипівна', village: 'копайгород', wholesale: true, weight: 17, note: 'Здає за розпискою' },
+  { name: 'Юхимчук Неля Остапівна', village: 'копайгород', wholesale: false, weight: 8 },
+  { name: 'Яценко Софія', village: 'копайгород', wholesale: false, weight: 2 },
+  { name: 'Онищук Ольга', village: 'копайгород', wholesale: false, weight: 4 },
+  { name: 'Ульчак Таїсія Іванівна', village: 'копайгород', wholesale: false, weight: 3 },
+  { name: 'Щербань Руслана', village: 'копайгород', wholesale: false, weight: 9 },
+  { name: 'Цвігун Антоніна Степанівна', village: 'копайгород', wholesale: false, weight: 10 },
+  { name: 'Рудик Павло', village: 'Копайгород', wholesale: false, weight: 10 },
+  { name: 'Кирилюк Андрій Ярославович', village: 'Копайгород', wholesale: true, weight: 13, note: 'Тара — 30 ящ. на обліку' },
+  { name: 'Феськів Степан Миколайович', village: 'Копайгород', wholesale: true, weight: 15 },
+  { name: 'Литвинюк Софія', village: 'Копайгород', wholesale: false, weight: 1 },
+  { name: 'Бакалюк Ганна Валеріївна', village: 'Копайгород', wholesale: false, weight: 12 },
+  { name: 'Ульчак Павло Назарович', village: 'Копайгород', wholesale: false, weight: 4 },
+  { name: 'Іванчук Анатолій', village: 'Копайгород ', wholesale: false, weight: 3 },
+  { name: 'Гнатюк Тамара', village: 'Копайгород ', wholesale: false, weight: 7 },
+  { name: 'Уманець Тетяна', village: 'Копайгород ', wholesale: true, weight: 17 },
+  { name: 'Жупанюк Марта', village: 'Копайгород ', wholesale: false, weight: 11 },
+  { name: 'Пасюта Лідія', village: 'Копай', wholesale: false, weight: 1 },
+  { name: 'Лисенко Валентина Степанівна', village: 'шипинки', wholesale: false, weight: 8 },
+  { name: 'Рогожа Людмила', village: 'шипинки', wholesale: true, weight: 23, note: 'Возить палетами' },
+  { name: 'Бровко Роман', village: 'шипинки', wholesale: false, weight: 3 },
+  { name: 'Яцюк Інна', village: 'шипинки', wholesale: false, weight: 1 },
+  { name: 'Ільчук Таїсія Йосипівна', village: 'шипинки', wholesale: true, weight: 27, note: 'Возить палетами' },
+  { name: 'Заяць Володимир Йосипович', village: 'шипинки', wholesale: false, weight: 1 },
+  { name: 'Шморгун Любов', village: 'шипинки', wholesale: true, weight: 14 },
+  { name: 'Гопчук Віталій', village: 'шипинки', wholesale: true, weight: 17, note: 'Здає за розпискою' },
+  { name: 'Хмара Валентина Богданівна', village: 'шипинки', wholesale: true, weight: 14, note: 'Тара — 30 ящ. на обліку' },
+  { name: 'Нищук Любов Андріївна', village: 'шипинки', wholesale: false, weight: 9 },
+  { name: 'Цвігун Таїсія', village: 'шипинки', wholesale: false, weight: 7 },
+  { name: 'Ковалик Анатолій', village: 'шипинки', wholesale: false, weight: 4 },
+  { name: 'Філюк Зоя Сергіївна', village: 'шипинки', wholesale: true, weight: 16, note: 'Здає за розпискою' },
+  { name: 'Романюк Руслана', village: 'шипинки', wholesale: true, weight: 13 },
+  { name: 'Панасюк Павло', village: 'шипинки', wholesale: false, weight: 8 },
+  { name: 'Юхимчук Дмитро Васильович', village: 'шипинки', wholesale: false, weight: 9 },
+  { name: 'Дзюбенко Ганна', village: 'шипинки', wholesale: false, weight: 3 },
+  { name: 'Нестерук Максим Валерійович', village: 'шипинки', wholesale: false, weight: 8 },
+  { name: 'Уманець Павло', village: 'шипинки', wholesale: false, weight: 11 },
+  { name: 'Волощук Євген', village: 'Шипинки', wholesale: true, weight: 13 },
+  { name: 'Гнатюк Оксана', village: 'Шипинки', wholesale: false, weight: 10 },
+  { name: 'Панчук Світлана Степанівна', village: 'Шипинки', wholesale: false, weight: 4 },
+  { name: 'Бабчук Іван', village: 'Шипинки', wholesale: false, weight: 7 },
+  { name: 'Ратушняк Ростислав', village: 'Шипинки', wholesale: false, weight: 11 },
+  { name: 'Гладун Остап Дмитрович', village: 'Шипинки', wholesale: false, weight: 8 },
+  { name: 'Гладун Зінаїда', village: 'Шипинки', wholesale: false, weight: 1 },
+  { name: 'Гладун Ірина', village: 'Шипинки', wholesale: false, weight: 2 },
+  { name: 'Демчук Зінаїда Богданівна', village: 'Шипинки', wholesale: false, weight: 2 },
+  { name: 'Кабанюк Степан', village: 'Шипинки', wholesale: false, weight: 9 },
+  { name: 'Уманець Дарія', village: 'Шипинки', wholesale: false, weight: 1 },
+  { name: 'Сокіл Софія', village: 'Шипинки', wholesale: false, weight: 4 },
+  { name: 'Осадчук Уляна', village: 'Шипинки', wholesale: false, weight: 5 },
+  { name: 'Нищук Ольга Степанівна', village: 'Шипинки', wholesale: false, weight: 11, note: 'Тара — 30 ящ. на обліку' },
+  { name: 'Дацюк Степан', village: 'Шипинки', wholesale: true, weight: 14 },
+  { name: 'Ємець Ганна Василівна', village: 'Шипинки', wholesale: false, weight: 5 },
+  { name: 'Дзюбенко Віталіна', village: 'Шипинки', wholesale: false, weight: 6 },
+  { name: 'Дудник Остап', village: 'Шипинки', wholesale: false, weight: 4 },
+  { name: 'Романюк Леонід', village: 'Шипинки', wholesale: false, weight: 5 },
+  { name: 'Лисенко Лариса Ярославівна', village: 'Шипинки', wholesale: true, weight: 26, note: 'Возить палетами' },
+  { name: 'Романюк Надія', village: 'Войнашівка', wholesale: false, weight: 5 },
+  { name: 'Оверчук Ярослав Романович', village: 'Войнашівка', wholesale: false, weight: 1 },
+  { name: 'Дубчак Світлана Василівна', village: 'Войнашівка', wholesale: false, weight: 5 },
+  { name: 'Шевчук Дмитро Степанович', village: 'Войнашівка', wholesale: false, weight: 9 },
+  { name: 'Хмара Стефанія', village: 'Войнашівка', wholesale: false, weight: 6 },
+  { name: 'Литвинюк Параска', village: 'Войнашівка', wholesale: false, weight: 2 },
+  { name: 'Савчук Дарія Богданівна', village: 'Войнашівка', wholesale: true, weight: 27, note: 'Возить палетами' },
+  { name: 'Ярмолюк Роман Петрович', village: 'Войнашівка', wholesale: false, weight: 4 },
+  { name: 'Устимчук Світлана', village: 'Войнашівка', wholesale: false, weight: 12 },
+  { name: 'Цуркан Ірина', village: 'Войнашівка', wholesale: false, weight: 4 },
+  { name: 'Фурман Лариса', village: 'Войнашівка', wholesale: false, weight: 10 },
+  { name: 'Ковалик Максим', village: 'Войнашівка', wholesale: false, weight: 2 },
+  { name: 'Ільчук Марта', village: 'Войнашівка', wholesale: true, weight: 14 },
+  { name: 'Пивовар Ольга', village: 'Войнашівка', wholesale: false, weight: 9, note: 'Тара — 30 ящ. на обліку' },
+  { name: 'Вітрук Ольга', village: 'Войнашівка', wholesale: false, weight: 7 },
+  { name: 'Цуркан Федір', village: 'Войнашівка', wholesale: false, weight: 7 },
+  { name: 'Шаповал Василь', village: 'Войнашівка', wholesale: false, weight: 6 },
+  { name: 'Савчук Марта', village: 'Войнашівка', wholesale: false, weight: 10 },
+  { name: 'Цимбалюк Віра', village: 'Войнашівка', wholesale: true, weight: 18, note: 'Здає за розпискою' },
+  { name: 'Рогожа Любов Леонідівна', village: 'Войнашівка', wholesale: false, weight: 2 },
+  { name: 'Литвинюк Таїсія Тимофіївна', village: 'Войнашівка', wholesale: false, weight: 9 },
+  { name: 'Філюк Сергій Денисович', village: 'Войнашівка', wholesale: true, weight: 13 },
+  { name: 'Харчук Павло', village: 'Войнашівка', wholesale: false, weight: 4 },
+  { name: 'Ульчак Микола', village: 'Войнашівка', wholesale: false, weight: 2 },
+  { name: 'Сивак Олег', village: 'Войнашівка', wholesale: false, weight: 3 },
+  { name: 'Бабчук Валентина', village: 'Войнашівка', wholesale: true, weight: 27, note: 'Возить палетами' },
+  { name: 'Харчук Віталіна Василівна', village: 'Войнашівка', wholesale: true, weight: 18, note: 'Здає за розпискою' },
+  { name: 'Бабчук Любов Дмитрівна', village: 'Войнашівка', wholesale: true, weight: 17, note: 'Здає за розпискою' },
+  { name: 'Гуцал Інна', village: 'Войнашівка', wholesale: false, weight: 2 },
+  { name: 'Юрчук Леонід Тимофійович', village: 'шевченкове', wholesale: false, weight: 10 },
+  { name: 'Дацюк Віра', village: 'шевченкове', wholesale: false, weight: 3 },
+  { name: 'Юрчишин Лідія', village: 'шевченкове', wholesale: true, weight: 18, note: 'Здає за розпискою' },
+  { name: 'Кушнірук Богдан', village: 'шевченкове', wholesale: false, weight: 3 },
+  { name: 'Небора Федір', village: 'шевченкове', wholesale: false, weight: 2 },
+  { name: 'Оверчук Дмитро Миколайович', village: 'шевченкове', wholesale: false, weight: 7 },
+  { name: 'Яремчук Світлана', village: 'шевченкове', wholesale: false, weight: 5 },
+  { name: 'Загороднюк Лідія', village: 'шивченкове', wholesale: false, weight: 11 },
+  { name: 'Ємчук Ганна Петрівна', village: 'шивченкове', wholesale: true, weight: 14 },
+  { name: 'Мазур Світлана', village: 'шивченкове', wholesale: false, weight: 10, note: 'Тара — 30 ящ. на обліку' },
+  { name: 'Гнатишин Галина Петрівна', village: 'шивченкове', wholesale: false, weight: 6 },
+  { name: 'Панасюк Таїсія', village: 'Гайове', wholesale: false, weight: 5 },
+  { name: 'Яремчук Денис Панасович', village: 'Гайове', wholesale: false, weight: 4 },
+  { name: 'Мазур Жанна Юріївна', village: 'Гайове', wholesale: false, weight: 6 },
+  { name: 'Гуцал Зінаїда Петрівна', village: 'Гайове', wholesale: false, weight: 8 },
+  { name: 'Цимбалюк Микола Остапович', village: 'Гайове', wholesale: false, weight: 7 },
+  { name: 'Ярмолюк Мирослава Оксентіївна', village: 'Гайове', wholesale: false, weight: 4 },
+  { name: 'Яцюк Дмитро', village: 'Гайове', wholesale: true, weight: 14, note: 'Здає за розпискою' },
+  { name: 'Жмурко Іван', village: 'Гайове', wholesale: false, weight: 12 },
+  { name: 'Шкварук Галина', village: 'Гайове', wholesale: false, weight: 1 },
+  { name: 'Шевчук Максим', village: 'Обухів', wholesale: false, weight: 11 },
+  { name: 'Гнатишин Євген Маркович', village: 'Обухів', wholesale: false, weight: 5 },
+  { name: 'Мазур Юрій', village: 'Обухів', wholesale: false, weight: 2 },
+  { name: 'Радчук Юлія Йосипівна', village: 'Обухів', wholesale: false, weight: 3 },
+  { name: 'Пивовар Валентина', village: 'Обухів', wholesale: false, weight: 1 },
+  { name: 'Гнатишин Лариса Прокопівна', village: 'Обухів', wholesale: false, weight: 4 },
+  { name: 'Кабанюк Василь', village: 'обухов', wholesale: false, weight: 2 },
+  { name: 'Онищук Артем', village: 'обухов', wholesale: false, weight: 11 },
+  { name: 'Загороднюк Таїсія', village: 'обухов', wholesale: false, weight: 10, note: 'Тара — 30 ящ. на обліку' },
+  { name: 'Юрчук Петро', village: 'Попівці', wholesale: true, weight: 13, note: 'Здає за розпискою' },
+  { name: 'Рудик Ярослав', village: 'Попівці', wholesale: false, weight: 4 },
+  { name: 'Сокіл Артем', village: 'Попівці', wholesale: false, weight: 1 },
+  { name: 'Козак Віталій', village: 'Попівці', wholesale: false, weight: 9 },
+  { name: 'Кабанюк Марта', village: 'Попівці', wholesale: false, weight: 11 },
+  { name: 'Прокопчук Світлана Віталіївна', village: 'Попівці', wholesale: false, weight: 1 },
+  { name: 'Харчук Христина Романівна', village: 'Попівці', wholesale: false, weight: 1 },
+  { name: 'Швець Денис', village: 'Попівці', wholesale: false, weight: 9 },
+  { name: 'Ковальчук Юлія', village: 'Попівці', wholesale: false, weight: 6 },
+  { name: 'Уманець Леонід Андрійович', village: 'Попівці', wholesale: false, weight: 4 },
+  { name: 'Лебідь Зоя', village: 'Попівці', wholesale: false, weight: 6 },
+  { name: 'Яценко Зоя', village: 'Попівці', wholesale: false, weight: 11, note: 'Тара — 30 ящ. на обліку' },
+  { name: 'Сивак Віталіна', village: 'Міжлісся', wholesale: false, weight: 8 },
+  { name: 'Цуркан Сергій Дмитрович', village: 'Міжлісся', wholesale: false, weight: 2 },
+  { name: 'Онищук Зінаїда', village: 'Міжлісся', wholesale: false, weight: 6 },
+  { name: 'Дорошук Максим Володимирович', village: 'Міжлісся', wholesale: false, weight: 8 },
+  { name: 'Гнатюк Надія', village: 'Міжлісся', wholesale: false, weight: 5 },
+  { name: 'Лебідь Людмила', village: 'Міжлісся', wholesale: false, weight: 8 },
+  { name: 'Рудик Назар', village: 'Міжлісся', wholesale: false, weight: 2 },
+  { name: 'Савчук Уляна', village: 'Міжлісся', wholesale: false, weight: 6 },
+
+  /* ---------- 25 навмисно зіпсованих написань + їхні 24 «правильні» записи ----------
+   * Реальність: 111 рядків з #N/A на 23 різних написання ✓ H5, плюс 2 пари всередині
+   * самого довідника ✓ PART C 6. Наша модель тримає постачальника на FK, тому та сама
+   * патологія існує єдиним можливим тут способом: ОКРЕМІ записи реєстру, кожен зі своїм
+   * маленьким реєстром боргів — «each misspelling forks a person into two ledgers and
+   * orphans their balance».
+   */
+  // A · зменшувальна форма імені (Наташа↔Наталія, Маша↔Марія, Таїса↔Таїсія, Юля↔Юлія) — автозлиття
+  { name: 'Ковальчук Наталія Петрівна', village: 'Копайгород', wholesale: false, weight: 11 },
+  { name: 'Ковальчук Наташа', village: 'копайгород', wholesale: false, weight: 2, note: 'Записаний двічі — перевірити' },
+  { name: 'Терещук Наталія', village: 'шипинки', wholesale: false, weight: 9 },
+  { name: 'Терещук Наташа', village: 'Шипинки', wholesale: false, weight: 3 },
+  { name: 'Ткачук Марія Іванівна', village: 'копайгород', wholesale: false, weight: 13 },
+  { name: 'Ткачук Маша', village: 'копайгород', wholesale: false, weight: 2 },
+  { name: 'Дацюк Марія', village: 'Копайгород', wholesale: false, weight: 8, note: 'Тара — 30 ящ. на обліку' },
+  { name: 'Дацюк Маша', village: 'копайгород', wholesale: false, weight: 1, note: 'Записаний двічі — перевірити' },
+  { name: 'Осадчук Таїсія Василівна', village: 'шипинки', wholesale: false, weight: 10 },
+  { name: 'Осадчук Таїса', village: 'шипинки', wholesale: false, weight: 3 },
+  { name: 'Левчук Таїсія', village: 'Шипинки', wholesale: false, weight: 7 },
+  { name: 'Левчук Таїса', village: 'шипинки', wholesale: false, weight: 2 },
+  { name: 'Романюк Юлія Сергіївна', village: 'Войнашівка', wholesale: false, weight: 12 },
+  { name: 'Романюк Юля', village: 'шевченкове', wholesale: false, weight: 1, note: 'Записаний двічі — перевірити' },
+  { name: 'Приймак Людмила', village: 'копайгород', wholesale: false, weight: 9 },
+  { name: 'Приймак Люда', village: 'Копайгород', wholesale: false, weight: 2 },
+  // B · пропущена / переставлена літера в імені — автозлиття
+  { name: 'Дудник Сергій Миколайович', village: 'копайгород', wholesale: false, weight: 14 },
+  { name: 'Дудник Скргій', village: 'копайгород', wholesale: false, weight: 3 },
+  { name: 'Мазур Ольга', village: 'Копайгород', wholesale: false, weight: 8 },
+  { name: 'Мазур Огльга', village: 'копайгород', wholesale: false, weight: 1, note: 'Записаний двічі — перевірити' },
+  { name: 'Захарчук Оксана Іванівна', village: 'шипинки', wholesale: false, weight: 10 },
+  { name: 'Захарчук Окасна', village: 'шипинки', wholesale: false, weight: 2 },
+  { name: 'Гнатюк Володимир', village: 'Шипинки', wholesale: false, weight: 11 },
+  { name: 'Гнатюк Володмир', village: 'шипинки', wholesale: false, weight: 2 },
+  // C · пропущена літера у прізвищі — ручний перегляд
+  { name: 'Прокопчук Ганна Степанівна', village: 'копайгород', wholesale: false, weight: 9 },
+  { name: 'Прокопук Ганна Степанівна', village: 'копайгород', wholesale: false, weight: 3, note: 'Записаний двічі — перевірити' },
+  { name: 'Цимбалюк Іван', village: 'Копайгород', wholesale: false, weight: 7 },
+  { name: 'Цимбалк Іван', village: 'копайгород', wholesale: false, weight: 1 },
+  { name: 'Стельмах Віра', village: 'шипинки', wholesale: false, weight: 12 },
+  { name: 'Стелмах Віра', village: 'шипинки', wholesale: false, weight: 2 },
+  { name: 'Гаврилюк Петро Васильович', village: 'копайгород', wholesale: false, weight: 10 },
+  { name: 'Гаврлюк Петро Васильович', village: 'копайгород', wholesale: false, weight: 3, note: 'Записаний двічі — перевірити' },
+  // D · розрив / склеювання токенів — автозлиття
+  { name: 'Тарнавська Оксана Петрівна', village: 'Копайгород', wholesale: false, weight: 8 },
+  { name: 'Тарна вська Оксана Петрівна', village: 'копайгород', wholesale: false, weight: 1 },
+  { name: 'Загороднюк Ніна', village: 'шипинки', wholesale: false, weight: 13 },
+  { name: 'Загород нюк Ніна', village: 'шипинки', wholesale: false, weight: 2 },
+  // E · інша основа прізвища — ручний перегляд
+  { name: 'Хмара Віктор', village: 'Копайгород', wholesale: false, weight: 9 },
+  { name: 'Хмарук Віктор', village: 'копайгород', wholesale: false, weight: 2, note: 'Записаний двічі — перевірити' },
+  { name: 'Сивак Андрій', village: 'шипинки', wholesale: false, weight: 11 },
+  { name: 'Сивачук Андрій', village: 'шипинки', wholesale: false, weight: 3 },
+  // F · те саме прізвище+ім'я, різне по батькові — НІКОЛИ не автозлиття, це можуть бути родичі
+  { name: 'Кирилюк Богдан Миколайович', village: 'копайгород', wholesale: false, weight: 10 },
+  { name: 'Кирилюк Богдан Михайлович', village: 'копайгород', wholesale: false, weight: 4 },
+  { name: 'Ярмолюк Ольга Іванівна', village: 'шипинки', wholesale: false, weight: 8 },
+  { name: 'Ярмолюк Ольга Іллівна', village: 'шипинки', wholesale: false, weight: 3, note: 'Записаний двічі — перевірити' },
+  // H · жорсткий стоп — автозлиття заборонене назавжди: #N/A не буде ніколи, на око не розрізнити
+  { name: 'Ільчук Оксана Тарасівна', village: 'копайгород', wholesale: false, weight: 12 },
+  { name: 'Ільчак Оксана Тарасівна', village: 'копайгород', wholesale: false, weight: 4 },
+  { name: 'Радчук Надія Петрівна', village: 'Копайгород', wholesale: false, weight: 9 },
+  { name: 'Радчук Наталія Петрівна', village: 'Копайгород', wholesale: false, weight: 4 },
+  // I · без відповідника взагалі — «нова особа?»
+  { name: 'Небора Маша', village: 'Копай', wholesale: false, weight: 2, note: 'Записаний двічі — перевірити' },
+]

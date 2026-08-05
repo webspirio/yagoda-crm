@@ -23,7 +23,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { useStore } from '@/lib/store'
-import { supplierBalance } from '@/lib/calc'
+import { openDebts, sum } from '@/lib/calc'
 import { uah } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -44,11 +44,16 @@ export function SupplierPicker({
   const [open, setOpen] = React.useState(false)
   const [addOpen, setAddOpen] = React.useState(false)
 
+  // та сама книга, що й у «Попередній залишок» нижче: борг цього пункту, зі зведеними
+  // переплатами. Інакше в списку світилося б 164 088 ₴, а смужка під ним — 0 ₴
   const balances = React.useMemo(() => {
+    const own = receptions.filter((r) => r.pointId === pointId)
     const map = new Map<string, number>()
-    for (const s of suppliers) map.set(s.id, supplierBalance(s.id, receptions, payouts))
+    for (const s of suppliers) {
+      map.set(s.id, sum(openDebts(s.id, own, payouts), (o) => o.open))
+    }
     return map
-  }, [suppliers, receptions, payouts])
+  }, [suppliers, receptions, payouts, pointId])
 
   const selected = suppliers.find((s) => s.id === value)
   const home = suppliers.filter((s) => s.homePointId === pointId)
@@ -59,7 +64,7 @@ export function SupplierPicker({
     return (
       <CommandItem
         key={s.id}
-        value={`${s.name} ${s.village} ${s.phone}`}
+        value={`${s.name} ${s.village} ${s.phone ?? ''}`}
         onSelect={() => {
           onChange(s.id)
           setOpen(false)
@@ -72,7 +77,7 @@ export function SupplierPicker({
             <span className="truncate">{s.name}</span>
             {s.wholesale ? (
               <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
-                опт +{s.bonus}
+                ОПТ
               </Badge>
             ) : null}
           </div>
@@ -104,7 +109,7 @@ export function SupplierPicker({
                 </span>
                 {selected.wholesale ? (
                   <Badge variant="secondary" className="shrink-0 text-[10px]">
-                    опт +{selected.bonus} ₴/кг
+                    ОПТ
                   </Badge>
                 ) : null}
               </span>
@@ -121,7 +126,8 @@ export function SupplierPicker({
           <Command
             filter={(v, search) => (v.toLowerCase().includes(search.toLowerCase()) ? 1 : 0)}
           >
-            <CommandInput placeholder="Прізвище, село або телефон…" />
+            {/* телефон у пошуку не згадуємо: у Довіднику він порожній у 209 з 209 записів */}
+            <CommandInput placeholder="Прізвище або село…" />
             <CommandList className="max-h-[320px]">
               <CommandEmpty>
                 <div className="px-2 py-4 text-center text-sm text-muted-foreground">
@@ -176,7 +182,6 @@ export function AddSupplierDialog({
   const [phone, setPhone] = React.useState('')
   const [village, setVillage] = React.useState('')
   const [wholesale, setWholesale] = React.useState(false)
-  const [bonus, setBonus] = React.useState('5')
 
   React.useEffect(() => {
     if (open) {
@@ -184,7 +189,6 @@ export function AddSupplierDialog({
       setPhone('')
       setVillage('')
       setWholesale(false)
-      setBonus('5')
     }
   }, [open])
 
@@ -195,11 +199,11 @@ export function AddSupplierDialog({
     }
     const created = addSupplier({
       name: name.trim(),
-      phone: phone.trim(),
+      // порожній телефон лишається порожнім, а не перетворюється на ''
+      phone: phone.trim() || undefined,
       village: village.trim() || '—',
       homePointId: pointId,
       wholesale,
-      bonus: wholesale ? Number(bonus) || 0 : 0,
     })
     onCreated?.(created)
     onOpenChange(false)
@@ -236,6 +240,9 @@ export function AddSupplierDialog({
                 placeholder="+380…"
                 inputMode="tel"
               />
+              <span className="text-xs text-muted-foreground">
+                У вашій таблиці телефон порожній у 209 з 209 записів
+              </span>
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="sp-village">Село</Label>
@@ -250,22 +257,10 @@ export function AddSupplierDialog({
           <div className="flex items-center justify-between rounded-lg bg-muted/60 px-3 py-2.5">
             <div>
               <div className="text-sm font-medium">Оптовик</div>
-              <div className="text-xs text-muted-foreground">Надбавка до ціни дня</div>
+              {/* Дод. ціна тепер на рядку прийомки, а не на картці людини (M7) */}
+              <div className="text-xs text-muted-foreground">Позначка для звірки з ОПТ-сортами</div>
             </div>
-            <div className="flex items-center gap-2">
-              {wholesale ? (
-                <div className="flex items-center gap-1">
-                  <Input
-                    value={bonus}
-                    onChange={(e) => setBonus(e.target.value)}
-                    className="h-8 w-16 text-right font-mono"
-                    inputMode="decimal"
-                  />
-                  <span className="text-xs text-muted-foreground">₴/кг</span>
-                </div>
-              ) : null}
-              <Switch checked={wholesale} onCheckedChange={setWholesale} />
-            </div>
+            <Switch checked={wholesale} onCheckedChange={setWholesale} />
           </div>
         </div>
         <DialogFooter>

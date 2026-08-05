@@ -5,6 +5,8 @@ import { num, uah } from '@/lib/format'
 interface Props {
   berryName?: string
   gross: number
+  /** Піддон — знімається до тари, тому стоїть під брутто, а не поруч із нею */
+  pallet: number
   tareWeight: number
   tareUnits: number
   tareLabel?: string
@@ -46,6 +48,7 @@ function Readout({
 export function ScaleTerminal({
   berryName,
   gross,
+  pallet,
   tareWeight,
   tareUnits,
   tareLabel,
@@ -71,7 +74,7 @@ export function ScaleTerminal({
             )}
           />
           <span className="text-[10px] font-medium tracking-[0.2em] text-white/45 uppercase">
-            Ваговий термінал
+            Розрахунок ваги
           </span>
         </div>
         <span className="truncate font-mono text-[11px] text-white/55">
@@ -90,6 +93,11 @@ export function ScaleTerminal({
             unit="кг"
             className={cn('text-3xl', gross > 0 ? 'text-white/90' : 'text-white/25')}
           />
+          {pallet > 0 ? (
+            <div className="mt-1 font-mono text-[11px] text-white/35">
+              − піддон {num(pallet, 2)} кг
+            </div>
+          ) : null}
         </div>
         <div className="px-5 py-4">
           <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-medium tracking-[0.18em] text-white/35 uppercase">
@@ -129,9 +137,9 @@ export function ScaleTerminal({
           <div className="font-mono text-lg font-medium text-white/85">
             {price > 0 ? `${num(price + bonus)} ₴/кг` : '—'}
           </div>
-          {bonus > 0 ? (
+          {bonus !== 0 ? (
             <div className="font-mono text-[11px] text-[#f2a4bb]">
-              {num(price)} + {num(bonus)} опт
+              {num(price)} {bonus > 0 ? '+' : '−'} {num(Math.abs(bonus))} Дод. ціна
             </div>
           ) : null}
         </div>

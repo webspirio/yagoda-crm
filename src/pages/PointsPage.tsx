@@ -13,7 +13,7 @@ import {
 import { Eyebrow, PageHeader } from '@/components/common/bits'
 import { Sparkline } from '@/components/common/Sparkline'
 import { useStore } from '@/lib/store'
-import { reconcileDay, supplierBalance, sum } from '@/lib/calc'
+import { openDebts, reconcileDay, sum } from '@/lib/calc'
 import { addDays, kg, num, shortDate, tonnage, uah } from '@/lib/format'
 import { OPERATORS, TODAY } from '@/lib/seed'
 
@@ -31,7 +31,12 @@ export function PointsPage() {
     return list
   }, [])
 
-  const rows = points.map((p) => {
+  // Десять точок — із їхнього ж випадаючого списку `Data_Import!E` ✓ PART A.
+  // Працюють п'ять; решта стоїть у реєстрі, бо план — «від 5 до 10» ✓ PART A.
+  const trading = points.filter((p) => p.active)
+  const registry = points.filter((p) => !p.active)
+
+  const rows = trading.map((p) => {
     const items = receptions.filter((r) => r.pointId === p.id)
     const recent = items.filter((r) => r.date >= days[0])
     const today = reconcileDay(
@@ -39,15 +44,17 @@ export function PointsPage() {
       items,
       payouts.filter((x) => x.pointId === p.id),
     )
-    const pointSuppliers = suppliers.filter((s) => s.homePointId === p.id)
+    // «постачальників на точці» — це ті, хто реально сюди возив, а не приписані до неї
+    const pointSuppliers = new Set(items.map((r) => r.supplierId))
     return {
       point: p,
       operator: OPERATORS[p.id],
-      suppliers: pointSuppliers.length,
+      suppliers: pointSuppliers.size,
       net: sum(items, (r) => r.net),
       amount: sum(items, (r) => r.amount),
+      // залишок пункту — це борг за ягоду, яку прийняв САМЕ він
       outstanding: sum(
-        pointSuppliers.map((s) => ({ v: supplierBalance(s.id, receptions, payouts) })),
+        suppliers.map((s) => ({ v: sum(openDebts(s.id, items, payouts), (o) => o.open) })),
         (x) => x.v,
       ),
       today,
@@ -61,9 +68,9 @@ export function PointsPage() {
   return (
     <div className="mx-auto max-w-[1300px]">
       <PageHeader
-        eyebrow="сезон 2026"
+        eyebrow={`${trading.length} з ${points.length} працюють · сезон 2026`}
         title="Точки прийомки"
-        description="Кожна точка веде свій день окремо, а зведена каса складається сама — без перенесення цифр між файлами."
+        description="Кожна точка веде свій день окремо, а зведена каса складається сама — без перенесення цифр між файлами. У довіднику стоять усі десять точок із вашого списку: пʼять приймають, пʼять чекають відкриття."
       />
 
       <div className="grid gap-3 pb-5 md:grid-cols-2">
@@ -126,7 +133,10 @@ export function PointsPage() {
             <Sparkline values={r.series} className="mt-3" height={38} />
             <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
               <span>{shortDate(days[0])}</span>
-              <span>останні 14 днів · приймає {r.operator}</span>
+              <span>
+                останні 14 днів ·{' '}
+                {r.operator ? `приймає ${r.operator}` : 'приймальника не призначено'}
+              </span>
               <span>{shortDate(TODAY)}</span>
             </div>
           </div>
@@ -150,7 +160,9 @@ export function PointsPage() {
             {rows.map((r) => (
               <TableRow key={r.point.id}>
                 <TableCell className="font-medium">{r.point.name}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{r.operator}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {r.operator ?? 'не призначено'}
+                </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
                     <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
@@ -177,6 +189,35 @@ export function PointsPage() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Реєстр — окремо від тих, що торгують: у них немає ні прийомок, ні каси,
+          і показувати їх в одному списку означало б показувати нулі як дані */}
+      {registry.length ? (
+        <div className="mt-5 rounded-xl border border-dashed border-border p-5">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <Eyebrow>У реєстрі — ще не відкриті</Eyebrow>
+            <span className="text-xs text-muted-foreground">
+              {registry.length} з {points.length}
+            </span>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {registry.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center gap-2 rounded-lg border border-border/70 px-3 py-2 text-sm"
+              >
+                <MapPin className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                <span className="shrink-0 text-[11px] text-muted-foreground">{p.village}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 max-w-3xl text-xs leading-relaxed text-muted-foreground">
+            Ці точки вже є у довіднику — усі десять із вашого списку. Щоб відкрити прийомку, точку
+            не треба заводити заново: вона просто починає працювати, і зведення підхоплює її саме.
+          </p>
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -5,8 +5,8 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Eyebrow, PageHeader, StatTile } from '@/components/common/bits'
 import { SettleDialog } from '@/components/debts/SettleDialog'
-import { useStore } from '@/lib/store'
-import { openDebts, supplierBalance, sum } from '@/lib/calc'
+import { scopedReceptions, useStore } from '@/lib/store'
+import { openDebts, sum } from '@/lib/calc'
 import { daysBetween, daysWord, shortDate, uah, uahAuto } from '@/lib/format'
 import { TODAY } from '@/lib/seed'
 import { cn } from '@/lib/utils'
@@ -22,19 +22,33 @@ export function DebtsPage() {
   const [settleFor, setSettleFor] = React.useState<string | null>(null)
   const [expanded, setExpanded] = React.useState<string | null>(null)
 
+  // групуємо один раз: інакше 2 843 прийомки перефільтровуються 208 разів на кожен рендер
+  const bySupplier = React.useMemo(() => {
+    const map = new Map<string, typeof receptions>()
+    for (const r of scopedReceptions(receptions, activePointId)) {
+      const list = map.get(r.supplierId)
+      if (list) list.push(r)
+      else map.set(r.supplierId, [r])
+    }
+    return map
+  }, [receptions, activePointId])
+
   const rows = React.useMemo(
     () =>
+      // борг належить пункту, який прийняв ягоду, а не «домашньому» пункту людини:
+      // постачальник возить на кілька пунктів, і кожен пункт веде свою книгу
       suppliers
-        .filter((s) => activePointId === 'all' || s.homePointId === activePointId)
-        .map((s) => ({
-          supplier: s,
-          balance: supplierBalance(s.id, receptions, payouts),
-          open: openDebts(s.id, receptions, payouts),
-        }))
+        .map((s) => {
+          const own = bySupplier.get(s.id) ?? []
+          const open = openDebts(s.id, own, payouts)
+          // переплачений рядок зведений у залишок ✓ H7 — без нього стовпчик не сходиться
+          const credit = own.filter((r) => r.debt < -0.009)
+          return { supplier: s, balance: sum(open, (o) => o.open), open, credit }
+        })
         .filter((r) => r.balance > 0.009)
         .filter((r) => !q.trim() || r.supplier.name.toLowerCase().includes(q.toLowerCase()))
         .sort((a, b) => b.balance - a.balance),
-    [suppliers, receptions, payouts, q, activePointId],
+    [suppliers, bySupplier, payouts, q],
   )
 
   const total = sum(rows, (r) => r.balance)
@@ -52,7 +66,7 @@ export function DebtsPage() {
       <PageHeader
         eyebrow={`${rows.length} ${rows.length === 1 ? 'постачальник' : 'постачальників'}`}
         title="Залишки за нами"
-        description="Кожен залишок памʼятає, за яку саме здачу він виник. Тому видача сьогодні ніколи не «зʼїдає» сьогоднішню ягоду в звіті."
+        description="Кожен залишок памʼятає, за яку саме здачу він виник. Тому видача сьогодні ніколи не «зʼїдає» сьогоднішню ягоду в звіті. Гроші тут видають тому, хто прийшов без ягоди — якщо ягода є, залишок сам додається в «Разом» у віконечку прийомки."
       />
 
       <div className="grid gap-3 pb-5 sm:grid-cols-3">
@@ -103,7 +117,7 @@ export function DebtsPage() {
                       <span className="truncate font-medium">{r.supplier.name}</span>
                       {r.supplier.wholesale ? (
                         <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
-                          опт
+                          ОПТ
                         </Badge>
                       ) : null}
                     </div>
@@ -129,9 +143,10 @@ export function DebtsPage() {
                     {uahAuto(r.balance)}
                   </div>
 
+                  {/* прийшов по гроші без ягоди: з прийомки цю кнопку прибрано ✓ M10 */}
                   <Button size="sm" onClick={() => setSettleFor(r.supplier.id)}>
                     <HandCoins className="size-3.5" />
-                    Видати
+                    Видати без ягоди
                   </Button>
                 </div>
 
@@ -153,6 +168,22 @@ export function DebtsPage() {
                           </span>
                           <span className="ml-auto font-mono font-medium text-[var(--amber)]">
                             {uahAuto(o.open)}
+                          </span>
+                        </div>
+                      ))}
+                      {r.credit.map((c) => (
+                        <div
+                          key={c.id}
+                          className="flex items-center gap-3 text-sm text-[var(--leaf)]"
+                        >
+                          <span className="font-mono text-xs">{c.code}</span>
+                          <span>{shortDate(c.date)}</span>
+                          <ArrowRight className="size-3" />
+                          <span>
+                            переплата {uahAuto(-c.debt)} — зарахована в найстаріші залишки
+                          </span>
+                          <span className="ml-auto font-mono font-medium">
+                            −{uahAuto(-c.debt)}
                           </span>
                         </div>
                       ))}

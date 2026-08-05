@@ -33,7 +33,7 @@ export function NumPad({
             k === 'del' && 'text-muted-foreground',
           )}
         >
-          {k === 'del' ? <Delete className="size-4" /> : k}
+          {k === 'del' ? <Delete className="size-4" /> : k === '.' ? ',' : k}
         </button>
       ))}
     </div>
