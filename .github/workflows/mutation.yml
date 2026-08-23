@@ -1,0 +1,53 @@
+name: Mutation (informational)
+
+# Deliberately NOT a gate, and deliberately not on push.
+#
+# Mutation testing answers the one question `coverage` cannot: whether the assertions are
+# strong enough to notice a changed operator, rather than merely whether the line ran. That
+# makes it the most useful number here — and also slow and non-deterministic enough that
+# gating on it would teach people to re-run it until it passed. So it produces a number to
+# watch, on a schedule, and nothing depends on it.
+#
+# The numbers live in the uploaded artifact, NOT in this comment. A first draft pasted them
+# here (overall 50.34%, calc.ts 92.16%, format.ts 19.51%, store.ts 18.81% as of 2026-08-23)
+# and that was a decay trap: no re-run would ever update a YAML comment, so in three months
+# it would have been a confident, dated, wrong number with nothing able to notice. Treat the
+# figures above as a one-time note of where things stood, and read the artifact for truth.
+#
+# The one finding worth carrying forward as prose, because it is qualitative: every survivor
+# in calc.ts was a boundary flip on the `> 0.009` epsilon comparisons — exactly the class of
+# gap no coverage percentage can reveal.
+
+on:
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    # Belt and braces: the config sets thresholds.break to null so stryker itself never
+    # exits non-zero on a low score, and this makes a red run here incapable of failing
+    # anything even if that changes.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx stryker run
+
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: reports/mutation/
+          if-no-files-found: warn

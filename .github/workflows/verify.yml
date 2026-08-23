@@ -1,0 +1,74 @@
+name: Verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  # Callable so deploy.yml can require it on the same commit rather than racing it.
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      # ─────────────────────────────────────────────────────────────────────────────
+      # Coverage floors live HERE, in the file that enforces them, and nowhere else.
+      # Locally vitest reads these as 0, so the number is reported without gating and a
+      # 1% wobble on a laptop cannot teach anyone to route around the gate.
+      #
+      # MEASURED 2026-08-23 on src/lib, not guessed:
+      #   lines 90.58%  branches 80.52%  functions 67.86%  statements 87.66%
+      # Floored to whole percents below.
+      #
+      # The ratchet turns one way. Raising a floor is an ordinary edit. LOWERING one must
+      # be a visible diff in this file, and a re-measurement that suggests lowering a
+      # floor which currently passes is not a reason to lower it.
+      #
+      # src/**/*.tsx has NO floor on purpose: it measures 0.00% (0/868 lines) because
+      # there are no component tests. The number is reported, never enforced — pretending
+      # otherwise is what this whole layer exists to prevent.
+      # ─────────────────────────────────────────────────────────────────────────────
+      COVERAGE_LIB_LINES: 90
+      COVERAGE_LIB_BRANCHES: 80
+      COVERAGE_LIB_FUNCTIONS: 67
+      COVERAGE_LIB_STATEMENTS: 87
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # The major comes from .nvmrc, the same file .claude/hooks/node.sh reads, so the
+          # hook, the laptop and CI cannot silently disagree about the runtime.
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      # The `smoke` check declares `needs: playwright-browser`. If this step were missing,
+      # that row would be SKIPPED — and --no-skip below turns a skip into a failure, so a
+      # missing browser is a red CI run, not a quietly narrower one.
+      - run: npx playwright install --with-deps chromium
+
+      # The same atoms and the same runner as `npm run verify` locally. There is
+      # deliberately no CI-only script: the moment CI has its own command, "green there /
+      # green here" drift apart and neither means anything.
+      #
+      # --no-skip makes SKIPPED, NOT_RUN and UNRUNNABLE all count as failures, so a run in
+      # which nothing actually executed cannot exit 0.
+      - run: npm run verify:ci
+
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-report
+          path: .verify/last-run.json
+          if-no-files-found: warn

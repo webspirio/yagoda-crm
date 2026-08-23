@@ -6,9 +6,21 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "oxlint",
+    "preview": "vite preview --base /yagoda-crm/",
+    "lint": "oxlint --max-warnings=0",
+    "typecheck": "tsc -b",
     "test": "vitest run",
-    "preview": "vite preview"
+    "test:files": "node scripts/verify/checks/test-glob-parity.mjs",
+    "test:e2e": "playwright test",
+    "coverage": "vitest run --coverage",
+    "deadcode": "node scripts/verify/ratchets/dead-exports.mjs",
+    "ratchet:money": "node scripts/verify/ratchets/money-rounding.mjs",
+    "ratchet:persist": "node scripts/verify/ratchets/persist-boundary.mjs",
+    "verify": "node scripts/verify/run.mjs --tier fast",
+    "verify:full": "node scripts/verify/run.mjs --tier full",
+    "verify:ci": "node scripts/verify/run.mjs --tier full --no-skip",
+    "lint:exempt": "node scripts/verify/checks/lint-exempt-ratchet.mjs",
+    "pii": "node scripts/verify/checks/pii-boundary.mjs"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
@@ -31,10 +43,15 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
+    "@vitest/coverage-v8": "^4.1.11",
+    "knip": "^6.32.2",
     "oxlint": "^1.75.0",
     "typescript": "~6.0.2",
     "vite": "^8.2.0",

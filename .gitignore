@@ -34,3 +34,12 @@ docs/
 *.njsproj
 *.sln
 *.sw?
+
+# Verification layer artifacts. The report is content-addressed and machine-local;
+# committing it would let a stale green travel to another checkout.
+.verify/
+coverage/
+playwright-report/
+test-results/
+reports/
+.stryker-tmp/

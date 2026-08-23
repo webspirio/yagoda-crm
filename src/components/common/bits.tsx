@@ -133,4 +133,5 @@ export function Dot({ color, className }: { color: string; className?: string })
   )
 }
 
+// oxlint-disable-next-line react/only-export-components -- CHART_COLORS — мертвий експорт, перелічений у scripts/verify/baselines/dead-exports.json; це попередження про Fast Refresh є наслідком того ж факту. Видалення — рішення власника, і тоді знімаються обидва.
 export const CHART_COLORS = ['#c81e4e', '#2e7bc4', '#c57a00', '#2e8b3e', '#7c4dc0'] as const
