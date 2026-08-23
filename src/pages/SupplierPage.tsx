@@ -7,7 +7,7 @@ import { Eyebrow, StatTile } from '@/components/common/bits'
 import { ReceiptDialog } from '@/components/reception/ReceiptDialog'
 import { SettleDialog } from '@/components/debts/SettleDialog'
 import { useStore } from '@/lib/store'
-import { openDebts, originDates, supplierBalance, sum } from '@/lib/calc'
+import { effectivePrice, openDebts, originDates, supplierBalance, sum } from '@/lib/calc'
 import { daysBetween, daysWord, kg, longDate, num, shortDate, uah, uahAuto } from '@/lib/format'
 import { TODAY } from '@/lib/seed'
 import { cn } from '@/lib/utils'
@@ -195,7 +195,7 @@ export function SupplierPage({ id }: { id: string }) {
                       </span>
                       <span className="block text-xs text-muted-foreground">
                         {num(row.r.gross, 2)} брутто − {num(row.r.tareWeight, 2)} тара ·{' '}
-                        {num(row.r.price + row.r.bonus)} ₴/кг
+                        {num(effectivePrice(row.r.price, row.r.bonus))} ₴/кг
                       </span>
                     </span>
                     <span className="shrink-0 text-right">
