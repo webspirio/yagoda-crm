@@ -1,0 +1,22 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "Informational only, never gates. Scoped to the three logic modules: mutation testing answers the one question coverage cannot \u2014 whether the assertions are strong enough to notice a changed operator. seed.ts / seed-suppliers.ts / types.ts are excluded because mutating demo data and type declarations produces noise, not signal.",
+  "packageManager": "npm",
+  "testRunner": "vitest",
+  "reporters": [
+    "progress",
+    "clear-text"
+  ],
+  "mutate": [
+    "src/lib/calc.ts",
+    "src/lib/format.ts",
+    "src/lib/store.ts"
+  ],
+  "coverageAnalysis": "perTest",
+  "concurrency": 4,
+  "thresholds": {
+    "high": 90,
+    "low": 70,
+    "break": null
+  }
+}

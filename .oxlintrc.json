@@ -3,6 +3,32 @@
   "plugins": ["react", "typescript", "oxc"],
   "rules": {
     "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
+    // Не "warn": npm run lint працює з --max-warnings=0, тому warn і error тут — одне й
+    // те саме. Downgrade до warn означав би просто видалити сигнал.
+    "react/only-export-components": ["error", { "allowConstantExport": true }]
+  },
+  "overrides": [
+    {
+      // Перелічений, датований виняток на 3 файли — 2026-08-23, рівно 3 знахідки.
+      // Шляхи вказані поштучно, а НЕ глобом src/components/ui/**: четвертий такий файл
+      // мусить упасти. Виняток може лише зменшуватися.
+      //
+      // Причина: це вендорований код shadcn. buttonVariants і badgeVariants — cva-хелпери,
+      // які використовуються в тому ж файлі (перевірено: 4 згадування кожен) і
+      // експортуються за конвенцією апстріму; tabs.tsx до того ж повністю невикористаний
+      // файл (див. dead-exports.json). Правити ці файли рядковими коментарями означає
+      // розійтися з апстрімом і зламати наступний `shadcn add` по цих компонентах.
+      //
+      // TODO(2026-08-23): прибрати рядок звідси, коли компонент або оновлюється з
+      // апстріму без цього експорту, або перестає бути вендорованим.
+      "files": [
+        "src/components/ui/button.tsx",
+        "src/components/ui/badge.tsx",
+        "src/components/ui/tabs.tsx"
+      ],
+      "rules": {
+        "react/only-export-components": "off"
+      }
+    }
+  ]
 }

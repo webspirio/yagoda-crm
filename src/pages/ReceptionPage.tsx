@@ -106,6 +106,7 @@ export function ReceptionPage() {
       berries
         .map((b) => ({ berry: b, price: priceFor(TODAY, pointId, b.id) }))
         .filter((x) => x.price !== undefined),
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- `prices` не зайва: priceFor — метод стора, який читає get().prices всередині, тож саме цей ключ і перевираховує мемо після зміни ціни дня. Прибрати його — лишити на прийомці вчорашню ціну.
     [berries, pointId, priceFor, prices],
   )
 

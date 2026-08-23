@@ -18,6 +18,10 @@
     "jsx": "react-jsx",
 
     /* Linting */
+    // `strict` was absent here while tsconfig.scripts.json set it, so the app was the less
+    // strictly checked of the two projects and `typecheck`'s claim about "type contracts"
+    // quietly excluded strictNullChecks. Measured before enabling: 0 new errors.
+    "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,

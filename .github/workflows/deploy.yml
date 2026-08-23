@@ -15,7 +15,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Deploy waits for Verify on the same commit. Without this a red tree still shipped to the
+  # URL the client actually looks at, concurrently with the failing Verify run — which makes
+  # nonsense of "a turn cannot end claiming success on a red tree" at the one point a human
+  # sees the product.
+  verify:
+    uses: ./.github/workflows/verify.yml
+
   build:
+    needs: verify
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
