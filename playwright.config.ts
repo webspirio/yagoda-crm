@@ -31,7 +31,11 @@ export default defineConfig({
     // `base` only when `command === 'build'`, and `vite preview` runs as `serve`, so
     // without it dist/index.html asks for /yagoda-crm/assets/... while the server answers
     // from / — every asset 404s into a blank page. This smoke row is what surfaced that.
-    command: `npm run preview -- --port ${PORT} --strictPort`,
+    // --host 127.0.0.1 is not cosmetic. `vite preview` defaults to binding `localhost`,
+    // which on Linux runners resolves to ::1 first, while `url` below polls 127.0.0.1 — so
+    // this passed on macOS and timed out after the full 60s on GitHub's ubuntu runner,
+    // never connecting at all. Bind and poll the same address explicitly.
+    command: `npm run preview -- --host 127.0.0.1 --port ${PORT} --strictPort`,
     url: BASE,
     // Never reuse. A server already on the port was started with flags this config
     // does not know — that is how a smoke test ends up validating a different artifact
