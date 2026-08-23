@@ -1,6 +1,7 @@
 import { ArrowRight, Equal, Minus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { num, uah } from '@/lib/format'
+import { effectivePrice } from '@/lib/calc'
 
 interface Props {
   berryName?: string
@@ -135,7 +136,7 @@ export function ScaleTerminal({
             Ціна
           </div>
           <div className="font-mono text-lg font-medium text-white/85">
-            {price > 0 ? `${num(price + bonus)} ₴/кг` : '—'}
+            {price > 0 ? `${num(effectivePrice(price, bonus))} ₴/кг` : '—'}
           </div>
           {bonus !== 0 ? (
             <div className="font-mono text-[11px] text-[#f2a4bb]">

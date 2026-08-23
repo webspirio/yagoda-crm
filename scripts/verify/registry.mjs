@@ -14,7 +14,7 @@ import { existsSync } from 'node:fs'
 
 /**
  * @typedef {'fast' | 'full'} Tier
- * @typedef {'playwright-browser'} PreconditionId
+ * @typedef {'playwright-browser' | 'npm-registry'} PreconditionId
  */
 
 /**
@@ -53,6 +53,26 @@ export const PRECONDITIONS = {
         // to depend on, and knip is right to call that out.
         const { chromium } = await import('@playwright/test')
         return existsSync(chromium.executablePath())
+      } catch {
+        return false
+      }
+    },
+  },
+  'npm-registry': {
+    describe:
+      'Реєстр npm недосяжний, тому базу адвайзорі перевірити нічим. Це відсутня передумова, ' +
+      'а не «вразливостей немає»: у формі --no-skip це падіння.',
+    probe: async () => {
+      try {
+        const ac = new AbortController()
+        const t = setTimeout(() => ac.abort(), 4000)
+        // HEAD on the registry root: cheap, and it answers exactly the question asked.
+        const res = await fetch('https://registry.npmjs.org/', {
+          method: 'HEAD',
+          signal: ac.signal,
+        })
+        clearTimeout(t)
+        return res.ok
       } catch {
         return false
       }
@@ -209,6 +229,21 @@ export const CHECKS = [
       'вона теж не читає — якщо щось уже було закомічено раніше, тут буде зелено.',
   },
   {
+    id: 'audit',
+    tier: 'full',
+    needs: 'npm-registry',
+    cmd: 'npm run audit:check',
+    proves:
+      'Набір адвайзорі npm audit дорівнює baselines/audit.json, у обидва боки. І понад те: ' +
+      'жодної адвайзорі немає у ПРОДАКШН-дереві залежностей і жодної немає з рівнем ' +
+      'critical — ці два класи не заносяться у baseline за жодною причиною.',
+    blindSpot:
+      'Вердикт залежить від бази GitHub, яка змінюється без змін тут — тому це повний ' +
+      'рівень, а не швидкий: подія на боці не має права заблокувати хід. Нічого не каже ' +
+      'про вразливості, яких у базі ще немає, і нічого про власний код: це аудит ' +
+      'залежностей, не застосунку.',
+  },
+  {
     id: 'build',
     tier: 'full',
     cmd: 'npm run build',
@@ -219,6 +254,22 @@ export const CHECKS = [
       '/wrong/ — ця команда все одно вийде з нулем. Базовий шлях доводить лише smoke, ' +
       'бо він відкриває артефакт саме під /yagoda-crm/. Збірка може пройти, а застосунок ' +
       '— упасти на першому рендері.',
+  },
+  {
+    id: 'bundle',
+    tier: 'full',
+    after: ['build'],
+    cmd: 'npm run bundle',
+    proves:
+      'Розмір зібраного dist/assets не перевищує стелю з baselines/bundle-budget.json — і в ' +
+      'gzip (те, що переїжджає мережу), і в сирому вигляді (те, що телефон розбирає). Стеля ' +
+      'зміряна й округлена вгору з явним запасом 5 KiB gzip, який записаний у тому ж файлі.',
+    blindSpot:
+      'Каже лише про байти, і лише про dist/assets. Нічого про час до першого рендеру, про ' +
+      'шрифти з Google Fonts, які тягне index.html, і нічого про те, чи цей розмір узагалі ' +
+      'виправданий — 260 KiB gzip одним чанком він пропускає, бо саме стільки зміряно ' +
+      'сьогодні. І через запас 5 KiB зростання дрібнішими кроками пройде: воно видне лише ' +
+      'як спадання запасу у виводі, а не як падіння.',
   },
   {
     id: 'smoke',

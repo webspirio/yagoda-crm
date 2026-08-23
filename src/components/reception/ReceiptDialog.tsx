@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useStore } from '@/lib/store'
-import { round2, sum, supplierBalance } from '@/lib/calc'
+import { effectivePrice, round2, sum, supplierBalance } from '@/lib/calc'
 import { kg, longDate, num, plural, uah, uahAuto } from '@/lib/format'
 import type { Payout, Reception } from '@/lib/types'
 
@@ -123,7 +123,7 @@ export function ReceiptDialog({
                 label="Ціна за кг"
                 value={
                   line.bonus
-                    ? `${num(line.price)} + ${num(line.bonus)} = ${num(line.price + line.bonus)} ₴`
+                    ? `${num(line.price)} + ${num(line.bonus)} = ${num(effectivePrice(line.price, line.bonus))} ₴`
                     : `${num(line.price)} ₴`
                 }
               />

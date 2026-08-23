@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   allocatePayout,
   checkSurcharge,
+  effectivePrice,
   maskDecimalInput,
   openDebts,
   originDates,
@@ -1414,5 +1415,28 @@ describe('наскрізно: два старі борги + сьогодніш�
     expect(round2(math.accrued + math.carriedIn)).toBe(math.total)
     expect(round2(math.paid + math.remainder)).toBe(math.total)
     expect(round2(math.paidToday + math.paidToPast)).toBe(math.paid)
+  })
+})
+
+describe('effectivePrice', () => {
+  it('округляє суму, а не покладається на операнди', () => {
+    // саме той випадок, через який три екрани показували 140.30000000000001:
+    // округлення застосовується до СУМИ, бо операнди приходять уже round2-ані окремо
+    expect(effectivePrice(140.1, 0.2)).toBe(140.3)
+    expect(effectivePrice(0.07, 0.01)).toBe(0.08)
+  })
+
+  it('віднімає Дод. ціну зі знаком мінус', () => {
+    expect(effectivePrice(60, -15)).toBe(45)
+  })
+
+  it('не-число дає 0, а не NaN — на чек NaN не потрапить', () => {
+    expect(effectivePrice(Number.NaN, 5)).toBe(0)
+    expect(effectivePrice(10, Number.POSITIVE_INFINITY)).toBe(0)
+  })
+
+  it('це та сама величина, що weigh() кладе у effectivePrice', () => {
+    const w = weigh({ gross: 100, tare: [], price: 43.33, bonus: 1.11 }, [])
+    expect(w.effectivePrice).toBe(effectivePrice(43.33, 1.11))
   })
 })

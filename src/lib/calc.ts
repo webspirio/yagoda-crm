@@ -34,6 +34,15 @@ export interface WeighInput {
   bonus: number
 }
 
+/**
+ * Ефективна ціна ₴/кг: ціна дня плюс Дод. ціна, округлена до копійки.
+ *
+ * Існує як окремий експорт, бо weigh() рахувала це правильно і викидала: жоден екран не
+ * читав WeighResult.effectivePrice, а три з них перескладали ту саму суму з сирих операндів
+ * (line.price + line.bonus). Одна реалізація — одна відповідь.
+ */
+export const effectivePrice = (price: number, bonus: number) => round2(price + bonus)
+
 export interface WeighResult {
   gross: number
   pallet: number
@@ -55,15 +64,15 @@ export function weigh(input: WeighInput, tareTypes: TareType[]): WeighResult {
   // round2 refuses non-finite input, so a pasted NaN cannot reach a receipt
   const gross = round2(input.gross)
   const net = round2(Math.max(0, gross - pallet - tw))
-  const effectivePrice = round2(input.price + input.bonus)
+  const eff = effectivePrice(input.price, input.bonus)
   return {
     gross,
     pallet,
     tareWeight: tw,
     tareUnits: input.tare.reduce((s, l) => s + l.count, 0),
     net,
-    effectivePrice,
-    amount: round2(net * effectivePrice),
+    effectivePrice: eff,
+    amount: round2(net * eff),
   }
 }
 

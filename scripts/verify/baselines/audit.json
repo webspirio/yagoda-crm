@@ -1,0 +1,16 @@
+{
+  "createdAt": "2026-08-23",
+  "note": "Відомі адвайзорі npm audit, кожна з причиною. Записи у ПРОДАКШН-дереві та будь-які critical у baseline не заносяться взагалі — для них винятку не передбачено. Храповик двосторонній.",
+  "entries": [
+    {
+      "name": "qs",
+      "severity": "moderate",
+      "reason": "Тільки dev, і тільки під @stryker-mutator/core → typed-rest-client. Перевірено: `npm ls qs --omit=dev` дає порожнє дерево, тобто у бандл, який віддається користувачам, воно не потрапляє. Сама вразливість — DoS у qs.stringify з encodeValuesOnly на null-елементах comma-format масивів; stryker цього шляху не викликає, а мутаційний воркфлоу і так щотижневий та нічого не гейтить. npm audit fix її не знімає без підвищення мажора stryker."
+    },
+    {
+      "name": "typed-rest-client",
+      "severity": "moderate",
+      "reason": "Той самий ланцюжок і та сама причина: dev-only, лише під @stryker-mutator/core, у продакшн-дереві відсутній (перевірено `npm ls --omit=dev`). Адвайзорі є похідною від qs вище — окремої дії не потребує, зникне разом із нею при оновленні stryker."
+    }
+  ]
+}
