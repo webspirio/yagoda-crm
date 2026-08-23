@@ -27,7 +27,8 @@ import {
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { longDate, weekday } from '@/lib/format'
-import { pendingCount, useStore, type Route, type RouteName } from '@/lib/store'
+import { pendingCount, useStore } from '@/lib/store'
+import type { Route, RouteName } from '@/lib/types'
 import { OPERATORS, TODAY } from '@/lib/seed'
 import { toast } from 'sonner'
 

@@ -12,12 +12,15 @@ import {
   TODAY,
 } from './seed'
 import { SUPPLIER_SEED } from './seed-suppliers'
-import type { ISODate, Reception } from './types'
+import type { ISODate, PointKind, Reception } from './types'
 
 /** Останній повний день історії: 27.06–03.08 — це і є 38 торгових днів ✓ PART A */
 const HISTORY_END: ISODate = '2026-08-03'
 
 const seed = buildSeed()
+
+/** Склад — пункт іншого ВИДУ; усе, що каже «пункт прийому», міряється саме по виду */
+const pointsOfKind = (kind: PointKind) => seed.points.filter((p) => p.kind === kind)
 
 const inSeason = (pointId: string) =>
   seed.receptions.filter(
@@ -96,15 +99,96 @@ describe('довідники', () => {
     expect(POINTS.filter((p) => p.isMain)).toEqual([expect.objectContaining({ name: 'Шипинки' })])
   })
 
-  it('17 сортів (PART A)', () => {
-    expect(BERRIES).toHaveLength(17)
-    expect(new Set(BERRIES.map((b) => b.id)).size).toBe(17)
+  it('на екрані тільки ті села, які назвав клієнт', () => {
+    const NAMED = new Set([
+      'Гайове', 'Шипинки', 'Попівці',            // працюють зараз
+      'Конищів', 'Михайлівці', 'Журавлівка',     // у планах клієнта
+      'Осламів', 'Войнашівка', 'Зоряне', 'Дашківці', 'Міжлісся', // реєстр
+    ])
+    for (const p of seed.points.filter((x) => x.active && x.kind !== 'base')) {
+      expect(NAMED.has(p.name), p.name).toBe(true)
+    }
+    const active = pointsOfKind('reception')
+      .filter((p) => p.active)
+      .map((p) => p.name)
+    expect(active).toContain('Гайове')
+    expect(active).toContain('Шипинки')
+    expect(active).toContain('Попівці')
   })
 
-  it('9 товарів, і Кизил не має жодного сорту (PART A)', () => {
-    expect(PRODUCTS).toHaveLength(9)
+  it('база — приймальний пункт із власними, вищими цінами (M37)', () => {
+    const base = pointsOfKind('base')
+    expect(base).toHaveLength(1)
+    expect(base[0].active).toBe(true)
+    // «склад тоже считається як одна прийомка, але тут типа як оптові ціни» (ряд. 545)
+    const own = seed.receptions.filter((r) => r.pointId === base[0].id)
+    expect(own.length).toBeGreaterThan(0)
+    const basePrice = seed.prices.find(
+      (p) => p.pointId === base[0].id && p.berryId === 'v_mal_1',
+    )!
+    const pointPrice = seed.prices.find((p) => p.pointId === 'p1' && p.berryId === 'v_mal_1')!
+    expect(basePrice.price).toBeGreaterThan(pointPrice.price)
+    // виведені з обігу сорти на складі не котуються взагалі
+    const retiredIds = new Set(BERRIES.filter((b) => b.retired).map((b) => b.id))
+    expect(seed.prices.some((p) => p.pointId === base[0].id && retiredIds.has(p.berryId))).toBe(
+      false,
+    )
+  })
+
+  it('прийомка складу не зачепила жодного замороженого анкера сезону', () => {
+    // якщо котресь із цих чисел поїхало — новий код потрапив НЕ в кінець buildSeed()
+    const p1 = inSeason('p1')
+    expect(new Set(p1.map((r) => r.date)).size).toBe(38)
+    expect(p1.length).toBeGreaterThan(1_701 * 0.97)
+    // на складі жодної виплати: борг там нульовий за побудовою, тому попунктна звірка
+    // «виплата гасить тільки прийомки свого пункту» лишається чинною
+    expect(seed.payouts.some((p) => p.pointId === 'base')).toBe(false)
+    expect(seed.receptions.filter((r) => r.pointId === 'base').every((r) => r.debt === 0)).toBe(
+      true,
+    )
+  })
+
+  // ПЕРЕБАЗОВАНО 17 → 18: додається Аронія, названа клієнтом у дзвінку №4 як позиція
+  // цього сезону (docs/13 §3, docs/15 З2). Виміряних у файлі клієнта було 17 ✓ PART A.
+  it('18 сортів: 17 виміряних плюс Аронія з дзвінка №4 (PART A)', () => {
+    expect(BERRIES).toHaveLength(18)
+    expect(new Set(BERRIES.map((b) => b.id)).size).toBe(18)
+  })
+
+  // ПЕРЕБАЗОВАНО 9 → 10 товарів: Аронія — новий ТОВАР, рядок у PRODUCTS прописаний у
+  // docs/15 З2 крок 4. Твердження про Кизил НЕ змінюється: в Аронії свій сорт є, тому
+  // товар без жодного сорту й далі рівно один.
+  it('10 товарів, і Кизил не має жодного сорту (PART A + Аронія)', () => {
+    expect(PRODUCTS).toHaveLength(10)
     const withoutVariety = PRODUCTS.filter((p) => !BERRIES.some((b) => b.product === p.name))
     expect(withoutVariety.map((p) => p.name)).toEqual(['Кизил'])
+  })
+
+  it('шість ОПТ-сортів виведені з обігу, але з довідника не зникли', () => {
+    const retired = BERRIES.filter((b) => b.retired)
+    expect(retired.length).toBe(6)
+    expect(retired.every((b) => b.name.includes('ОПТ'))).toBe(true)
+    // ціни лишаються перевіреними — на них тримається доказова база
+    expect(BERRIES.find((b) => b.name === 'Ожина ОПТ')!.basePrice).toBe(65)
+    expect(BERRIES.find((b) => b.name === 'Шипшина ОПТ')!.basePrice).toBe(30)
+  })
+
+  it('Аронія є в довіднику і не має історичних квитанцій', () => {
+    const aronia = BERRIES.find((b) => b.name === 'Аронія')
+    expect(aronia).toBeDefined()
+    // вікно сезону ПОЗА демо-періодом: цикл цін робить `continue` до першого rnd(),
+    // тому заморожені числа не рухаються (див. seed.ts, `if (day < berry.from …) continue`)
+    expect(aronia!.from > TODAY).toBe(true)
+    expect(seed.receptions.some((r) => r.berryId === aronia!.id)).toBe(false)
+  })
+
+  it('маркер: 34 ОПТ, 18 фермерів, решта без позначки — детерміновано', () => {
+    const kinds = seed.suppliers.map((s) => s.kind)
+    expect(kinds.filter((k) => k === 'wholesale').length).toBe(34)
+    expect(kinds.filter((k) => k === 'farmer').length).toBe(18)
+    expect(kinds.filter((k) => k === 'none').length).toBe(208 - 34 - 18)
+    // ОПТ ніколи не перетворюється у фермера: набір ОПТ узятий із замороженого літерала
+    expect(seed.suppliers.every((s) => s.kind !== 'wholesale' || s.village.length > 0)).toBe(true)
   })
 
   it('4 тари, у кожної є ціна; Чешка 1,2 кг / 120 ₴ і вона за замовчуванням (PART A, H5)', () => {
@@ -126,8 +210,11 @@ describe('довідники', () => {
     expect(price('Шипшина ОПТ')).toBe(30)
   })
 
-  it('межі Дод. ціни −15…+30 (M7: «не більше 20… чи не більше 30», +30 на другому пункті)', () => {
-    expect(DEFAULT_SETTINGS).toEqual({ surchargeMin: -15, surchargeMax: 30 })
+  // ПЕРЕБАЗОВАНО −15 → −30: вимога клієнта, що змінилась (M34, дзвінок №4 ряд. 701/729 —
+  // «30 - це максимум» і «то ми закрили мінус 30, бо далека дорога»), а не зручність.
+  // Верхня межа лишається 30: саме на неї спираються рядки +26…+30 на другому пункті.
+  it('межі Дод. ціни −30…+30 (M34, дзвінок №4: «30 - це максимум», мінус до −30)', () => {
+    expect(DEFAULT_SETTINGS).toEqual({ surchargeMin: -30, surchargeMax: 30 })
   })
 })
 
@@ -176,7 +263,7 @@ describe('обсяги Шипинок', () => {
   })
 })
 
-describe('Войнашівка', () => {
+describe('Конищів — другий пункт', () => {
   it('p2: БОРГ 855 676 ₴ ±8 %, і один постачальник у ньому на 129 278 ₴ ±10 % (H9, S16)', () => {
     const { total, perSupplier } = openByPoint('p2')
     expect(total).toBeGreaterThan(855_676 * 0.92)
@@ -216,7 +303,7 @@ describe('концентрація залишку', () => {
     expect(ranked[0][1], `найбільші баланси мережі: ${top3}`).toBeLessThan(200_000)
   })
 
-  it('боржник на 129 278 ₴ поза Войнашівкою — звичайний постачальник (H9/S16)', () => {
+  it('боржник на 129 278 ₴ поза другим пунктом — звичайний постачальник (H9/S16)', () => {
     const { perSupplier } = openByPoint('p2')
     const [topId, atP2] = [...perSupplier.entries()].sort((a, b) => b[1] - a[1])[0]
     const elsewhere = round2((crossPoint.get(topId) ?? 0) - atP2)
@@ -250,7 +337,7 @@ describe('концентрація залишку', () => {
   })
 })
 
-/** Малі пункти: 6–10 рядків/день, і Міжлісся — мінімум мережі ✓ docs/05 §1.5 */
+/** Малі пункти: 6–10 рядків/день, і p5 — мінімум мережі ✓ docs/05 §1.5 */
 describe('малі пункти', () => {
   const perDay = (pointId: string) => {
     const map = new Map<ISODate, number>()
@@ -262,7 +349,7 @@ describe('малі пункти', () => {
     return [...map.values()]
   }
 
-  it('Гайове, Попівці, Міжлісся — 6–10 рядків на день (docs/05 §1.5)', () => {
+  it('Гайове, Попівці, Михайлівці — 6–10 рядків на день (docs/05 §1.5)', () => {
     for (const pointId of ['p3', 'p4', 'p5']) {
       const lines = perDay(pointId)
       expect(lines).toHaveLength(38)
@@ -271,7 +358,7 @@ describe('малі пункти', () => {
     }
   })
 
-  it('Міжлісся — найлегший пункт мережі: «Зведення» показує асиметрію (M3, docs/05 §1.5)', () => {
+  it('Михайлівці — найлегший пункт мережі: «Зведення» показує асиметрію (M3, docs/05 §1.5)', () => {
     const kg = (pointId: string) =>
       round2(
         seed.receptions.filter((r) => r.pointId === pointId).reduce((s, r) => s + r.net, 0),
@@ -280,7 +367,7 @@ describe('малі пункти', () => {
     const active = POINTS.filter((p) => p.active).map((p) => p.id)
     // за кілограмами — мінімум усієї мережі, включно з чотириденною Войнашівкою
     expect(kg('p5')).toBe(Math.min(...active.map(kg)))
-    // за рядками — найлегший із трьох малих (Войнашівка коротша просто за календарем)
+    // за рядками — найлегший із трьох малих (другий пункт коротший просто за календарем)
     expect(lines('p5')).toBeLessThan(lines('p3'))
     expect(lines('p5')).toBeLessThan(lines('p4'))
     // і це помітна різниця, а не шум: щонайменше на 15 % легше за сусіда
@@ -495,11 +582,20 @@ describe('ціна дня', () => {
     }
   })
 
-  it('одна ціна на всі активні пункти, автор — керівник (M6)', () => {
+  it('одна ціна на всі ПУНКТИ ПРИЙОМУ, автор — керівник (M6)', () => {
     // ключ ціни лишається (дата, пункт, сорт), але число й час — однакові на всіх пунктах
+    //
+    // ПЕРЕБАЗОВАНО: перелік звужений до пунктів із POINTS. Склад — пункт іншого ВИДУ, і
+    // ціни на ньому НАВМИСНО інші, оптові (M37, S-22: «склад тоже считається як одна
+    // прийомка, але тут типа як оптові ціни»). Тобто «одна ціна на всі пункти» — це
+    // твердження про пʼять пунктів прийому, а не про склад. Без цього звуження додавання
+    // складу зробило б perPoint.size === 6, і тест почав би міряти те, чого вимога не
+    // казала. Самі числа — 5 і «однаковий рядок цін» — не рухаються.
+    const receptionPoints = new Set(POINTS.map((p) => p.id))
     const perPoint = new Map<string, string[]>()
     for (const p of seed.prices) {
       if (p.date !== SEASON_START || p.berryId !== 'v_mal_1') continue
+      if (!receptionPoints.has(p.pointId)) continue
       const list = perPoint.get(p.pointId) ?? []
       list.push(`${p.time}:${p.price}`)
       perPoint.set(p.pointId, list)

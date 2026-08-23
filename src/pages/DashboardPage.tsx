@@ -2,6 +2,7 @@ import * as React from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts'
 import { ArrowRight, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { KindBadge } from '@/components/common/kind'
 import { Badge } from '@/components/ui/badge'
 import {
   ChartContainer,
@@ -429,11 +430,10 @@ export function DashboardPage() {
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-1.5">
                         <span className="truncate text-sm">{t.supplier.name}</span>
-                        {t.supplier.wholesale ? (
-                          <Badge variant="secondary" className="h-4 shrink-0 px-1.5 text-[10px]">
-                            ОПТ
-                          </Badge>
-                        ) : null}
+                        <KindBadge
+                          kind={t.supplier.kind}
+                          className="h-4 shrink-0 px-1.5 text-[10px]"
+                        />
                       </span>
                       <span className="block text-xs text-muted-foreground">
                         {t.count} здач · {kg(t.net, 0)}

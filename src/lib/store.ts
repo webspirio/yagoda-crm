@@ -2,130 +2,35 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { allocatePayout, openDebts, round2, splitPaidAcrossLines } from './calc'
 import { buildSeed, DEFAULT_SETTINGS, nextCode, nowTime, TODAY } from './seed'
-import type {
-  Berry,
-  ISODate,
-  Payout,
-  Point,
-  PriceRecord,
-  Reception,
-  Role,
-  Settings,
-  Supplier,
-  TareLine,
-  TareType,
-} from './types'
+import type { Commands, DomainSnapshot, Queries, UiState } from './ports'
+import type { ISODate, Payout, Reception, Role, Route, Supplier } from './types'
 
-export type RouteName =
-  | 'reception'
-  | 'day'
-  | 'dashboard'
-  | 'suppliers'
-  | 'supplier'
-  | 'debts'
-  | 'prices'
-  | 'journal'
-  | 'points'
-  | 'refs'
-
-export interface Route {
-  name: RouteName
-  id?: string
+/**
+ * Дії, що змінюють лише локальний стан: на сервер не їдуть ніколи. Тому вони НЕ в
+ * `ports.ts` — контракт описує те, що синхронізується, а роль і маршрут пристроєві.
+ * Без export: інтерфейс, використаний лише у своєму файлі, `deadcode` показав би як
+ * мертвий експорт.
+ */
+interface UiActions {
+  setRole(role: Role): void
+  setActivePoint(id: string): void
+  go(route: Route): void
+  setOnline(v: boolean): void
+  setWorkDate(d: ISODate): void
 }
 
-/** One line of a visit, as the reception screen hands it over. */
-export interface VisitLineInput {
-  berryId: string
-  gross: number
-  pallet: number
-  tare: TareLine[]
-  tareWeight: number
-  net: number
-  price: number
-  bonus: number
-  amount: number
-}
+/**
+ * Стор — це in-memory адаптер контракту з `ports.ts`. Композиція перевіряється на
+ * компіляції самим `create<State>()`: якщо хтось додасть екшн у стор і забуде в
+ * `ports.ts`, або змінить підпис, `tsc` червоний. Це і є весь захист від дрейфу.
+ */
+type State = DomainSnapshot & UiState & UiActions & Commands & Queries
 
-interface State {
-  points: Point[]
-  berries: Berry[]
-  tareTypes: TareType[]
-  suppliers: Supplier[]
-  prices: PriceRecord[]
-  receptions: Reception[]
-  payouts: Payout[]
-  settings: Settings
-
-  role: Role
-  activePointId: string
-  route: Route
-  online: boolean
-  workDate: ISODate
-
-  setRole: (role: Role) => void
-  setActivePoint: (id: string) => void
-  go: (route: Route) => void
-  setOnline: (v: boolean) => void
-  setWorkDate: (d: ISODate) => void
-
-  addSupplier: (s: Omit<Supplier, 'id' | 'createdAt'>) => Supplier
-  updateSupplier: (id: string, patch: Partial<Supplier>) => void
-  updateTareType: (id: string, patch: Partial<TareType>) => void
-  updateSettings: (patch: Partial<Settings>) => void
-
-  setPrice: (args: {
-    date: ISODate
-    pointId: string
-    berryId: string
-    price: number
-    author: string
-    reason?: string
-  }) => void
-  priceFor: (date: ISODate, pointId: string, berryId: string) => number | undefined
-  priceHistory: (date: ISODate, pointId: string, berryId: string) => PriceRecord[]
-
-  /**
-   * One supplier, N lines, one «Разом», one payout decision (M5 + M10).
-   * Cash above today's berry leaves as a separate Payout, so the FIFO allocation
-   * closes the oldest open remainders with their own dates — the engine is untouched.
-   */
-  addVisit: (v: {
-    date: ISODate
-    pointId: string
-    supplierId: string
-    operator: string
-    /** Попередній залишок folded into «Разом»; 0 when the toggle is off */
-    carriedIn: number
-    /** Видано готівкою — total cash handed over, already capped by visitMath() */
-    paid: number
-    lines: VisitLineInput[]
-  }) => { receptions: Reception[]; payout?: Payout }
-
-  addPayout: (args: {
-    date: ISODate
-    pointId: string
-    supplierId: string
-    amount: number
-    operator: string
-    /** set when this payout is a visit's excess over today's berry */
-    visitId?: string
-    /**
-     * Close only remainders booked at this point. Each point keeps its own book —
-     * in their world that is literally a separate spreadsheet — so cash from this
-     * till may not settle berry another point accepted, or neither point's day report
-     * reconciles.
-     */
-    scopePointId?: string
-  }) => Payout | undefined
-
-  syncAll: () => void
-  resetDemo: () => void
-}
-
-// v2 лишався в браузері після перейменування ключа — 450 КБ мертвого стану поруч
-// з живими 1,4 МБ, і разом вони вже підбираються до квоти localStorage
+// Старі ключі лишаються в браузері після перейменування — v2 це вже показав: 450 КБ
+// мертвого стану поруч із живими 1,4 МБ, і разом вони підбираються до квоти localStorage
 try {
   localStorage.removeItem('yagoda-crm-demo-v2')
+  localStorage.removeItem('yagoda-crm-demo-v3')
 } catch {
   // приватний режим без localStorage — демо однаково працює з пам'яті
 }
@@ -188,6 +93,37 @@ export const useStore = create<State>()(
               author,
               reason,
             },
+          ],
+        })),
+
+      /**
+       * Ціна дня загальна: одна цифра на всі активні ПУНКТИ ПРИЙОМУ, далі керівник
+       * править окремі (M32). Пише стільки записів, скільки пунктів, — журнал ціни
+       * лишається попунктним, бо ключ ціни це (дата, пункт, сорт).
+       *
+       * Склад НЕ входить свідомо. Він приймає ягоду (M37), але за оптовими цінами —
+       * «склад тоже считається як одна прийомка, але тут типа як оптові ціни» (ряд. 545).
+       * Наскільки саме вони вищі, клієнт не називала: +8 % у сіді — НАША оцінка, і
+       * питання досі відкрите (Q-17). Якби «загальна» писала й на склад, один клік
+       * стирав би цю надбавку назавжди, а повертати її довелося б поштучно. Ціну складу
+       * керівник ставить окремою клітинкою — доки ми не спитаємо в неї правило.
+       */
+      setPriceEverywhere: ({ date, berryId, price, author, reason }) =>
+        set((st) => ({
+          prices: [
+            ...st.prices,
+            ...st.points
+              .filter((p) => p.active && p.kind === 'reception')
+              .map((p) => ({
+                id: `pr_${Math.random().toString(36).slice(2, 9)}`,
+                date,
+                pointId: p.id,
+                berryId,
+                price,
+                time: nowTime(),
+                author,
+                reason,
+              })),
           ],
         })),
 
@@ -309,10 +245,13 @@ export const useStore = create<State>()(
       },
     }),
     {
-      // v3: реальні довідники клієнта, Піддон, Дод. ціна на рядку, візити.
-      // Старий стан має форму, якої більше не існує — скидаємо, а не міграємо.
-      name: 'yagoda-crm-demo-v3',
-      version: 3,
+      // v4: `Supplier.wholesale: boolean` став `Supplier.kind: SupplierKind` (M24).
+      // Це та сама причина, що й для v3: старий стан має форму, якої більше не існує,
+      // тому скидаємо, а не міграємо. Без бампа браузер, який уже відкривав демо, віддав
+      // би зі свого v3 208 постачальників БЕЗ поля `kind` — і бейджі маркера показували б
+      // порожній підпис у всіх, включно з екраном, який клієнт побачить 28.08.
+      name: 'yagoda-crm-demo-v4',
+      version: 4,
       migrate: () => undefined,
       partialize: (s) => ({
         suppliers: s.suppliers,

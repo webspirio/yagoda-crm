@@ -46,7 +46,7 @@ import { kg, longDate, num, plural, shortDate, tonnage, uah, uahAuto } from '@/l
 import { DEFAULT_TARE_ID, OPERATORS, TODAY } from '@/lib/seed'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import type { VisitLineInput } from '@/lib/store'
+import type { VisitLineInput } from '@/lib/ports'
 import type { Payout, Reception, TareLine } from '@/lib/types'
 
 /** 284 з 1 369 візитів — багаторядкові, найдовший має 5 позицій ✓ PART C 15 */
@@ -104,6 +104,9 @@ export function ReceptionPage() {
   const availableBerries = React.useMemo(
     () =>
       berries
+        // сорт, виведений з обігу, на прийомці не пробивається — але історичні
+        // квитанції на нього лишаються валідними (рішення D-8, «Опт забрати просто вже»)
+        .filter((b) => !b.retired)
         .map((b) => ({ berry: b, price: priceFor(TODAY, pointId, b.id) }))
         .filter((x) => x.price !== undefined),
     // oxlint-disable-next-line react-hooks/exhaustive-deps -- `prices` не зайва: priceFor — метод стора, який читає get().prices всередині, тож саме цей ключ і перевираховує мемо після зміни ціни дня. Прибрати його — лишити на прийомці вчорашню ціну.

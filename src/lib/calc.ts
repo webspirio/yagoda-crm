@@ -92,6 +92,39 @@ export function supplierBalance(
 }
 
 /**
+ * Книга ОДНОГО пункту: борг його прийомок мінус прив'язки, що на них лягли.
+ *
+ * Чому не `supplierBalance()` над звуженими масивами: та функція віднімає ЦІЛУ суму виплати,
+ * а `payout.pointId` — це каса, з якої вийшла готівка, НЕ пункт погашеної ягоди. Видача
+ * в режимі «Усі точки» (`SettleDialog` без `scopePointId`) гасить прийомки кількох пунктів
+ * однією виплатою — і тоді пункт-штамп показував би мінус, а сусідній — борг, якого вже
+ * немає. Зміряно: постачальник s1 після повної видачі отримував p1 = −7 975,30 ₴ на чеку
+ * і p4 = +7 975,30 ₴ на картці при порожньому списку решток, хоча мережевий борг = 0.
+ *
+ * Ключ — прив'язка, а не штамп. Саме на прив'язках стоять решта семи екранів через
+ * `openDebts()`, тому ця функція робить ті самі гроші, що вони, і зводиться з ними до копійки.
+ * Звуження робить вона сама: залишити його виклику й означало помилку, яку тут виправлено.
+ *
+ * `pointId === 'all'` дає мережеву книгу — та сама угода, що в `scopedReceptions()`.
+ */
+export function supplierBalanceAt(
+  supplierId: string,
+  receptions: Reception[],
+  payouts: Payout[],
+  pointId: string,
+) {
+  const mine = receptions.filter(
+    (r) => r.supplierId === supplierId && (pointId === 'all' || r.pointId === pointId),
+  )
+  const ids = new Set(mine.map((r) => r.id))
+  const settled = payouts
+    .filter((p) => p.supplierId === supplierId)
+    .flatMap((p) => p.allocations)
+    .filter((a) => ids.has(a.receptionId))
+  return round2(sum(mine, (r) => r.debt) - sum(settled, (a) => a.amount))
+}
+
+/**
  * Per-reception outstanding remainder after allocations, oldest first.
  *
  * An overpaid line (negative `debt` — 257 such rows exist in their file, H7) is a credit:

@@ -24,7 +24,7 @@ import { Eyebrow, PageHeader } from '@/components/common/bits'
 import { Sparkline } from '@/components/common/Sparkline'
 import { useStore } from '@/lib/store'
 import { addDays, longDate, num } from '@/lib/format'
-import { OWNER, PRODUCTS, TODAY } from '@/lib/seed'
+import { OWNER, PRODUCTS } from '@/lib/seed'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Berry } from '@/lib/types'
@@ -38,25 +38,60 @@ export function PricesPage() {
   const priceHistory = useStore((s) => s.priceHistory)
   const prices = useStore((s) => s.prices)
   const setPrice = useStore((s) => s.setPrice)
+  const setPriceEverywhere = useStore((s) => s.setPriceEverywhere)
   const settings = useStore((s) => s.settings)
+  // аркуш іде за обраною датою, а не за «сьогодні»: керівник рахує вчорашній день
+  // зранку ✓ M38. Дату перемикають у «Касі» — `workDate` спільний на весь застосунок
+  const workDate = useStore((s) => s.workDate)
 
   const [editing, setEditing] = React.useState<{ berry: Berry; pointId: string } | null>(null)
   const [value, setValue] = React.useState('')
   const [reason, setReason] = React.useState('')
 
-  const activeBerries = berries.filter((b) => TODAY >= b.from && TODAY <= b.to)
+  // `retired` — сорт виведений з обігу («Опт забрати просто вже»): з аркуша цін зникає,
+  // історичні квитанції на нього лишаються валідними ✓ З2
+  const activeBerries = berries.filter(
+    (b) => !b.retired && workDate >= b.from && workDate <= b.to,
+  )
   // колонки — тільки ті пункти, що реально приймають: решта п'ять стоять у реєстрі
-  // й ціни в них немає ✓ PART A («від 5 до 10»)
+  // й ціни в них немає ✓ PART A («від 5 до 10»). Склад серед активних: «склад тоже
+  // считається як одна прийомка, але тут типа як оптові ціни» ✓ M37
   const tradingPoints = points.filter((p) => p.active)
+  // «Загальна» — про пункти прийому. Склад має власну, оптову ціну (M37), тому в
+  // спільність не входить: інакше кожен рядок читався б «різні» лише через нього
+  const commonPoints = tradingPoints.filter((p) => p.kind === 'reception')
   // Товар → Сорт, 9 → 17 ✓ PART A. Ключем ціни лишається сорт; товар — тільки заголовок
   const groups = PRODUCTS.map((p) => ({
     product: p,
     grades: activeBerries.filter((b) => b.product === p.name),
   })).filter((g) => g.grades.length > 0)
 
+  /**
+   * Ціна дня загальна по сорту — рахована саме по тому набору пунктів, на який пише
+   * `setPriceEverywhere`: активні пункти прийому, БЕЗ складу. Інакше колонка обіцяла б
+   * згоду, якої екшн не робить. `null` — ціни немає ніде; `common` — стоїть однаково
+   * на всіх; інакше діапазон, і той лише з визначених значень: `num(undefined)`
+   * друкує рівно `NaN`.
+   */
+  function dayPrice(berryId: string) {
+    const known: number[] = []
+    let missing = 0
+    for (const p of commonPoints) {
+      const v = priceFor(workDate, p.id, berryId)
+      if (v === undefined) missing += 1
+      else known.push(v)
+    }
+    if (!known.length) return null
+    const min = Math.min(...known)
+    const max = Math.max(...known)
+    return { common: !missing && min === max ? min : undefined, min, max }
+  }
+
   function openEdit(berry: Berry, pointId: string) {
     setEditing({ berry, pointId })
-    setValue(String(priceFor(TODAY, pointId, berry.id) ?? berry.basePrice))
+    const current =
+      pointId === 'all' ? dayPrice(berry.id)?.common : priceFor(workDate, pointId, berry.id)
+    setValue(String(current ?? berry.basePrice))
     setReason('')
   }
 
@@ -67,18 +102,22 @@ export function PricesPage() {
       toast.error('Введіть ціну')
       return
     }
-    setPrice({
-      date: TODAY,
-      pointId: editing.pointId,
+    const everywhere = editing.pointId === 'all'
+    const args = {
+      date: workDate,
       berryId: editing.berry.id,
       price: v,
       // той самий підпис, що й у сіді (`OWNER`), інакше журнал цін показував би
       // одну людину під двома іменами
       author: role === 'owner' ? OWNER : 'Приймальник',
       reason: reason.trim() || undefined,
-    })
+    }
+    if (everywhere) setPriceEverywhere(args)
+    else setPrice({ ...args, pointId: editing.pointId })
     toast.success(`${editing.berry.name} — ${num(v)} ₴/кг`, {
-      description: 'Нова ціна діє з цієї хвилини. Попередні квитанції не змінюються.',
+      description: everywhere
+        ? 'Стала на всіх пунктах прийому. Склад лишився зі своєю ціною. Попередні квитанції не змінюються.'
+        : 'Нова ціна діє з цієї хвилини. Попередні квитанції не змінюються.',
     })
     setEditing(null)
   }
@@ -86,9 +125,9 @@ export function PricesPage() {
   return (
     <div className="mx-auto max-w-[1100px]">
       <PageHeader
-        eyebrow={longDate(TODAY)}
+        eyebrow={longDate(workDate)}
         title="Ціни дня"
-        description="Ціну виставляє керівник — одну на всі точки, «я виставляю ціну для всіх». Колонка по точці показує лише, де вона вже стоїть. Кожна зміна лишає слід: видно, хто, коли і чому підняв."
+        description="Ціна на кожну точку своя: «чим дальше воно знаходиться, тим більше розтрат», де конкуренція — дорожче. Виставте загальну і підправте окремі. Змінювати можна кілька разів на день — кожна зміна лишає слід: хто, коли і чому."
       />
 
       {activePointId === 'all' ? (
@@ -98,6 +137,7 @@ export function PricesPage() {
               <TableRow>
                 <TableHead className="w-[200px]">Сорт</TableHead>
                 <TableHead className="w-[150px]">Ціна за 14 днів</TableHead>
+                <TableHead className="w-[150px] text-right">Ціна дня загальна</TableHead>
                 {tradingPoints.map((p) => (
                   <TableHead key={p.id} className="text-right">
                     {p.name}
@@ -110,55 +150,91 @@ export function PricesPage() {
                 <React.Fragment key={g.product.id}>
                   <TableRow className="hover:bg-transparent">
                     <TableCell
-                      colSpan={2 + tradingPoints.length}
+                      colSpan={3 + tradingPoints.length}
                       className="bg-muted/40 py-1.5 text-[11px] font-medium tracking-[0.16em] uppercase"
                     >
                       {g.product.name}
                     </TableCell>
                   </TableRow>
-                  {g.grades.map((b) => (
-                    <TableRow key={b.id}>
-                      <TableCell className="pl-6">
-                        <span className="font-medium">{b.name}</span>
-                        {b.wholesale ? (
-                          <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px]">
-                            ОПТ
-                          </Badge>
-                        ) : null}
-                      </TableCell>
-                      <TableCell>
-                        <PriceTrend berryId={b.id} />
-                      </TableCell>
-                      {tradingPoints.map((p) => {
-                        const price = priceFor(TODAY, p.id, b.id)
-                        const hist = priceHistory(TODAY, p.id, b.id)
-                        const changed = hist.length > 1
-                        return (
-                          <TableCell key={p.id} className="text-right">
-                            {price === undefined ? (
-                              <button
-                                onClick={() => openEdit(b, p.id)}
-                                className="text-xs text-muted-foreground underline decoration-dotted"
-                              >
-                                встановити
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => openEdit(b, p.id)}
-                                className="group inline-flex items-center gap-1.5"
-                              >
-                                <span className="font-mono font-medium">{num(price)} ₴</span>
-                                {changed ? (
-                                  <PriceDelta from={hist[0].price} to={price} />
-                                ) : null}
-                                <Pencil className="size-3 opacity-0 transition-opacity group-hover:opacity-50" />
-                              </button>
-                            )}
-                          </TableCell>
-                        )
-                      })}
-                    </TableRow>
-                  ))}
+                  {g.grades.map((b) => {
+                    const day = dayPrice(b.id)
+                    return (
+                      <TableRow key={b.id}>
+                        <TableCell className="pl-6">
+                          <span className="font-medium">{b.name}</span>
+                          {b.wholesale ? (
+                            <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px]">
+                              ОПТ
+                            </Badge>
+                          ) : null}
+                        </TableCell>
+                        <TableCell>
+                          <PriceTrend berryId={b.id} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {day === null ? (
+                            <button
+                              onClick={() => openEdit(b, 'all')}
+                              className="text-xs text-muted-foreground underline decoration-dotted"
+                            >
+                              встановити
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => openEdit(b, 'all')}
+                              className="group inline-flex items-center gap-1.5"
+                            >
+                              {day.common !== undefined ? (
+                                <span className="font-mono font-medium">{num(day.common)} ₴</span>
+                              ) : (
+                                <>
+                                  {/* однакова, але не на всіх пунктах — це не «різні»:
+                                      ціна просто виставлена ще не всюди */}
+                                  <span className="text-xs text-muted-foreground">
+                                    {day.min === day.max ? 'не всюди ·' : 'різні ·'}
+                                  </span>
+                                  <span className="font-mono text-xs font-medium">
+                                    {day.min === day.max
+                                      ? num(day.min)
+                                      : `${num(day.min)}–${num(day.max)}`}
+                                  </span>
+                                </>
+                              )}
+                              <Pencil className="size-3 opacity-0 transition-opacity group-hover:opacity-50" />
+                            </button>
+                          )}
+                        </TableCell>
+                        {tradingPoints.map((p) => {
+                          const price = priceFor(workDate, p.id, b.id)
+                          const hist = priceHistory(workDate, p.id, b.id)
+                          const changed = hist.length > 1
+                          return (
+                            <TableCell key={p.id} className="text-right">
+                              {price === undefined ? (
+                                <button
+                                  onClick={() => openEdit(b, p.id)}
+                                  className="text-xs text-muted-foreground underline decoration-dotted"
+                                >
+                                  встановити
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => openEdit(b, p.id)}
+                                  className="group inline-flex items-center gap-1.5"
+                                >
+                                  <span className="font-mono font-medium">{num(price)} ₴</span>
+                                  {changed ? (
+                                    <PriceDelta from={hist[0].price} to={price} />
+                                  ) : null}
+                                  <Pencil className="size-3 opacity-0 transition-opacity group-hover:opacity-50" />
+                                </button>
+                              )}
+                            </TableCell>
+                          )
+                        })}
+                      </TableRow>
+                    )
+                  })}
                 </React.Fragment>
               ))}
             </TableBody>
@@ -172,8 +248,8 @@ export function PricesPage() {
               <div className="grid gap-3 md:grid-cols-2">
                 {g.grades.map((b) => {
                   const pointId = activePointId
-                  const price = priceFor(TODAY, pointId, b.id)
-                  const hist = priceHistory(TODAY, pointId, b.id)
+                  const price = priceFor(workDate, pointId, b.id)
+                  const hist = priceHistory(workDate, pointId, b.id)
                   return (
                     <div
                       key={b.id}
@@ -207,7 +283,7 @@ export function PricesPage() {
 
                       {hist.length ? (
                         <div className="mt-4 border-t border-border/70 pt-3">
-                          <Eyebrow className="mb-2">Історія за сьогодні</Eyebrow>
+                          <Eyebrow className="mb-2">Історія за цей день</Eyebrow>
                           <ul className="flex flex-col gap-1.5">
                             {hist.map((h) => (
                               <li key={h.id} className="flex items-start gap-2 text-xs">
@@ -241,8 +317,9 @@ export function PricesPage() {
           <Badge variant="secondary">Дод. ціна</Badge>
           <span className="max-w-3xl text-muted-foreground">
             Надбавка ставиться на кожен рядок окремо, а не на постачальника: «не 100, а 105 чи
-            110». Межі — від {num(settings.surchargeMin)} до {num(settings.surchargeMax)} ₴/кг,
-            задає керівник. Понад межу поле значення не приймає — запит іде на підтвердження.
+            110». Мінус так само реальний: «то ми закрили мінус 30, бо далека дорога». Межі — від{' '}
+            {num(settings.surchargeMin)} до {num(settings.surchargeMax)} ₴/кг, задає керівник. Поза
+            межами поле значення не приймає — запит іде на підтвердження.
           </span>
         </div>
       </div>
@@ -257,10 +334,15 @@ export function PricesPage() {
       <Dialog open={Boolean(editing)} onOpenChange={(v) => !v && setEditing(null)}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
-            <DialogTitle>{editing?.berry.name}</DialogTitle>
+            <DialogTitle>
+              {editing?.pointId === 'all'
+                ? `Ціна дня загальна · ${editing.berry.name}`
+                : editing?.berry.name}
+            </DialogTitle>
             <DialogDescription>
-              {points.find((p) => p.id === editing?.pointId)?.name} · нова ціна діятиме для
-              наступних квитанцій.
+              {editing?.pointId === 'all'
+                ? 'Стане на всіх пунктах прийому. Склад лишається зі своєю оптовою ціною — його правлять окремою клітинкою.'
+                : `${points.find((p) => p.id === editing?.pointId)?.name} · нова ціна діятиме для наступних квитанцій.`}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">
@@ -297,20 +379,21 @@ export function PricesPage() {
   )
 }
 
-/** Price of the main point over the last two weeks — context for today's number. */
+/** Price of the main point over the last two weeks — context for the chosen day's number. */
 function PriceTrend({ berryId }: { berryId: string }) {
   const prices = useStore((s) => s.prices)
+  const workDate = useStore((s) => s.workDate)
   const values = React.useMemo(() => {
     const out: number[] = []
     for (let i = 13; i >= 0; i--) {
-      const d = addDays(TODAY, -i)
+      const d = addDays(workDate, -i)
       const list = prices
         .filter((p) => p.date === d && p.pointId === 'p1' && p.berryId === berryId)
         .sort((a, b) => a.time.localeCompare(b.time))
       if (list.length) out.push(list[list.length - 1].price)
     }
     return out
-  }, [prices, berryId])
+  }, [prices, berryId, workDate])
 
   if (values.length < 2) {
     return <span className="text-xs text-muted-foreground">новий сорт</span>
@@ -339,9 +422,10 @@ function IntradayChanges() {
   const prices = useStore((s) => s.prices)
   const points = useStore((s) => s.points)
   const berries = useStore((s) => s.berries)
+  const workDate = useStore((s) => s.workDate)
 
   const changes = prices
-    .filter((p) => p.date === TODAY && p.time !== '07:30')
+    .filter((p) => p.date === workDate && p.time !== '07:30')
     .sort((a, b) => b.time.localeCompare(a.time))
 
   return (
@@ -377,7 +461,7 @@ function IntradayChanges() {
         </ul>
       ) : (
         <p className="text-sm text-muted-foreground">
-          Сьогодні ціну ще не міняли — діють ранкові значення.
+          Цього дня ціну ще не міняли — діють ранкові значення.
         </p>
       )}
     </div>

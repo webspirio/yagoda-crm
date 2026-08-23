@@ -1,9 +1,35 @@
 export type ISODate = string // YYYY-MM-DD
 
+/*
+ * Номінальні аліаси. Документують намір і коштують нуль: це ті самі string і number,
+ * тому жоден наявний виклик не зачеплений. Брендованих типів (`string & { __brand }`)
+ * тут свідомо НЕМАЄ — вони зачепили б кожен виклик у 12 000 рядках, зламали б
+ * заморожені тести й не дали б жодної рантайм-переваги сьогодні. Аліас підвищується
+ * до брендованого одним рядком, коли з'явиться сервер і ціна помилки зросте.
+ */
+export type PointId = string
+export type SupplierId = string
+export type BerryId = string
+/** Гривні. Округлення — round2 на кожній операції, ніколи в проміжних ставках. */
+export type Uah = number
+/** Кілограми, дві десяті. */
+export type Kg = number
+/** HH:MM за годинником пристрою. Бізнес-дата — це завжди окремий ISODate. */
+export type ClockTime = string
+
+/**
+ * `'base'` — склад/холодильник. Ягоду з пунктів там переважують, і водночас це
+ * **звичайний пункт прийому** з вищими, оптовими цінами: «склад тоже считається як
+ * одна прийомка… Також фіксується як прийомний пункт» (дзвінок №4, ряд. 545–547).
+ * Селектори пунктів по цьому полю НЕ фільтруються — правила #54/#84/#107 скасовані (S-22).
+ */
+export type PointKind = 'reception' | 'base'
+
 export interface Point {
   id: string
   name: string
   village: string
+  kind: PointKind
   isMain: boolean
   /** Points that actually receive berries; the rest sit in the registry, ready to open */
   active: boolean
@@ -25,6 +51,12 @@ export interface Berry {
   from: ISODate
   to: ISODate
   basePrice: number
+  /**
+   * Сорт виведений з обігу: не показується в довіднику, на аркуші цін і в селекторі
+   * прийомки, але історичні квитанції на нього лишаються валідними.
+   * Шість ОПТ-сортів — «Опт забрати просто вже» (дзвінок №4, ряд. 642).
+   */
+  retired?: boolean
 }
 
 /** Container type — tare deducted from gross weight */
@@ -36,6 +68,13 @@ export interface TareType {
   price: number
 }
 
+/**
+ * Маркер стоїть на людині, не на сорті: «не на сорт получається, а на фамілію» (M24).
+ * Взаємовиключно — «не може бути, що одна людина і оптовик, і фермер».
+ * Базову ціну товару маркер не змінює: змінюється лише дод. ціна на рядку (M24, M35).
+ */
+export type SupplierKind = 'none' | 'wholesale' | 'farmer'
+
 export interface Supplier {
   id: string
   name: string
@@ -43,7 +82,7 @@ export interface Supplier {
   phone?: string
   village: string
   homePointId: string
-  wholesale: boolean
+  kind: SupplierKind
   note?: string
   createdAt: ISODate
 }
@@ -132,6 +171,28 @@ export interface Settings {
 }
 
 export type Role = 'operator' | 'owner'
+
+/**
+ * Маршрут живе тут, а не в store.ts: `UiState.route` у ports.ts мусить бути саме `Route`,
+ * інакше контракт розширив би `name` до `string` і Shell.tsx втратив би перевірку назви
+ * розділу — контракт не має права послаблювати типи.
+ */
+export type RouteName =
+  | 'reception'
+  | 'day'
+  | 'dashboard'
+  | 'suppliers'
+  | 'supplier'
+  | 'debts'
+  | 'prices'
+  | 'journal'
+  | 'points'
+  | 'refs'
+
+export interface Route {
+  name: RouteName
+  id?: string
+}
 
 export interface Session {
   role: Role

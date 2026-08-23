@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { openDebts, reconcileDay, round2, supplierBalance, visitMath } from './calc'
-import { useStore } from './store'
+import {
+  openDebts,
+  reconcileDay,
+  round2,
+  supplierBalance,
+  supplierBalanceAt,
+  visitMath,
+} from './calc'
+import { scopedReceptions, useStore } from './store'
 import { TODAY } from './seed'
 
 /** Два візити однієї людини в один день: чек першого не має показувати гроші другого. */
@@ -189,5 +196,168 @@ describe('прив’язка виплати до візиту', () => {
     expect(handed).toBe(m.paid)
     expect(balanceAt(id)).toBe(m.remainder)
     expect(st.receptions.length).toBeGreaterThan(0)
+  })
+
+  /**
+   * Е2 · залишок попунктний — «він цей борг з іншої точки забрати не може» (дзвінок №4, ряд. 902).
+   *
+   * Вкладено сюди свідомо: `balanceAt()` (:10) — рівно та книга, з якої читає `SupplierPicker`,
+   * і пункт «пікер = картка = чек» порівнює екрани саме з нею.
+   *
+   * Код із `docs/15` З5 крок 1 тут НЕ відтворено дослівно, бо він неправильний: там звужені
+   * квитанції, але ПОВНИЙ масив виплат, а `supplierBalance()` віднімає кожну виплату людини
+   * незалежно від пункту. На сіді дослівний варіант дає 1 288 розбіжностей із пікером і
+   * 1 237 відʼємних «залишків», тобто `expect(…p4…).toBe(0)` із плану впав би мінусом.
+   * Але звузити ОБА масиви — теж неправильно, і це показала перевірка коду: `payout.pointId`
+   * це каса, з якої вийшла готівка, а не пункт погашеної ягоди. Екрани (`SuppliersPage`,
+   * `SupplierPage`, `ReceiptDialog`) рахують книгу пункту через `supplierBalanceAt()` — по
+   * прив'язках, як і решта сімох через `openDebts()`. Тест фіксує цей контракт.
+   */
+  describe('Е2 · залишок попунктний', () => {
+    /** книга пункту так, як її рахують екрани: по прив'язках виплат, не по їхньому штампу */
+    const cardBalance = (supplierId: string, pointId: string) => {
+      const st = useStore.getState()
+      return supplierBalanceAt(supplierId, st.receptions, st.payouts, pointId)
+    }
+
+    /** точки, на які людина справді возила ягоду */
+    const pointsWithBerry = (supplierId: string) => {
+      const st = useStore.getState()
+      return new Set(st.receptions.filter((r) => r.supplierId === supplierId).map((r) => r.pointId))
+    }
+
+    it('борг однієї точки не видно з іншої: на чужій точці рівно 0, а не мінус', () => {
+      const st = useStore.getState()
+      const pointIds = st.points.map((p) => p.id)
+      // людина, закріплена за p1 і з реальним боргом на p1: без боргу перевірка «на чужій
+      // точці нуль» нічого не варта — нуль там був би і так
+      const home = st.suppliers.find(
+        (s) => s.homePointId === 'p1' && cardBalance(s.id, 'p1') > 0.009,
+      )!
+      const away = pointIds.find((p) => !pointsWithBerry(home.id).has(p))!
+
+      expect(cardBalance(home.id, 'p1')).toBeGreaterThan(0)
+      expect(cardBalance(home.id, away)).toBe(0)
+
+      // і так для КОЖНОЇ пари людина×точка без квитанцій — інакше «рівно 0» тримався б на
+      // одному щасливому прикладі. Мінус тут означав би, що книга пункту гасить чужі гроші:
+      // саме це й давав повний масив виплат.
+      let checked = 0
+      for (const s of st.suppliers) {
+        const own = pointsWithBerry(s.id)
+        for (const p of pointIds) {
+          if (own.has(p)) continue
+          checked++
+          expect(cardBalance(s.id, p)).toBe(0)
+        }
+      }
+      expect(checked).toBeGreaterThan(1500)
+    })
+
+    it('те, що бачить пікер, дорівнює тому, що покажуть картка й чек', () => {
+      const st = useStore.getState()
+      const pointIds = st.points.map((p) => p.id)
+      let pairs = 0
+      for (const s of st.suppliers) {
+        for (const p of pointIds) {
+          pairs++
+          // пікер друкує Σ відкритих решток (тому ніколи не мінус), картка й чек — баланс
+          // книги, який на переплаченому рядку вміє бути відʼємним. `max(0, …)` — і є контракт
+          expect(balanceAt(s.id, p)).toBe(round2(Math.max(0, cardBalance(s.id, p))))
+        }
+      }
+      expect(pairs).toBe(st.suppliers.length * pointIds.length)
+    })
+
+    it('справжній випадок, а не тавтологія: у людини з двома точками книга точки менша за мережу', () => {
+      const st = useStore.getState()
+      const spread = st.suppliers
+        .map((s) => ({ id: s.id, pts: [...pointsWithBerry(s.id)] }))
+        .filter((x) => x.pts.length >= 2)
+      // 101 такий постачальник на сіді. Якби їх було нуль, два тести вище проходили б
+      // тавтологічно — «нуль дорівнює нулю» на людині, що возила в одну точку
+      expect(spread.length).toBeGreaterThan(50)
+
+      // саме дві точки й на кожній непорожня книга — інакше «own < all» трималося б на
+      // точці, де людина возила, але вже все забрала
+      const two = spread.find(
+        (x) => x.pts.length === 2 && x.pts.every((p) => cardBalance(x.id, p) > 0.009),
+      )!
+      const network = supplierBalance(two.id, st.receptions, st.payouts)
+      for (const p of two.pts) {
+        expect(cardBalance(two.id, p)).toBeGreaterThan(0)
+        expect(cardBalance(two.id, p)).toBeLessThan(network)
+      }
+      expect(round2(two.pts.reduce((a, p) => a + cardBalance(two.id, p), 0))).toBe(network)
+
+      // і це не поодинокий випадок: у 97 із 101 кожна окрема книга строго менша за мережеву
+      let strict = 0
+      for (const x of spread) {
+        const net = supplierBalance(x.id, st.receptions, st.payouts)
+        if (net > 0.009 && x.pts.every((p) => cardBalance(x.id, p) < net - 0.009)) strict++
+      }
+      expect(strict).toBeGreaterThan(50)
+    })
+
+    /**
+     * Регресія. Видача в режимі «Усі точки» (`SettleDialog` без `scopePointId`) гасить
+     * прийомки КІЛЬКОХ пунктів однією виплатою, а `pointId` штампує пунктом найстарішого
+     * залишку. Поки книга пункту рахувалася як `supplierBalance()` над виплатами,
+     * звуженими за цим штампом, ця одна дія розводила дві формули: пункт-штамп показував
+     * −7 975,30 ₴ (і саме це друкувалося на чеку, який людина забирає з собою), сусідній —
+     * +7 975,30 ₴ при ПОРОЖНЬОМУ списку решток, хоча мережевий борг дорівнював нулю.
+     * Жоден тест цього не ловив: у сіді немає виплати, чиї прив'язки перетинають пункт
+     * (`seed.test.ts` це навіть стверджує), тому дірка була досяжна лише через стор.
+     */
+    it('видача в режимі «Усі точки» не розводить книгу пункту зі списком її ж решток', () => {
+      const st = useStore.getState()
+      // людина з відкритим залишком на ДВОХ пунктах — інакше перетину прив'язок не буде
+      const pointIds = st.points.map((p) => p.id)
+      const target = st.suppliers
+        .map((s) => ({ id: s.id, pts: pointIds.filter((p) => cardBalance(s.id, p) > 0.009) }))
+        .find((x) => x.pts.length >= 2)!
+      expect(target).toBeDefined()
+
+      const openAll = openDebts(target.id, st.receptions, st.payouts)
+      const total = round2(openAll.reduce((a, o) => a + o.open, 0))
+      // рівно те, що робить SettleDialog у режимі «Усі точки»: без scopePointId,
+      // а pointId — пункт найстарішого відкритого залишку
+      useStore.getState().addPayout({
+        date: TODAY,
+        pointId: openAll[0].reception.pointId,
+        supplierId: target.id,
+        amount: total,
+        operator: 'Каса',
+      })
+
+      const after = useStore.getState()
+      expect(supplierBalance(target.id, after.receptions, after.payouts)).toBe(0)
+      for (const p of target.pts) {
+        const book = cardBalance(target.id, p)
+        const remainders = round2(
+          openDebts(target.id, scopedReceptions(after.receptions, p), after.payouts).reduce(
+            (a, o) => a + o.open,
+            0,
+          ),
+        )
+        // книга пункту і сума її ж решток — одне число. Мінус тут = мінус на чеку
+        expect(book).toBe(remainders)
+        expect(book).toBeGreaterThanOrEqual(0)
+      }
+      // і розклад «Де саме лежить» усе одно сходиться з мережею
+      expect(round2(pointIds.reduce((a, p) => a + cardBalance(target.id, p), 0))).toBe(0)
+    })
+
+    it('Σ попунктних залишків дорівнює мережевому — на цьому тримається розклад на картці', () => {
+      const st = useStore.getState()
+      const pointIds = st.points.map((p) => p.id)
+      for (const s of st.suppliers) {
+        const network = supplierBalance(s.id, st.receptions, st.payouts)
+        expect(round2(pointIds.reduce((a, p) => a + cardBalance(s.id, p), 0))).toBe(network)
+      }
+      // розклад не має права загубити гроші на пункті, якого немає в довіднику
+      expect(st.receptions.every((r) => pointIds.includes(r.pointId))).toBe(true)
+      expect(st.payouts.every((p) => pointIds.includes(p.pointId))).toBe(true)
+    })
   })
 })

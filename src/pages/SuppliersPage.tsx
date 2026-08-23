@@ -1,7 +1,6 @@
 import * as React from 'react'
 import { Plus, Search, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {
   Table,
@@ -14,7 +13,8 @@ import {
 import { PageHeader } from '@/components/common/bits'
 import { AddSupplierDialog } from '@/components/reception/SupplierPicker'
 import { useStore } from '@/lib/store'
-import { supplierBalance, sum } from '@/lib/calc'
+import { supplierBalanceAt, sum } from '@/lib/calc'
+import { KindBadge } from '@/components/common/kind'
 import { kg, shortDate, uah, uahAuto } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -36,6 +36,7 @@ export function SuppliersPage() {
     [receptions, activePointId],
   )
 
+  // Е2: борг попунктний — «він цей борг з іншої точки забрати не може» (дзвінок №4, ряд. 902).
   const rows = React.useMemo(() => {
     return suppliers
       .filter(
@@ -43,14 +44,20 @@ export function SuppliersPage() {
           activePointId === 'all' || s.homePointId === activePointId || deliveredHere.has(s.id),
       )
       .map((s) => {
-        const items = receptions.filter((r) => r.supplierId === s.id)
+        // Усі колонки рядка — по ОДНІЙ книзі. Раніше «Залишок» був попунктний, а «Здач»,
+        // «Ягоди здано» і «Нараховано» — мережеві, і на точці рядок читався як помилка:
+        // нараховано більше, ніж людина тут здавала. У режимі «Усі точки» звуження немає
+        const items = receptions.filter(
+          (r) => r.supplierId === s.id && (activePointId === 'all' || r.pointId === activePointId),
+        )
         const last = items.length ? items[items.length - 1] : undefined
         return {
           supplier: s,
           count: items.length,
           net: sum(items, (r) => r.net),
           amount: sum(items, (r) => r.amount),
-          balance: supplierBalance(s.id, receptions, payouts),
+          // книга пункту — по прив'язках виплат, не по їхньому штампу: див. calc.ts
+          balance: supplierBalanceAt(s.id, receptions, payouts, activePointId),
           last: last?.date,
         }
       })
@@ -103,7 +110,9 @@ export function SuppliersPage() {
           Тільки з залишком
         </Button>
         <div className="ml-auto text-sm text-muted-foreground">
-          Загальний залишок за нами{' '}
+          {activePointId === 'all'
+            ? 'Залишок за нами по всіх точках'
+            : 'Залишок за нами на цій точці'}{' '}
           <span className="font-mono font-semibold text-[var(--amber)]">{uah(totalBalance)}</span>
         </div>
       </div>
@@ -136,13 +145,12 @@ export function SuppliersPage() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="truncate font-medium">{r.supplier.name}</span>
-                        {/* Дод. ціна тепер по рядку прийомки, як їхня колонка J ✓ M7 —
-                            на постачальнику надбавки більше немає, лишається сам ОПТ */}
-                        {r.supplier.wholesale ? (
-                          <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
-                            ОПТ
-                          </Badge>
-                        ) : null}
+                        {/* Дод. ціна тепер по рядку прийомки, як їхня колонка J ✓ M7 — на
+                            постачальнику надбавки немає, лишається сам маркер: ОПТ / Фермер */}
+                        <KindBadge
+                          kind={r.supplier.kind}
+                          className="h-4 px-1.5 text-[10px]"
+                        />
                       </div>
                       <div className="truncate text-xs text-muted-foreground">
                         {r.supplier.village} ·{' '}

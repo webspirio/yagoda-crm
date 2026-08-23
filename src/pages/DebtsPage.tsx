@@ -2,7 +2,7 @@ import * as React from 'react'
 import { ArrowRight, HandCoins, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
+import { KindBadge } from '@/components/common/kind'
 import { Eyebrow, PageHeader, StatTile } from '@/components/common/bits'
 import { SettleDialog } from '@/components/debts/SettleDialog'
 import { scopedReceptions, useStore } from '@/lib/store'
@@ -115,11 +115,7 @@ export function DebtsPage() {
                   >
                     <div className="flex items-center gap-2">
                       <span className="truncate font-medium">{r.supplier.name}</span>
-                      {r.supplier.wholesale ? (
-                        <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
-                          ОПТ
-                        </Badge>
-                      ) : null}
+                      <KindBadge kind={r.supplier.kind} className="h-4 px-1.5 text-[10px]" />
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {r.supplier.village} ·{' '}
