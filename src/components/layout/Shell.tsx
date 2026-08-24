@@ -3,15 +3,19 @@ import {
   BarChart3,
   CalendarCheck2,
   CircleDollarSign,
+  Calculator,
   CloudOff,
   Cloud,
   History,
   MapPin,
   Menu,
+  Network,
   Package,
+  Printer,
   RefreshCw,
   RotateCcw,
   Scale,
+  Weight,
   Users,
   Wallet,
 } from 'lucide-react'
@@ -27,7 +31,8 @@ import {
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { longDate, weekday } from '@/lib/format'
-import { pendingCount, useStore, type Route, type RouteName } from '@/lib/store'
+import { pendingCount, useStore } from '@/lib/store'
+import type { Route, RouteName } from '@/lib/types'
 import { OPERATORS, TODAY } from '@/lib/seed'
 import { toast } from 'sonner'
 
@@ -59,6 +64,12 @@ const NAV: { group: string; items: NavItem[] }[] = [
     group: 'Керівництву',
     items: [
       { name: 'dashboard', label: 'Зведення', icon: BarChart3, roles: ['owner'] },
+      // Переважування й витрати дня — тільки власник: «тільки керівник має до цього всього
+      // доступ» (дзвінок №4, ряд. 617–621), і рядки витрат набирає лише він (09 §7)
+      { name: 'cost', label: 'Собівартість дня', icon: Calculator, roles: ['owner'] },
+      { name: 'reweigh', label: 'Переважування', icon: Weight, roles: ['owner'] },
+      { name: 'network', label: 'Середня ціна по мережі', icon: Network, roles: ['owner'] },
+      { name: 'sheet', label: 'Аркуш керівника', icon: Printer, roles: ['owner'] },
       { name: 'points', label: 'Точки', icon: MapPin, roles: ['owner'] },
       { name: 'refs', label: 'Тара і сорти', icon: Package, roles: ['owner'] },
     ],
@@ -242,7 +253,8 @@ function SyncPill() {
   const syncAll = useStore((s) => s.syncAll)
   const receptions = useStore((s) => s.receptions)
   const payouts = useStore((s) => s.payouts)
-  const pending = pendingCount(receptions, payouts)
+  const reweighs = useStore((s) => s.reweighs)
+  const pending = pendingCount(receptions, payouts, reweighs)
   const [syncing, setSyncing] = React.useState(false)
 
   function toggle() {

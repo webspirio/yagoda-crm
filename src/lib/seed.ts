@@ -1,13 +1,18 @@
-import { allocatePayout, openDebts, round2, tareWeight, weigh } from './calc'
+import { allocatePayout, openDebts, productDay, round2, tareWeight, weigh } from './calc'
 import { addDays, toISO } from './format'
 import { SUPPLIER_SEED } from './seed-suppliers'
 import type {
   Berry,
+  ClockTime,
+  DayExpense,
+  ExpensePolicy,
   ISODate,
   Payout,
   Point,
   PriceRecord,
   Reception,
+  Reweigh,
+  ReweighLine,
   Settings,
   Supplier,
   TareLine,
@@ -31,26 +36,54 @@ export const SEASON_START: ISODate = '2026-06-27'
 /** Останній повний день історії; 04.08 — 39-й, частковий, «зараз іде» */
 const HISTORY_END: ISODate = '2026-08-03'
 
-/** 10 пунктів з їхнього ж випадаючого списку `Data_Import!E` ✓ PART A. p6–p10 — «від 5 до 10» */
+/**
+ * 10 пунктів з їхнього ж випадаючого списку `Data_Import!E` ✓ PART A. p6–p10 — «від 5 до 10».
+ *
+ * Клієнт назвала три працюючі точки: Гайове, Шипинки, Попівці. Двох назв із сіду —
+ * Войнашівка і Міжлісся — вона не називала взагалі. Звузити набір активних до трьох
+ * означало б зсунути `rnd()` у циклі прийомки і зламати заморожені анкери сезону, тому
+ * p2 і p5 ПЕРЕЙМЕНОВАНІ на села з її ж списку планованих точок («с. Конищів,
+ * с. Михайлівці… та інші»), а їхні старі назви переїхали на неактивні p10 і зникли з
+ * екрана. `id` не чіпаємо: на них тримається все — від `HOME_POINT_BY_VILLAGE` до анкерів.
+ */
 export const POINTS: Point[] = [
-  { id: 'p1', name: 'Шипинки', village: 'с. Шипинки', isMain: true, active: true },
-  { id: 'p2', name: 'Войнашівка', village: 'с. Войнашівка', isMain: false, active: true },
-  { id: 'p3', name: 'Гайове', village: 'с. Гайове', isMain: false, active: true },
-  { id: 'p4', name: 'Попівці', village: 'с. Попівці', isMain: false, active: true },
-  { id: 'p5', name: 'Міжлісся', village: 'с. Міжлісся', isMain: false, active: true },
-  { id: 'p6', name: 'Конищів', village: 'с. Конищів', isMain: false, active: false },
-  { id: 'p7', name: 'Михайлівці', village: 'с. Михайлівці', isMain: false, active: false },
-  { id: 'p8', name: 'Зоряне', village: 'с. Зоряне', isMain: false, active: false },
-  { id: 'p9', name: 'Дашківці', village: 'с. Дашківці', isMain: false, active: false },
-  { id: 'p10', name: 'Журавлівка', village: 'с. Журавлівка', isMain: false, active: false },
+  { id: 'p1', name: 'Шипинки', village: 'с. Шипинки', kind: 'reception', isMain: true, active: true },
+  { id: 'p2', name: 'Конищів', village: 'с. Конищів', kind: 'reception', isMain: false, active: true },
+  { id: 'p3', name: 'Гайове', village: 'с. Гайове', kind: 'reception', isMain: false, active: true },
+  { id: 'p4', name: 'Попівці', village: 'с. Попівці', kind: 'reception', isMain: false, active: true },
+  { id: 'p5', name: 'Михайлівці', village: 'с. Михайлівці', kind: 'reception', isMain: false, active: true },
+  { id: 'p6', name: 'Журавлівка', village: 'с. Журавлівка', kind: 'reception', isMain: false, active: false },
+  { id: 'p7', name: 'Осламів', village: 'с. Осламів', kind: 'reception', isMain: false, active: false },
+  { id: 'p8', name: 'Зоряне', village: 'с. Зоряне', kind: 'reception', isMain: false, active: false },
+  { id: 'p9', name: 'Дашківці', village: 'с. Дашківці', kind: 'reception', isMain: false, active: false },
+  { id: 'p10', name: 'Войнашівка', village: 'с. Войнашівка', kind: 'reception', isMain: false, active: false },
 ]
+
+/**
+ * Склад/холодильник: місце переважування І пункт прийому з оптовими цінами (M37).
+ * Поза `POINTS` навмисно: `activePoints` у `buildSeed()` будується саме з `POINTS`,
+ * і розширення того масиву зсунуло б послідовність `rnd()` у циклі прийомки.
+ *
+ * БЕЗ `export`: назовні база виходить у складі `seed.points`, і жодному екрану окремий
+ * літерал не потрібен. Експорт без імпортера `deadcode` показав би як нову знахідку —
+ * а поставити її в baseline було б позеленінням через розширення винятку.
+ */
+const BASE_POINT: Point = {
+  id: 'base',
+  name: 'Склад',
+  village: 'база',
+  kind: 'base',
+  isMain: false,
+  active: true,
+}
 
 /** Каса на початок дня, набрана руками в `E1` ✓ PART B; Гайове — зі скриншотів ДОПОМОГА ✓ H6 */
 export const CASH_FLOAT_BY_POINT: Record<string, number> = { p1: 145_453, p3: 50_000 }
 
 /**
- * Товар — верхній рівень, 9 позицій ✓ PART A. `Berry.product` посилається на `name`.
- * Кизил не має жодного сорту в переліку 17 — і це реальний глухий кут: тара тягнеться
+ * Товар — верхній рівень, 10 позицій: 9 виміряних ✓ PART A плюс Аронія з дзвінка №4.
+ * `Berry.product` посилається на `name`.
+ * Кизил не має жодного сорту в переліку сортів — і це реальний глухий кут: тара тягнеться
  * `VLOOKUP` по сорту, ціна теж прив'язана до сорту, тому «Кизил» нікуди не веде ✓ PART A.
  */
 export const PRODUCTS: Array<{ id: string; name: string }> = [
@@ -63,10 +96,14 @@ export const PRODUCTS: Array<{ id: string; name: string }> = [
   { id: 'pr_buzyna', name: 'Бузина' },
   { id: 'pr_shypshyna', name: 'Шипшина' },
   { id: 'pr_kyzyl', name: 'Кизил' },
+  // Аронія названа клієнтом у дзвінку №4 як позиція цього сезону — новий ТОВАР, і в нього
+  // одразу є свій сорт, тому «товар без жодного сорту» лишається рівно один: Кизил
+  { id: 'pr_aroniia', name: 'Аронія' },
 ]
 
 /**
- * Сорт — 17 позицій, і це ключ ціни ✓ PART A.
+ * Сорт — 18 позицій, і це ключ ціни. Виміряних у файлі клієнта було 17 ✓ PART A;
+ * 18-та — Аронія, названа клієнтом у дзвінку №4, у кінці масиву й поза демо-періодом.
  *
  * Верифіковані чотири ціни: Ожина 60 / Ожина ОПТ 65 / Шипшина 35 / Шипшина ОПТ 30 ✓ PART A.
  * Асиметрія навмисна: ОПТ — окремий сорт зі своєю ціною, а не множник і не знижка.
@@ -82,17 +119,23 @@ export const BERRIES: Berry[] = [
   { id: 'v_mal_3', name: 'Малина 3', short: 'Мал. 3', product: 'Малина', wholesale: false, from: '2026-06-27', to: '2026-08-04', basePrice: 95 },
   { id: 'v_sun', name: 'Суниця', short: 'Суниця', product: 'Суниця', wholesale: false, from: '2026-06-27', to: '2026-07-10', basePrice: 90 },
   { id: 'v_vysh', name: 'Вишня', short: 'Вишня', product: 'Вишня', wholesale: false, from: '2026-06-27', to: '2026-07-20', basePrice: 35 },
-  { id: 'v_vysh_o', name: 'Вишня ОПТ', short: 'Вишня ОПТ', product: 'Вишня', wholesale: true, from: '2026-06-27', to: '2026-07-20', basePrice: 32 },
-  { id: 'v_por', name: 'Порічка', short: 'Порічка', product: 'Порічка', wholesale: false, from: '2026-07-05', to: '2026-07-28', basePrice: 50 },
-  { id: 'v_por_o', name: 'Порічка ОПТ', short: 'Порічка ОПТ', product: 'Порічка', wholesale: true, from: '2026-07-05', to: '2026-07-28', basePrice: 48 },
+  { id: 'v_vysh_o', name: 'Вишня ОПТ', short: 'Вишня ОПТ', product: 'Вишня', wholesale: true, retired: true, from: '2026-06-27', to: '2026-07-20', basePrice: 32 },
+  // Сезон продовжений 28.07 → 04.08 навмисно (09 §8.1 п.5): канонічний день собівартості
+  // тримається на трьох товарах, і Порічки без цього на 04.08 немає ні в цінах, ні в прийомці.
+  // ОПТ-сорт `v_por_o` лишається як був — канонічному дню він не потрібен.
+  { id: 'v_por', name: 'Порічка', short: 'Порічка', product: 'Порічка', wholesale: false, from: '2026-07-05', to: '2026-08-04', basePrice: 50 },
+  { id: 'v_por_o', name: 'Порічка ОПТ', short: 'Порічка ОПТ', product: 'Порічка', wholesale: true, retired: true, from: '2026-07-05', to: '2026-07-28', basePrice: 48 },
   { id: 'v_smor', name: 'Смородина', short: 'Смородина', product: 'Смородина', wholesale: false, from: '2026-07-05', to: '2026-08-04', basePrice: 45 },
-  { id: 'v_smor_o', name: 'Смородина ОПТ', short: 'Смород. ОПТ', product: 'Смородина', wholesale: true, from: '2026-07-05', to: '2026-08-04', basePrice: 42 },
+  { id: 'v_smor_o', name: 'Смородина ОПТ', short: 'Смород. ОПТ', product: 'Смородина', wholesale: true, retired: true, from: '2026-07-05', to: '2026-08-04', basePrice: 42 },
   { id: 'v_ozh', name: 'Ожина', short: 'Ожина', product: 'Ожина', wholesale: false, from: '2026-07-22', to: '2026-08-04', basePrice: 60 },
-  { id: 'v_ozh_o', name: 'Ожина ОПТ', short: 'Ожина ОПТ', product: 'Ожина', wholesale: true, from: '2026-07-22', to: '2026-08-04', basePrice: 65 },
+  { id: 'v_ozh_o', name: 'Ожина ОПТ', short: 'Ожина ОПТ', product: 'Ожина', wholesale: true, retired: true, from: '2026-07-22', to: '2026-08-04', basePrice: 65 },
   { id: 'v_buz', name: 'Бузина', short: 'Бузина', product: 'Бузина', wholesale: false, from: '2026-07-25', to: '2026-08-04', basePrice: 25 },
-  { id: 'v_buz_o', name: 'Бузина ОПТ', short: 'Бузина ОПТ', product: 'Бузина', wholesale: true, from: '2026-07-25', to: '2026-08-04', basePrice: 22 },
+  { id: 'v_buz_o', name: 'Бузина ОПТ', short: 'Бузина ОПТ', product: 'Бузина', wholesale: true, retired: true, from: '2026-07-25', to: '2026-08-04', basePrice: 22 },
   { id: 'v_shyp', name: 'Шипшина', short: 'Шипшина', product: 'Шипшина', wholesale: false, from: '2026-08-01', to: '2026-08-04', basePrice: 35 },
-  { id: 'v_shyp_o', name: 'Шипшина ОПТ', short: 'Шипш. ОПТ', product: 'Шипшина', wholesale: true, from: '2026-08-01', to: '2026-08-04', basePrice: 30 },
+  { id: 'v_shyp_o', name: 'Шипшина ОПТ', short: 'Шипш. ОПТ', product: 'Шипшина', wholesale: true, retired: true, from: '2026-08-01', to: '2026-08-04', basePrice: 30 },
+  // Аронія названа клієнтом у дзвінку №4 як позиція цього сезону. Вікно — ПІСЛЯ TODAY:
+  // цикл цін відсіює її раніше, ніж викличе rnd(), тому сезонні анкери не рухаються
+  { id: 'v_aron', name: 'Аронія', short: 'Аронія', product: 'Аронія', wholesale: false, retired: false, from: '2026-08-20', to: '2026-10-15', basePrice: 28 },
 ]
 
 /** `Data_Import!G/H/I` ✓ PART A. Чешка стоїть у 1 701 з 1 701 рядка ✓ H5 */
@@ -107,10 +150,12 @@ export const TARE_TYPES: TareType[] = [
 export const DEFAULT_TARE_ID = 'tr_cheshka'
 
 /**
- * M7: «не більше 20… чи не більше 30». Верхня межа саме 30, а не 25: +30 реально
- * трапляється на другому пункті ✓ PART B, і жорсткий кап на 25 відкидав би їхні ж дані.
+ * Межі дод. ціни, названі клієнтом на дзвінку №4: «30 - це максимум» (ряд. 701).
+ * Верхня межа саме 30, а не 25: +30 реально трапляється на другому пункті ✓ PART B.
+ * Мінус реальний і теж до −30: «поки довезла, то вже свила, то ми закрили мінус 30» (729).
+ * Керівник змінює межу сам — на горіхах ціна може стрибнути на 100 ₴ (714–716).
  */
-export const DEFAULT_SETTINGS: Settings = { surchargeMin: -15, surchargeMax: 30 }
+export const DEFAULT_SETTINGS: Settings = { surchargeMin: -30, surchargeMax: 30 }
 
 /** Ціну виставляє керівник: «Я виставляю ціну для всіх» ✓ M6 */
 export const OWNER = 'Керівник'
@@ -125,6 +170,9 @@ export const OPERATORS: Record<string, string> = {
   p3: 'Ігор В.',
   p4: 'Богдан Р.',
   p5: 'Леся М.',
+  // переважування й прийомку на складі робить керівник: «тільки керівник має до цього
+  // всього доступ» (дзвінок №4, ряд. 617–621) — окремого «приймальника бази» немає
+  base: OWNER,
   all: OWNER,
 }
 
@@ -185,7 +233,7 @@ const P2_TOP_DEBT_NAME = 'Савчук Дарія Богданівна'
 const P2_TOP_DEBT_UAH = 129_278
 
 /**
- * Малі пункти — «щойно розгорнуті», 6–10 рядків/день ✓ docs/05 §1.5. Міжлісся тримаємо
+ * Малі пункти — «щойно розгорнуті», 6–10 рядків/день ✓ docs/05 §1.5. p5 тримаємо
  * мінімумом мережі: «Зведення» має показувати асиметрію, а не чотири однакові стовпчики.
  * Кілограми теж нормалізуємо — без денної цілі важкий ОПТ-постачальник із загального мішка
  * тягнув на Попівці 45 кг/рядок проти 27,9 на Шипинках, і придорожній пункт на 8 рядків
@@ -202,13 +250,13 @@ const SMALL_POINT_KG_FACTOR: Record<string, number> = { p3: 0.95, p4: 1, p5: 0.7
 /**
  * Частка відкритого залишку від нарахованого: на Шипинках це 1 273 518 / 5 968 793 = 21,3 %
  * ✓ PART A. Малі пункти доводимо до тієї самої частки — інакше борг пункту залежить від того,
- * кого мішок випадково витягнув, і Попівці виходили в 23 рази важчими за Міжлісся.
+ * кого мішок випадково витягнув, і Попівці виходили в 23 рази важчими за p5.
  */
 const SMALL_OPEN_SHARE = P1_OPEN_DEBT / 5_968_793
 
 /**
  * Дод. ціна +26…+30 — рівно те, чим виправданий кап 30, а не 25: «+30 реально трапляється
- * на другому пункті» ✓ M7, PART B, docs/05 §1.5 S13. П'ять рядків, усі на Войнашівці.
+ * на другому пункті» ✓ M7, PART B, docs/05 §1.5 S13. П'ять рядків, усі на p2 (Конищів).
  */
 const P2_HIGH_BONUS = [26, 30, 27, 30, 28]
 
@@ -248,7 +296,7 @@ const MIX_RETAIL: Record<string, number> = {
   v_vysh_o: 0, v_por_o: 0, v_smor_o: 0, v_ozh_o: 0, v_buz_o: 0, v_shyp_o: 0,
 }
 /**
- * Войнашівка в серпні — майже виключно малина вищих сортів. Це не смак, це арифметика їхніх
+ * Другий пункт у серпні — майже виключно малина вищих сортів. Це не смак, це арифметика їхніх
  * же чисел: 184 рядки, 6 930 кг, Сума 1 012 883 ₴ ✓ H9 = 146,2 ₴/кг, тобто ВИЩЕ за будь-який
  * сорт у прайсі. Тримаємо рядки й гроші, а середню ціну підводимо міксом настільки,
  * наскільки прайс дозволяє. ⟡ Справжня ціна малини — з `Data_Import!B`.
@@ -276,7 +324,7 @@ const PAY_PROFILE: Record<string, PayProfile> = {
   // Їхнє «Виплачено» 5 973 595 ₴ ≈ «Нараховано» 5 968 793 ₴ І при цьому Залишок 1 273 518 ₴
   // одночасно неможливі в чесному реєстрі — саме тому §2.3 і каже, що ця колонка не сальдо.
   p1: { full: 0.09, toHundred: 0.11, low: 0.1, high: 0.6 },
-  // Войнашівка щойно в роботі: каса тонка (50 000 ₴ на пункті іншого масштабу ✓ H6 проти
+  // Другий пункт щойно в роботі: каса тонка (50 000 ₴ на пункті іншого масштабу ✓ H6 проти
   // 145 453 ₴ на Шипинках), тому гроші забирають пізніше — звідси БОРГ 855 676 ₴ ✓ H9
   p2: { full: 0.05, toHundred: 0.05, low: 0.15, high: 0.45 },
   p3: { full: 0.45, toHundred: 0.2, low: 0.2, high: 0.8 },
@@ -322,6 +370,9 @@ export interface SeedData {
   prices: PriceRecord[]
   receptions: Reception[]
   payouts: Payout[]
+  reweighs: Reweigh[]
+  expenses: DayExpense[]
+  policies: ExpensePolicy[]
 }
 
 /** Рядок у роботі — до нього ще не приклеєні id, code і час сортування */
@@ -356,7 +407,11 @@ export function buildSeed(): SeedData {
     name: s.name,
     village: s.village,
     homePointId: HOME_POINT_BY_VILLAGE[s.village.trim().toLowerCase()] ?? 'p1',
-    wholesale: s.wholesale,
+    // ОПТ беремо з замороженого літерала `seed-suppliers.ts` — 208 рядків із
+    // `wholesale: boolean` лишаються джерелом істини, правити їх руками означало б
+    // 208 шансів на описку. Фермерів розставляємо детерміновано кожним десятим із
+    // решти — 18 карток, щоб екран маркерів мав що показувати (M24)
+    kind: s.wholesale ? 'wholesale' : i % 10 === 0 ? 'farmer' : 'none',
     note: s.note,
     createdAt: SEASON_START,
   }))
@@ -465,7 +520,7 @@ export function buildSeed(): SeedData {
     if (pointId === 'p1') return day === TODAY ? P1_TODAY_LINES : P1_DAY_LINES[dayIndex]
     if (pointId === 'p2') return P2_DAY_LINES[day] ?? 0
     // «щойно розгорнуті» пункти — 6–10 рядків на день, щоб мережа читалась асиметрично,
-    // і Міжлісся в цій вилці найнижче ✓ docs/05 §1.5
+    // і p5 у цій вилці найнижче ✓ docs/05 §1.5
     const [lo, hi] = SMALL_POINT_LINES[pointId]
     return day === TODAY ? int(Math.round(lo / 2), Math.round(hi / 2)) : int(lo, hi)
   }
@@ -543,7 +598,7 @@ export function buildSeed(): SeedData {
 
         // ОПТ-сорт може взяти тільки ОПТ-постачальник
         const inSeason = BERRIES.filter(
-          (b) => day >= b.from && day <= b.to && (!b.wholesale || supplier.wholesale),
+          (b) => day >= b.from && day <= b.to && (!b.wholesale || supplier.kind === 'wholesale'),
         )
         if (!inSeason.length) break
 
@@ -560,7 +615,9 @@ export function buildSeed(): SeedData {
 
         const w = weightOf.get(supplier.id) ?? 1
         const mix =
-          point.id === 'p2' ? MIX_P2 : supplier.wholesale ? MIX_WHOLESALE : MIX_RETAIL
+          point.id === 'p2' ? MIX_P2
+          : supplier.kind === 'wholesale' ? MIX_WHOLESALE
+          : MIX_RETAIL
         const left = [...inSeason]
         for (let l = 0; l < lines; l++) {
           // рядки одного візиту — різні сорти: «маліна є трьох сортів» ✓ PART A
@@ -597,7 +654,9 @@ export function buildSeed(): SeedData {
       /* --- два краї масштабу, в один день і в один журнал ✓ S12 --- */
       if (point.id === 'p1' && day === P1_PEAK_DAY) {
         const big =
-          slots.find((s) => s.supplier.wholesale && (weightOf.get(s.supplier.id) ?? 0) >= 20) ??
+          slots.find(
+            (s) => s.supplier.kind === 'wholesale' && (weightOf.get(s.supplier.id) ?? 0) >= 20,
+          ) ??
           slots[0]
         big.berry = BERRIES[0]
         big.crates = EXTREME_CRATES
@@ -618,7 +677,7 @@ export function buildSeed(): SeedData {
       if (point.id === 'p2' && palletsUsed < P2_PALLETS.length) {
         const optInSeason = BERRIES.filter((b) => b.wholesale && day >= b.from && day <= b.to)
         const candidates = slots
-          .filter((s) => s.supplier.wholesale && !s.fixedNet)
+          .filter((s) => s.supplier.kind === 'wholesale' && !s.fixedNet)
           .sort((a, b) => b.share - a.share)
         const perDay = day === HISTORY_END ? 1 : 2
         for (let i = 0; i < Math.min(perDay, candidates.length); i++) {
@@ -631,7 +690,7 @@ export function buildSeed(): SeedData {
       }
 
       /* --- Дод. ціна +26…+30: те саме, чим виправданий кап 30 ✓ M7, S13 --- */
-      // Тільки Войнашівка: на «Тарі і сортах» кап 30 має спиратись на реальні рядки, інакше
+      // Тільки другий пункт: на «Тарі і сортах» кап 30 має спиратись на реальні рядки, інакше
       // власниця бачить межу, під якою в даних немає нічого вище +25.
       if (point.id === 'p2' && highBonusUsed < P2_HIGH_BONUS.length) {
         let takenToday = 0
@@ -792,7 +851,7 @@ export function buildSeed(): SeedData {
     // решту віддають, коли людина приїжджає з ягодою знову — хто перестав приїжджати,
     // висить на залишку, точно як у житті
     for (const visit of visitsByDay.get(day) ?? []) {
-      // на Войнашівці боржник не забирає нічого — 129 278 ₴ це його персональне число ✓ H9;
+      // на другому пункті боржник не забирає нічого — 129 278 ₴ це його персональне число ✓ H9;
       // на решті пунктів він розраховується як усі, інакше борг нікуди не гаситься
       if (topDebtSupplier && visit.supplierId === topDebtSupplier.id && visit.pointId === 'p2') {
         continue
@@ -913,14 +972,420 @@ export function buildSeed(): SeedData {
     payout.visitId = visitLines[0].visitId
   }
 
+  /* ---------------- База як пункт прийому (M37) ---------------- */
+  // Усе нижче стоїть У САМОМУ КІНЦІ buildSeed() і споживає ВЛАСНИЙ генератор: наявна
+  // послідовність rnd() лишається недоторканою, тому жоден заморожений анкер сезону
+  // (38 днів, 78 рядків, 47 441 кг, 5 968 793 ₴, 1 273 518 ₴, 855 676 ₴, 129 278 ₴) не
+  // рухається. `activePoints` теж не розширений — база не бере участі в циклі прийомки.
+  const rndBase = mulberry32(20260806)
+
+  // «склад тоже считається як одна прийомка, але тут типа як оптові ціни» (дзвінок №4,
+  // ряд. 545): та сама ціна дня плюс 8 %. Виведені з обігу сорти на складі не котуються.
+  for (const day of days) {
+    for (const berry of BERRIES) {
+      if (berry.retired || day < berry.from || day > berry.to) continue
+      const steps = priceSteps.get(`${day}|${berry.id}`)
+      if (!steps) continue
+      for (const step of steps) {
+        prices.push({
+          id: `pr_base_${day}_${berry.id}_${step.time.replace(':', '')}`,
+          date: day,
+          pointId: BASE_POINT.id,
+          berryId: berry.id,
+          price: Math.round(step.price * 1.08),
+          time: step.time,
+          author: OWNER,
+          reason: 'Оптова ціна складу: +8 % до ціни дня',
+        })
+      }
+    }
+  }
+
+  // Невелика прийомка складу за TODAY, щоб екран пункту не був порожній. Обмеження, які
+  // тримають заморожені твердження про ВСІ прийомки: час у частковому дні 07:00–12:00,
+  // тара тільки Чешка, Піддон і Дод. ціна нульові, розрахунок повний (борг 0, тому й
+  // жодної виплати на складі), нетто через weigh() — рушій і сід рахують однаково.
+  const baseInt = (a: number, b: number) => a + Math.floor(rndBase() * (b - a + 1))
+  const baseBerries = BERRIES.filter((b) => !b.retired && TODAY >= b.from && TODAY <= b.to)
+  const baseSuppliers = suppliers.filter((s) => s.kind === 'wholesale').slice(0, 4)
+  let baseSeq = receptions.length
+  for (const supplier of baseSuppliers) {
+    const visitId = `v_base_${supplier.id}`
+    const time = `${pad(baseInt(7, 11), 2)}:${pad(baseInt(0, 59), 2)}`
+    const left = [...baseBerries]
+    const lines = rndBase() < 0.5 ? 2 : 1
+    for (let l = 0; l < lines && left.length; l++) {
+      const berry = left.splice(baseInt(0, left.length - 1), 1)[0]
+      const net = round2(baseInt(80, 400) + Math.round(rndBase() * 10) / 10)
+      const tare: TareLine[] = [{ tareId: DEFAULT_TARE_ID, count: Math.max(1, Math.round(net / 5)) }]
+      const gross = round2(net + tareWeight(tare, TARE_TYPES))
+      // berry — це вже елемент BERRIES, тому пошук і `!` тут були зайві
+      const price = Math.round(berry.basePrice * 1.08)
+      const w = weigh({ gross, pallet: 0, tare, price, bonus: 0 }, TARE_TYPES)
+      baseSeq++
+      receptions.push({
+        id: `r${baseSeq}`,
+        code: `Ч-${pad(baseSeq)}`,
+        date: TODAY,
+        time,
+        pointId: BASE_POINT.id,
+        supplierId: supplier.id,
+        berryId: berry.id,
+        gross: w.gross,
+        pallet: w.pallet,
+        tare,
+        tareWeight: w.tareWeight,
+        net: w.net,
+        price,
+        bonus: 0,
+        amount: w.amount,
+        paid: w.amount,
+        debt: 0,
+        carriedIn: 0,
+        visitId,
+        operator: OPERATORS[BASE_POINT.id],
+        synced: true,
+      })
+    }
+  }
+
+  /* ---------------- Переважування і витрати дня (09 §8) ---------------- */
+  // ВЛАСНИЙ генератор, як і в блоці бази вище: наявні послідовності rnd() і rndBase()
+  // лишаються недоторканими, тому заморожені анкери сезону не рухаються ЗА ПОБУДОВОЮ,
+  // а не за збігом. Усе нижче стоїть у самому кінці buildSeed(), перед return.
+  const rndCost = mulberry32(20260805)
+  const costBetween = (a: number, b: number) => a + rndCost() * (b - a)
+  const costInt = (a: number, b: number) => a + Math.floor(rndCost() * (b - a + 1))
+
+  const reweighs: Reweigh[] = []
+  const expenses: DayExpense[] = []
+  // Політик у сіді немає: дефолт byWeight застосовується саме тоді, коли політики немає,
+  // і канонічний день мусить рахуватись дефолтом, а не збереженим правилом (D-3).
+  const policies: ExpensePolicy[] = []
+
+  const receptionsByDayPoint = new Map<string, Reception[]>()
+  for (const r of receptions) {
+    const key = `${r.date}|${r.pointId}`
+    const list = receptionsByDayPoint.get(key) ?? []
+    list.push(r)
+    receptionsByDayPoint.set(key, list)
+  }
+
+  /**
+   * Єдиний на весь сід день із НАДЛИШКОМ (I47, Q-06) — найважчий день Шипинок.
+   * Вибір не косметичний: I47 спрацьовує лише коли пул відʼємний, тобто коли надлишок у
+   * гривнях перекриває ручні витрати дня. На малому пункті 1,8 % ваги — це 600 ₴ проти
+   * ~3 800 ₴ витрат, і попередження не з'явилося б узагалі.
+   */
+  const surplusDay = (() => {
+    const kgByDay = new Map<ISODate, number>()
+    for (const r of receptions) {
+      if (r.pointId !== 'p1' || r.date === TODAY) continue
+      kgByDay.set(r.date, (kgByDay.get(r.date) ?? 0) + r.net)
+    }
+    let best: ISODate = HISTORY_END
+    let bestKg = -1
+    for (const [d, kgOfDay] of kgByDay) {
+      if (kgOfDay > bestKg) {
+        bestKg = kgOfDay
+        best = d
+      }
+    }
+    return best
+  })()
+  /** Один товар прийняли, а зважити забули (I50) */
+  const MISSING_PRODUCT_DAY = { pointId: 'p3', date: '2026-07-22' as ISODate }
+  /** Один день без переважування взагалі: витрати є, класти їх нікуди (I51) */
+  const NO_REWEIGH_DAY = { pointId: 'p4', date: '2026-07-29' as ISODate }
+
+  let rwSeq = 0
+  let expSeq = 0
+  for (const day of days) {
+    for (const point of activePoints) {
+      // (p1, TODAY) прибитий оверрайдом нижче — генератор його не чіпає взагалі,
+      // інакше довелося б переписувати вже згенероване, а це два джерела однієї цифри
+      if (point.id === 'p1' && day === TODAY) continue
+      const dayRows = receptionsByDayPoint.get(`${day}|${point.id}`)
+      if (!dayRows?.length) continue
+      const rows = productDay(day, point.id, dayRows, BERRIES)
+      if (!rows.length) continue
+
+      /* --- витрати дня: касир, вантажник, водій, пальне (09 §8) --- */
+      // Мережевих рядків не буває: ExpenseScope скасовано цілком (13 §1 П-2) — керівник
+      // ділить одну машину на три пункти сам і заводить три рядки на трьох пунктах.
+      const loaders = costInt(1, 2)
+      const drivers = costInt(1, 2)
+      const plan: Array<[string, number]> = [
+        ['Касир', 1_000],
+        [loaders === 1 ? 'Вантажник' : `Вантажник ×${loaders}`, 1_300 * loaders],
+        [drivers === 1 ? 'Водій' : `Водій ×${drivers}`, 500 * drivers],
+        ['Пальне', Math.round(costBetween(700, 1_400) / 10) * 10],
+      ]
+      const expenseTime = `${pad(costInt(18, 21), 2)}:${pad(costInt(0, 59), 2)}`
+      for (const [label, amount] of plan) {
+        expenses.push({
+          id: `ex${++expSeq}`,
+          date: day,
+          pointId: point.id,
+          kind: 'manual',
+          label,
+          amount,
+          createdBy: OWNER,
+          createdDate: day,
+          createdTime: expenseTime,
+        })
+      }
+
+      if (point.id === NO_REWEIGH_DAY.pointId && day === NO_REWEIGH_DAY.date) continue
+
+      const surplus = point.id === 'p1' && day === surplusDay
+      const skipProduct =
+        point.id === MISSING_PRODUCT_DAY.pointId && day === MISSING_PRODUCT_DAY.date
+          ? rows[rows.length - 1].product
+          : null
+
+      // сорт-носій рядка — найважчий сорт цього товару того дня: так його й записує вагар
+      const carrier = new Map<string, { berryId: string; net: number }>()
+      for (const r of dayRows) {
+        const product = BERRIES.find((b) => b.id === r.berryId)?.product ?? r.berryId
+        const cur = carrier.get(product)
+        if (!cur || r.net > cur.net) carrier.set(product, { berryId: r.berryId, net: r.net })
+      }
+
+      const id = `rw${++rwSeq}`
+      const lines: ReweighLine[] = []
+      for (const row of rows) {
+        if (row.product === skipProduct) continue
+        // Недостача 0,5–1,8 % ваги (09 §8). Надлишковий день — 2,0–3,0 %, і це не смак:
+        // I47 спрацьовує РІВНО тоді, коли пул відʼємний, тобто коли надлишок у гривнях
+        // перекриває ручні витрати дня (їх максимум тут 6 000 ₴). Зміряно: при 0,5–1,8 %
+        // на найважчому дні пул лишався додатним і попередження не з'являлось узагалі.
+        const drift = surplus ? costBetween(0.02, 0.03) : costBetween(0.005, 0.018)
+        const netKg = round2(Math.max(0.1, row.kgPoint * (surplus ? 1 + drift : 1 - drift)))
+        const crates = Math.max(1, Math.round(netKg / 5))
+        const tare: TareLine[] = [{ tareId: DEFAULT_TARE_ID, count: crates }]
+        const tw = tareWeight(tare, TARE_TYPES)
+        lines.push({
+          id: `${id}_${lines.length + 1}`,
+          order: lines.length + 1,
+          berryId: carrier.get(row.product)?.berryId ?? row.product,
+          product: row.product,
+          grossKg: round2(netKg + tw),
+          palletKg: 0,
+          tare,
+          tareWeightKg: tw,
+          tareUnits: crates,
+          netKg,
+        })
+      }
+      if (!lines.length) {
+        rwSeq--
+        continue
+      }
+      reweighs.push({
+        id,
+        berryDate: day,
+        fromPointId: point.id,
+        atPointId: BASE_POINT.id,
+        weighedDate: day,
+        weighedTime: `${pad(costInt(17, 20), 2)}:${pad(costInt(0, 59), 2)}`,
+        status: 'posted',
+        lines,
+        // знімок кладеться РАЗ, у момент проведення, і більше не переписується (D-2, I41)
+        snapshot: rows.map((r) => ({
+          product: r.product,
+          kgPoint: r.kgPoint,
+          avgPoint: r.avgPoint,
+        })),
+        operator: OWNER,
+        synced: true,
+      })
+    }
+  }
+
+  /* ---------------- КАНОНІЧНИЙ ДЕНЬ: Шипинки, TODAY (09 §8.1, D-1) ---------------- */
+  // Обіцянка «Шипинки 04.08 дадуть РІВНО числа зі спеки» генератором не виконується:
+  // базова ціна малини ≤ 140, а недостача й пальне випадкові. Тому день прибивається
+  // оверрайдом — і саме цей день є критерієм приймання всієї фази.
+
+  // 1 · прибираємо згенеровану прийомку p1 за TODAY. Спершу посилання на неї, бо виплата,
+  //     що гасила б прибраний рядок, лишилася б із сумою без покриття, а виплата взагалі
+  //     без прив'язок не має права існувати (seed.test.ts).
+  //     ЗМІРЯНО на цьому сіді: прибираються 18 рядків, ПРИВ'ЯЗОК на них 0 — але ШІСТЬ
+  //     виплат мають visitId прибраного візиту (його ставить блок «Попередній залишок»
+  //     вище). Без цього очищення передрук чека шукав би візит, якого вже немає. Кількості
+  //     залежать від послідовності rnd() і зсуваються з кожною правкою сіду, тому блок
+  //     написаний загально, а не під сьогоднішні шість.
+  const doomedToday = receptions.filter((r) => r.pointId === 'p1' && r.date === TODAY)
+  const doomed = new Set(doomedToday.map((r) => r.id))
+  const doomedVisits = new Set(doomedToday.map((r) => r.visitId))
+  for (let i = payouts.length - 1; i >= 0; i--) {
+    const p = payouts[i]
+    if (p.visitId && doomedVisits.has(p.visitId)) p.visitId = undefined
+    const kept = p.allocations.filter((a) => !doomed.has(a.receptionId))
+    if (kept.length === p.allocations.length) continue
+    if (!kept.length) {
+      payouts.splice(i, 1)
+      continue
+    }
+    p.allocations = kept
+    p.amount = round2(kept.reduce((s, a) => s + a.amount, 0))
+  }
+  for (let i = receptions.length - 1; i >= 0; i--) {
+    if (doomed.has(receptions[i].id)) receptions.splice(i, 1)
+  }
+
+  // 2 · рівно три рядки одного візиту. Ставка 160 ₴/кг вища за довідникову (малина ≤ 140) —
+  //     і це нормально: оверрайд прибиває саму СУМУ рядка, рівно як це робить Дод. ціна.
+  const canonSupplier = suppliers.find((s) => s.homePointId === 'p1')!
+  const CANON: Array<{ berryId: string; net: number; price: number; bonus: number }> = [
+    { berryId: 'v_mal_v', net: 800, price: 140, bonus: 20 },
+    { berryId: 'v_smor', net: 60, price: 45, bonus: 15 },
+    { berryId: 'v_por', net: 5, price: 50, bonus: 10 },
+  ]
+  let canonSeq = receptions.reduce((m, r) => {
+    const n = Number(r.id.slice(1))
+    return Number.isFinite(n) ? Math.max(m, n) : m
+  }, 0)
+  for (const c of CANON) {
+    const crates = Math.max(1, Math.round(c.net / 5))
+    const tare: TareLine[] = [{ tareId: DEFAULT_TARE_ID, count: crates }]
+    const gross = round2(c.net + tareWeight(tare, TARE_TYPES))
+    const w = weigh({ gross, pallet: 0, tare, price: c.price, bonus: c.bonus }, TARE_TYPES)
+    canonSeq++
+    receptions.push({
+      id: `r${canonSeq}`,
+      code: `Ч-${pad(canonSeq)}`,
+      date: TODAY,
+      time: '09:20',
+      pointId: 'p1',
+      supplierId: canonSupplier.id,
+      berryId: c.berryId,
+      gross: w.gross,
+      pallet: w.pallet,
+      tare,
+      tareWeight: w.tareWeight,
+      net: w.net,
+      price: c.price,
+      bonus: c.bonus,
+      amount: w.amount,
+      // розрахунок повний: борг 0, тому канонічний день не рухає ні залишок p1, ні виплати
+      paid: w.amount,
+      debt: 0,
+      carriedIn: 0,
+      visitId: 'v_canon_p1',
+      operator: OPERATORS.p1,
+      synced: true,
+    })
+  }
+
+  // 3 · переважування 790,00 / 59,00 / 5,00 і знімок разом із ним. Знімок береться з
+  //     productDay() — тим самим кодом, яким його потім читає costOfDay(): якби сід
+  //     рахував середню ціну власною формулою, розбіжність між ними ніхто б не побачив.
+  const canonBerryOf = new Map(
+    CANON.map((c) => [BERRIES.find((b) => b.id === c.berryId)!.product, c.berryId]),
+  )
+  const CANON_BASE_KG: Record<string, number> = { Малина: 790, Смородина: 59, Порічка: 5 }
+  const canonRows = productDay(TODAY, 'p1', receptions, BERRIES)
+  const canonId = `rw${++rwSeq}`
+  reweighs.push({
+    id: canonId,
+    berryDate: TODAY,
+    fromPointId: 'p1',
+    atPointId: BASE_POINT.id,
+    weighedDate: TODAY,
+    weighedTime: '13:40',
+    status: 'posted',
+    lines: canonRows.map((row, i) => {
+      const netKg = CANON_BASE_KG[row.product]
+      const crates = Math.max(1, Math.round(netKg / 5))
+      const tare: TareLine[] = [{ tareId: DEFAULT_TARE_ID, count: crates }]
+      const tw = tareWeight(tare, TARE_TYPES)
+      return {
+        id: `${canonId}_${i + 1}`,
+        order: i + 1,
+        berryId: canonBerryOf.get(row.product) ?? row.product,
+        product: row.product,
+        grossKg: round2(netKg + tw),
+        palletKg: 0,
+        tare,
+        tareWeightKg: tw,
+        tareUnits: crates,
+        netKg,
+      }
+    }),
+    snapshot: canonRows.map((r) => ({
+      product: r.product,
+      kgPoint: r.kgPoint,
+      avgPoint: r.avgPoint,
+    })),
+    operator: OWNER,
+    synced: true,
+  })
+
+  // 4 · рівно чотири ручні витрати: 1 000 + 1 300 + 500 + 1 000 = 3 800. Разом із
+  //     недостачею 1 660 це дає пул 5 460,00 ₴ — те саме число, яким живуть §3.3 і §3.4.
+  const CANON_EXPENSES: Array<[string, number]> = [
+    ['Касир', 1_000],
+    ['Вантажник', 1_300],
+    ['Водій', 500],
+    ['Пальне', 1_000],
+  ]
+  for (const [label, amount] of CANON_EXPENSES) {
+    expenses.push({
+      id: `ex${++expSeq}`,
+      date: TODAY,
+      pointId: 'p1',
+      kind: 'manual',
+      label,
+      amount,
+      createdBy: OWNER,
+      createdDate: TODAY,
+      createdTime: '19:10',
+    })
+  }
+
+  /* ---------------- 5 · один СТОРНОВАНИЙ документ (I54, ескіз Н9) ---------------- */
+  // Без нього право «сторнувати з причиною» (09 §7) не має в демо ЖОДНОГО прикладу: список
+  // «Проведені переважування за цей день» показував би лише зелені рядки, а ескіз Н9 малює
+  // сторнований рядок саме з причиною «двічі ввели ту саму машину». Тому кладемо дубль
+  // канонічного документа зі статусом `voided` — рівно той сценарій, який причина й описує.
+  //
+  // Чому саме на канонічному дні, хоч решта оверрайду його береже від шуму: сторнований
+  // документ на 27.06 керівник побачив би лише перелистнувши 38 днів назад, тобто ніколи.
+  // А на гроші це не впливає ЗА ПОБУДОВОЮ — `costOfDay()` виключає `voided` і з `kgBase`,
+  // і з вибору знімка (I54), тому пул, собівартість і порушення канонічного дня однакові
+  // з дублем і без нього. Перевірено прогоном: 5 460 / 135 700 / 0 порушень в обох випадках.
+  const canonTwin = reweighs.find((r) => r.id === canonId)
+  if (canonTwin) {
+    reweighs.push({
+      ...canonTwin,
+      id: `rw${++rwSeq}`,
+      lines: canonTwin.lines.map((l, i) => ({ ...l, id: `rw${rwSeq}_${i + 1}` })),
+      status: 'voided',
+      // ту саму машину провели вдруге через 6 хвилин, а помилку побачили ще за 12
+      weighedTime: '17:46',
+      voidedDate: TODAY,
+      voidedTime: '17:58',
+      voidedBy: OWNER,
+      voidReason: 'двічі ввели ту саму машину',
+      synced: true,
+    })
+  }
+
   return {
-    points: POINTS,
+    // База лежить поза POINTS саме тому, що POINTS годує цикл прийомки; на екрані ж
+    // це звичайний пункт, тому у знімок вона їде разом з усіма (M37)
+    points: [...POINTS, BASE_POINT],
     berries: BERRIES,
     tareTypes: TARE_TYPES,
     suppliers,
     prices,
     receptions,
     payouts,
+    reweighs,
+    expenses,
+    policies,
   }
 }
 
@@ -932,7 +1397,8 @@ export function nextCode(prefix: string, existing: string[], width = 4) {
   return `${prefix}-${String(max + 1).padStart(width, '0')}`
 }
 
-export function nowTime() {
+/** Годинник пристрою, HH:MM. Бізнес-дата — це завжди окремий `ISODate`, не `new Date()`. */
+export function nowTime(): ClockTime {
   const d = new Date()
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }

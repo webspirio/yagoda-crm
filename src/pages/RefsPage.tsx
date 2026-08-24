@@ -6,7 +6,7 @@ import { Eyebrow, PageHeader } from '@/components/common/bits'
 import { useStore } from '@/lib/store'
 import { longDate, num } from '@/lib/format'
 import { maskDecimalInput, parseNumeric } from '@/lib/calc'
-import { DEFAULT_SETTINGS, PRODUCTS, TODAY } from '@/lib/seed'
+import { PRODUCTS, TODAY } from '@/lib/seed'
 import { toast } from 'sonner'
 
 /**
@@ -117,7 +117,8 @@ export function RefsPage() {
                   </div>
                   <div className="flex flex-col gap-1">
                     {g.grades.map((b) => {
-                      const active = TODAY >= b.from && TODAY <= b.to
+                      // сорт із retired не «приймаємо» навіть у своєму вікні сезону (D-8)
+                      const active = !b.retired && TODAY >= b.from && TODAY <= b.to
                       return (
                         <div
                           key={b.id}
@@ -129,6 +130,11 @@ export function RefsPage() {
                               {b.wholesale ? (
                                 <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
                                   ОПТ
+                                </Badge>
+                              ) : null}
+                              {b.retired ? (
+                                <Badge variant="outline" className="h-4 px-1.5 text-[10px]">
+                                  не в обігу
                                 </Badge>
                               ) : null}
                             </div>
@@ -148,7 +154,11 @@ export function RefsPage() {
                             </span>
                           ) : (
                             <span className="w-[74px] shrink-0 text-right text-[10px] text-muted-foreground">
-                              сезон закрито
+                              {b.retired
+                                ? 'виведено'
+                                : TODAY < b.from
+                                  ? 'сезон ще не почався'
+                                  : 'сезон закрито'}
                             </span>
                           )}
                         </div>
@@ -186,8 +196,9 @@ export function RefsPage() {
 }
 
 /**
- * Межі Дод. ціни — рівно те, про що M7: «закладено умовою так, що не більше 20…
- * чи не більше 30». У їхньому ж файлі на цю колонку не стоїть нічого ✓ H7.
+ * Межі Дод. ціни — M7 плюс M34: «30 - це максимум» і «щоб я могла змінювати оцю
+ * максимальну ціну» (дзвінок №4, ряд. 701, 714). Мінус реальний і теж до −30, тому
+ * maskDecimalInput тут із allowNegative. У їхньому ж файлі на цю колонку не стоїть нічого ✓ H7.
  */
 function SurchargeBounds() {
   const settings = useStore((s) => s.settings)
@@ -237,15 +248,15 @@ function SurchargeBounds() {
             className="h-10 w-[110px] text-right font-mono text-base"
           />
         </div>
-        <div className="text-xs text-muted-foreground">
-          за замовчуванням {num(DEFAULT_SETTINGS.surchargeMin)} … {num(DEFAULT_SETTINGS.surchargeMax)}
-        </div>
       </div>
       <p className="mt-3 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-        Ваші слова: «закладено умовою так, що не більше 20… чи не більше 30». Верхня межа стоїть на
-        +30, а не на +25, бо +30 реально трапляється на другому пункті — жорсткіша межа відкидала б
-        ваші ж дані. У самій таблиці на цю колонку не стоїть нічого: перевірка там буквально «це
-        число і не дата», ні верхньої, ні нижньої межі, ні дозволу.
+        Приймальник не зможе виставити надбавку поза цими межами. Змінюйте, коли ринок стрибає.
+      </p>
+      <p className="mt-1.5 max-w-3xl text-xs leading-relaxed text-muted-foreground">
+        Ваші слова: «30 - це максимум», і мінус теж справжній — «то ми закрили мінус 30, бо далека
+        дорога». Тому початково стоїть від −30 до +30, а не до +25: жорсткіша межа відкидала б ваші
+        ж дані. У самій таблиці на цю колонку не стоїть нічого: перевірка там буквально «це число і
+        не дата», ні верхньої, ні нижньої межі, ні дозволу.
       </p>
     </div>
   )

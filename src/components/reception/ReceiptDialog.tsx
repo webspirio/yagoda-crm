@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useStore } from '@/lib/store'
-import { effectivePrice, round2, sum, supplierBalance } from '@/lib/calc'
+import { effectivePrice, round2, sum, supplierBalanceAt } from '@/lib/calc'
 import { kg, longDate, num, plural, uah, uahAuto } from '@/lib/format'
 import type { Payout, Reception } from '@/lib/types'
 
@@ -53,7 +53,15 @@ export function ReceiptDialog({
   if (!reception) return null
   const supplier = suppliers.find((s) => s.id === reception.supplierId)
   const point = points.find((p) => p.id === reception.pointId)
-  const balance = supplier ? supplierBalance(supplier.id, receptions, payouts) : 0
+  // Е2: чек — документ, який людина забирає з собою, тому сума на ньому мусить збігатися
+  // з тим, що приймальник бачив на екрані: книга ЦЬОГО пункту, не мережі (ряд. 902).
+  // `pointId` не проп: беремо його з самої квитанції, щоб дублікат зі сторінки картки
+  // друкувався тією ж книгою, що й оригінал. Книга пункту рахується по прив'язках виплат,
+  // а не по їхньому штампу (calc.ts) — інакше чек, виданий після повної видачі в режимі
+  // «Усі точки», друкував людині відʼємний залишок.
+  const balance = supplier
+    ? supplierBalanceAt(supplier.id, receptions, payouts, reception.pointId)
+    : 0
 
   // один візит — один чек: позиції збираються тут, а не приходять пропом, щоб інші
   // сторінки могли й далі відкривати чек однією квитанцією (M5)
@@ -154,7 +162,7 @@ export function ReceiptDialog({
 
           <div className="my-3 border-t border-dashed border-neutral-300" />
 
-          <Row label="Загальний залишок" value={uahAuto(balance)} />
+          <Row label="Залишок у цьому пункті" value={uahAuto(balance)} />
           <Row label="Приймав" value={reception.operator} muted />
 
           <div className="mt-4 text-center text-[10px] text-neutral-400">

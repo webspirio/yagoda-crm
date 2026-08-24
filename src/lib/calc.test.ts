@@ -17,6 +17,7 @@ import {
   weigh,
 } from './calc'
 import { kg, num, uah } from './format'
+import { DEFAULT_SETTINGS } from './seed'
 import type { Payout, Reception, Settings, TareType } from './types'
 
 /** Довідник, кол. G/H/I. Чешка стоїть у 1 701 рядку з 1 701 — інша тара тут лише для повноти. */
@@ -1438,5 +1439,31 @@ describe('effectivePrice', () => {
   it('це та сама величина, що weigh() кладе у effectivePrice', () => {
     const w = weigh({ gross: 100, tare: [], price: 43.33, bonus: 1.11 }, [])
     expect(w.effectivePrice).toBe(effectivePrice(43.33, 1.11))
+  })
+})
+
+/* ======================== межі дод. ціни після дзвінка №4 ======================== */
+
+/**
+ * Локальний `SETTINGS` вище лишається на −15…+30 навмисно: він перевіряє САМУ функцію
+ * `checkSurcharge` на довільних межах. Цей блок перевіряє інше — числа, які клієнт назвала
+ * на дзвінку №4 (M34, ряд. 690–729), тобто дефолт застосунку.
+ */
+describe('межі дод. ціни за дзвінком №4', () => {
+  it('дефолт −30 … +30', () => {
+    expect(DEFAULT_SETTINGS.surchargeMin).toBe(-30)
+    expect(DEFAULT_SETTINGS.surchargeMax).toBe(30)
+  })
+
+  it('+30 проходить, +31 ні; −30 проходить, −31 ні', () => {
+    const s = DEFAULT_SETTINGS
+    expect(checkSurcharge(30, s).ok).toBe(true)
+    expect(checkSurcharge(31, s).over).toBe(true)
+    expect(checkSurcharge(-30, s).ok).toBe(true)
+    expect(checkSurcharge(-31, s).under).toBe(true)
+  })
+
+  it('керівник підняв межу до 40 — і 35 стало можливим', () => {
+    expect(checkSurcharge(35, { surchargeMin: -30, surchargeMax: 40 }).ok).toBe(true)
   })
 })

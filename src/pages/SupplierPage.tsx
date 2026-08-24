@@ -1,18 +1,65 @@
 import * as React from 'react'
 import { ArrowLeft, HandCoins, Phone, Receipt, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Eyebrow, StatTile } from '@/components/common/bits'
 import { ReceiptDialog } from '@/components/reception/ReceiptDialog'
 import { SettleDialog } from '@/components/debts/SettleDialog'
-import { useStore } from '@/lib/store'
-import { effectivePrice, openDebts, originDates, supplierBalance, sum } from '@/lib/calc'
+import { scopedReceptions, useStore } from '@/lib/store'
+import { effectivePrice, openDebts, originDates, supplierBalanceAt, sum } from '@/lib/calc'
 import { daysBetween, daysWord, kg, longDate, num, shortDate, uah, uahAuto } from '@/lib/format'
+import { KindBadge, KindChoice } from '@/components/common/kind'
+import { KIND_LABEL } from '@/lib/kind'
 import { TODAY } from '@/lib/seed'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import type { Reception } from '@/lib/types'
+import type { Reception, SupplierKind } from '@/lib/types'
+
+/**
+ * Розклад залишку по точках. Керівникові в режимі «Усі точки» одного числа не досить:
+ * борг попунктний, і саме тут видно, де він лежить. Σ рядків дорівнює сумі у плитці —
+ * порожні точки не показуємо, бо нуль нічого не додає.
+ */
+function PointBreakdown({ rows }: { rows: { id: string; name: string; balance: number }[] }) {
+  if (!rows.length) return null
+  return (
+    <div className="mb-5 flex flex-wrap items-center gap-2">
+      <Eyebrow className="mr-1">Де саме лежить</Eyebrow>
+      {rows.map((r) => (
+        <span
+          key={r.id}
+          className="rounded-lg bg-card px-3 py-1.5 text-sm ring-1 ring-foreground/10"
+        >
+          {r.name}{' '}
+          <span className="ml-1 font-mono font-semibold text-[var(--amber)]">
+            {uahAuto(r.balance)}
+          </span>
+        </span>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * Тристановий маркер на людині. `В3` → варіант В: приймальник ставить його при створенні
+ * **і змінює потім** — «цей маркер можна змінювати і в процесі роботи… приймальник це
+ * нічого» (дзвінок №4, ряд. 739–741). Черги погодження немає, обмеження по ролі немає;
+ * слід лишає сам `updateSupplier`.
+ */
+function KindPicker({
+  kind,
+  onPick,
+}: {
+  kind: SupplierKind
+  onPick: (k: SupplierKind) => void
+}) {
+  return (
+    <div className="mb-5 rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+      <Eyebrow>Хто це</Eyebrow>
+      <KindChoice value={kind} onChange={onPick} />
+    </div>
+  )
+}
 
 export function SupplierPage({ id }: { id: string }) {
   const suppliers = useStore((s) => s.suppliers)
@@ -20,6 +67,7 @@ export function SupplierPage({ id }: { id: string }) {
   const payouts = useStore((s) => s.payouts)
   const berries = useStore((s) => s.berries)
   const points = useStore((s) => s.points)
+  const activePointId = useStore((s) => s.activePointId)
   const go = useStore((s) => s.go)
   const updateSupplier = useStore((s) => s.updateSupplier)
   const [receipt, setReceipt] = React.useState<Reception | null>(null)
@@ -41,9 +89,31 @@ export function SupplierPage({ id }: { id: string }) {
   const pays = payouts
     .filter((p) => p.supplierId === id)
     .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))
-  const balance = supplierBalance(id, receptions, payouts)
-  const open = openDebts(id, receptions, payouts)
+  // Е2: книга кожного пункту своя — «він цей борг з іншої точки забрати не може»
+  // (дзвінок №4, ряд. 902).
+  const onPoint = activePointId !== 'all'
+  // книга пункту — по прив'язках виплат, не по їхньому штампу (calc.ts). openDebts()
+  // так уже й рахує, тому їй дають ПОВНИЙ масив виплат: чужі прив'язки просто не збігаються
+  const balance = supplierBalanceAt(id, receptions, payouts, activePointId)
+  const open = openDebts(id, scopedReceptions(receptions, activePointId), payouts)
   const oldest = open.length ? open[0].reception.date : undefined
+
+  // Розклад для режиму «Усі точки». Фільтруємо вже звужені масиви цієї людини — дешевше,
+  // ніж 11 проходів по всій мережі, і результат той самий.
+  const byPoint = onPoint
+    ? []
+    : points
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          balance: supplierBalanceAt(id, items, pays, p.id),
+        }))
+        .filter((r) => Math.abs(r.balance) > 0.009)
+
+  function changeKind(kind: SupplierKind) {
+    updateSupplier(id, { kind })
+    toast.success(kind === 'none' ? 'Позначку знято' : `Тепер ${KIND_LABEL[kind]}`)
+  }
 
   const timeline = [
     ...items.map((r) => ({ kind: 'r' as const, date: r.date, time: r.time, r })),
@@ -67,7 +137,7 @@ export function SupplierPage({ id }: { id: string }) {
           <div className="flex items-center gap-2">
             <h1 className="font-display text-2xl leading-tight font-medium">{supplier.name}</h1>
             {/* Дод. ціна живе на рядку прийомки (їхня колонка J) ✓ M7 — на людині її немає */}
-            {supplier.wholesale ? <Badge variant="secondary">ОПТ</Badge> : null}
+            <KindBadge kind={supplier.kind} />
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
@@ -99,7 +169,7 @@ export function SupplierPage({ id }: { id: string }) {
         <StatTile label="Ягоди здано" value={kg(sum(items, (r) => r.net), 1)} />
         <StatTile label="Нараховано" value={uah(sum(items, (r) => r.amount))} />
         <StatTile
-          label="Залишок за нами"
+          label={onPoint ? 'Залишок на цій точці' : 'Залишок по всіх точках'}
           value={uahAuto(balance)}
           tone={balance > 0.009 ? 'amber' : 'leaf'}
           hint={
@@ -109,6 +179,10 @@ export function SupplierPage({ id }: { id: string }) {
           }
         />
       </div>
+
+      <PointBreakdown rows={byPoint} />
+
+      <KindPicker kind={supplier.kind} onPick={changeKind} />
 
       {/* Довідник!B порожній у 209 з 209 рядків ✓ PART C 7, H5 — тому контактів немає
           ні в кого, і жоден канал сповіщень тут не обіцяємо */}

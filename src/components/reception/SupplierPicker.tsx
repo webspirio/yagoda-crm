@@ -1,7 +1,6 @@
 import * as React from 'react'
-import { Check, ChevronsUpDown, Plus, UserRound } from 'lucide-react'
+import { Check, ChevronsUpDown, Plus, TriangleAlert, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
   Command,
   CommandEmpty,
@@ -21,13 +20,14 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import { useStore } from '@/lib/store'
+import { KindBadge, KindChoice } from '@/components/common/kind'
+import { kindHint } from '@/lib/kind'
 import { openDebts, sum } from '@/lib/calc'
-import { uah } from '@/lib/format'
+import { num, uah } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import type { Supplier } from '@/lib/types'
+import type { Supplier, SupplierKind } from '@/lib/types'
 
 export function SupplierPicker({
   value,
@@ -41,6 +41,7 @@ export function SupplierPicker({
   const suppliers = useStore((s) => s.suppliers)
   const receptions = useStore((s) => s.receptions)
   const payouts = useStore((s) => s.payouts)
+  const settings = useStore((s) => s.settings)
   const [open, setOpen] = React.useState(false)
   const [addOpen, setAddOpen] = React.useState(false)
 
@@ -75,11 +76,7 @@ export function SupplierPicker({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span className="truncate">{s.name}</span>
-            {s.wholesale ? (
-              <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
-                ОПТ
-              </Badge>
-            ) : null}
+            <KindBadge kind={s.kind} className="shrink-0 text-[10px]" />
           </div>
           <div className="truncate text-xs text-muted-foreground">{s.village}</div>
         </div>
@@ -107,11 +104,7 @@ export function SupplierPicker({
                 <span className="hidden truncate text-sm text-muted-foreground sm:inline">
                   {selected.village}
                 </span>
-                {selected.wholesale ? (
-                  <Badge variant="secondary" className="shrink-0 text-[10px]">
-                    ОПТ
-                  </Badge>
-                ) : null}
+                <KindBadge kind={selected.kind} className="shrink-0 text-[10px]" />
               </span>
             ) : (
               <span className="flex items-center gap-2 text-muted-foreground">
@@ -156,6 +149,19 @@ export function SupplierPicker({
         </PopoverContent>
       </Popover>
 
+      {/* саме тут, а не всередині <Button> комбобокса: там підказка зʼїдає клік по тригеру */}
+      {selected && kindHint(selected.kind) ? (
+        <p className="mt-1.5 flex items-start gap-1.5 text-sm font-medium text-destructive">
+          <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+          <span>
+            {kindHint(selected.kind)}{' '}
+            <span className="font-normal text-muted-foreground">
+              Межі: від {num(settings.surchargeMin)} до {num(settings.surchargeMax)} ₴/кг
+            </span>
+          </span>
+        </p>
+      ) : null}
+
       <AddSupplierDialog
         open={addOpen}
         onOpenChange={setAddOpen}
@@ -181,14 +187,14 @@ export function AddSupplierDialog({
   const [name, setName] = React.useState('')
   const [phone, setPhone] = React.useState('')
   const [village, setVillage] = React.useState('')
-  const [wholesale, setWholesale] = React.useState(false)
+  const [kind, setKind] = React.useState<SupplierKind>('none')
 
   React.useEffect(() => {
     if (open) {
       setName('')
       setPhone('')
       setVillage('')
-      setWholesale(false)
+      setKind('none')
     }
   }, [open])
 
@@ -203,7 +209,7 @@ export function AddSupplierDialog({
       phone: phone.trim() || undefined,
       village: village.trim() || '—',
       homePointId: pointId,
-      wholesale,
+      kind,
     })
     onCreated?.(created)
     onOpenChange(false)
@@ -254,13 +260,10 @@ export function AddSupplierDialog({
               />
             </div>
           </div>
-          <div className="flex items-center justify-between rounded-lg bg-muted/60 px-3 py-2.5">
-            <div>
-              <div className="text-sm font-medium">Оптовик</div>
-              {/* Дод. ціна тепер на рядку прийомки, а не на картці людини (M7) */}
-              <div className="text-xs text-muted-foreground">Позначка для звірки з ОПТ-сортами</div>
-            </div>
-            <Switch checked={wholesale} onCheckedChange={setWholesale} />
+          {/* три кнопки, не селект: на планшеті в полі промахнутися по списку легше */}
+          <div className="rounded-lg bg-muted/60 px-3 py-2.5">
+            <div className="text-sm font-medium">Хто це</div>
+            <KindChoice value={kind} onChange={setKind} />
           </div>
         </div>
         <DialogFooter>
