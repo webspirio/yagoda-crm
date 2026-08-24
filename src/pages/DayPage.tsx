@@ -1,7 +1,15 @@
 import * as React from 'react'
-import { ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, Printer } from 'lucide-react'
+import {
+  ArrowRight,
+  Calculator,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Printer,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { Eyebrow, PageHeader, StatTile } from '@/components/common/bits'
 import { ReceiptDialog } from '@/components/reception/ReceiptDialog'
 import { useStore, scopedPayouts, scopedReceptions } from '@/lib/store'
@@ -21,6 +29,8 @@ export function DayPage() {
   const activePointId = useStore((s) => s.activePointId)
   const workDate = useStore((s) => s.workDate)
   const setWorkDate = useStore((s) => s.setWorkDate)
+  const role = useStore((s) => s.role)
+  const go = useStore((s) => s.go)
   const [receipt, setReceipt] = React.useState<Reception | null>(null)
 
   const scopedR = scopedReceptions(receptions, activePointId)
@@ -72,7 +82,29 @@ export function DayPage() {
               >
                 <ChevronLeft className="size-4" />
               </Button>
-              <span className="px-2.5 font-mono text-xs">{shortDate(workDate)}</span>
+              {/* 39 днів сезону — це 38 кліків по ‹, тому в тій самій рамці стоїть
+                  нативний date: без бібліотеки (бюджет бандла вичерпаний) і з межами
+                  сезону прямо в атрибутах, як на «Журналі» */}
+              <Input
+                type="date"
+                aria-label="Перейти на дату"
+                title="Перейти на конкретну дату сезону"
+                value={workDate}
+                min={SEASON_START}
+                max={TODAY}
+                onChange={(e) => {
+                  const d = e.target.value
+                  // Календар межі тримає сам, набрана руками дата — ні. Поле, стерте
+                  // посеред набору, день не змінює; дату поза сезоном притискаємо до
+                  // межі, а не ігноруємо — інакше контрольований input показував би
+                  // одне, а сторінка рахувала б інше.
+                  if (!d) return
+                  if (d < SEASON_START) setWorkDate(SEASON_START)
+                  else if (d > TODAY) setWorkDate(TODAY)
+                  else setWorkDate(d)
+                }}
+                className="h-7 w-[124px] rounded-none border-0 bg-transparent px-1.5 text-center font-mono text-xs shadow-none focus-visible:ring-0"
+              />
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -86,6 +118,22 @@ export function DayPage() {
             {workDate !== TODAY ? (
               <Button variant="outline" size="sm" onClick={() => setWorkDate(TODAY)}>
                 Сьогодні
+              </Button>
+            ) : null}
+            {/* Той самий день з іншого боку: тут готівка, там нараховане плюс недостача
+                й розтрати. Підпис навмисно не збігається з пунктом меню «Собівартість
+                дня» — щоб «Каса» і «Собівартість» не читалися як одне й те саме.
+                Свою дату Н8 бере з глобального workDate, який ця сторінка й пише,
+                тому переходити нікуди спеціально не треба. */}
+            {role === 'owner' ? (
+              <Button
+                variant="outline"
+                size="sm"
+                title="Нараховано за цей день плюс недостача й розтрати — не готівка"
+                onClick={() => go({ name: 'cost' })}
+              >
+                <Calculator className="size-4" />
+                Собівартість цього дня
               </Button>
             ) : null}
             <Button variant="outline" size="sm" onClick={() => window.print()}>

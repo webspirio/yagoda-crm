@@ -22,18 +22,40 @@ export function uahAuto(v: number) {
   return uah(v, { decimals: Math.abs(v % 1) > 0.004 ? 2 : 0 })
 }
 
+/**
+ * Кілограми. Мінус — типографський (U+2212), той самий, що друкує `uah()`.
+ *
+ * `toLocaleString('uk-UA')` віддає дефіс-мінус U+2D, і до фази 2 це ніде не було видно:
+ * жоден екран не друкував ВІДʼЄМНОЇ ваги. Недостача на Н8 і Н9 — перша, і поруч у тому
+ * самому рядку стоїть `−885,88 ₴` з U+2212. Два різні мінуси в одному рядку аркуша, який
+ * керівниця несе з собою, — це не педантизм: на папері вони різної довжини.
+ *
+ * Зворотний бік безпечний: `parseNumeric()`/`maskDecimalInput()` у `calc.ts` зводять
+ * U+2212, U+2013 і U+2014 до звичайного дефіса, тому вага, прочитана з екрана і набрана
+ * назад, лишається числом.
+ */
 export function kg(v: number, decimals = 2) {
-  return `${v.toLocaleString('uk-UA', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  })} кг`
-}
-
-export function num(v: number, decimals = 0) {
-  return v.toLocaleString('uk-UA', {
+  const body = Math.abs(v).toLocaleString('uk-UA', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   })
+  return `${v < 0 ? '−' : ''}${body} кг`
+}
+
+/**
+ * Просте число. Мінус — типографський (U+2212), як в `uah()` і `kg()`.
+ *
+ * Три форматери мусять писати мінус ОДНАКОВО, бо вони стоять в одному рядку. Зміряно на
+ * дні надлишку (Шипинки 15.07): «= −6 150,83 ₴ · ставка -6 150,83 / 3 447,63 = -1,78407»
+ * — один U+2212 від `uah()` і два U+2D від `num()` у сімнадцяти символах один від одного.
+ * Зворотний бік безпечний так само, як у `kg()`: `parseNumeric()` зводить U+2212 до дефіса.
+ */
+export function num(v: number, decimals = 0) {
+  const body = Math.abs(v).toLocaleString('uk-UA', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })
+  return `${v < 0 ? '−' : ''}${body}`
 }
 
 export function tonnage(kgValue: number) {

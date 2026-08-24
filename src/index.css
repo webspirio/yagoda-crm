@@ -222,3 +222,99 @@
 .print-only {
     display: none;
 }
+
+/* ─── Друк широкого аркуша: «Собівартість дня» (Н8) ───────────────────────────────
+   Споживачів `.printable` тепер три: чек (ReceiptDialog), звіт дня (DayPage) і аркуш
+   собівартості. Перші два — вузькі колонки, третій — широка таблиця, і саме її керівник
+   несе з собою.
+
+   ОРІЄНТАЦІЯ — єдине рішення тут, яке могло тихо зламати те, що вже працює.
+   `@page` не селектується класом, тому глобальний `@page { size: A4 landscape }`
+   розвернув би і ЧЕК: його рядки побудовані на `justify-between`, а сам `.printable`
+   тягнеться на всю ширину сторінки — підпис і сума розʼїхалися б з 210 мм на 297 мм.
+   Тому альбомну орієнтацію просить не весь друк, а ІМЕНОВАНА сторінка, яку бере лише
+   блок із `.print-landscape`. Ціна рішення названа вголос: властивість `page` є в
+   Chromium 85+ (там і друкують, і там же ходить smoke), але не в кожному браузері —
+   де її немає, аркуш піде портретом. Це деградація, не поломка: нижче для такого разу
+   зменшено кегль клітинок. Орієнтації чека і звіту дня ця правка не торкається взагалі. */
+@media print {
+    /* Поле сторінки, а не елемента: `padding` у `.printable` малюється лише на першій і
+       останній сторінці, а поле — на кожній. 8 мм замість типових ~10 мм від браузера. */
+    @page {
+        margin: 8mm;
+    }
+    @page landscape-sheet {
+        size: A4 landscape;
+        margin: 8mm;
+    }
+    .printable.print-landscape {
+        page: landscape-sheet;
+    }
+
+    /* Кнопки, селектори й перемикачі, які фізично лежать усередині аркуша, на папір
+       не йдуть. `display: none` (не `visibility`) — щоб вони не лишали по собі дірку. */
+    .print-hide {
+        display: none !important;
+    }
+
+    /* Таблиці на папері мусять читатися. */
+    .printable table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    /* Шапка повторюється на кожній сторінці: у широкий аркуш дня влазить не все. */
+    .printable thead {
+        display: table-header-group;
+    }
+    .printable tfoot {
+        display: table-footer-group;
+    }
+    .printable tr {
+        break-inside: avoid;
+    }
+    .printable :is(th, td) {
+        border-bottom: 0.5pt solid #b4b8ae; /* тонка лінійка рядка, не сітка */
+        padding: 1.2mm 2mm;
+        vertical-align: baseline;
+    }
+    .printable thead :is(th, td) {
+        border-bottom: 1pt solid #4a4f45;
+    }
+    /* Картки й рядки-плитки не рвуться посередині. Контракт із Н8 дозволяє рівно чотири
+       print-класи, тому зачіпка тут — тейлвіндовий радіус, яким у цьому застосунку
+       позначені всі картки (`rounded-lg` / `rounded-xl`). */
+    .printable [class*="rounded-lg"],
+    .printable [class*="rounded-xl"] {
+        break-inside: avoid;
+    }
+    /* Запас на браузер без `page`: у портреті широка таблиця мусить лишитися читабельною.
+       Селектор із типом (0,1,1) сильніший за тейлвіндовий `.text-xs` (0,1,0), тому кегль
+       справді застосується, а не буде перебитий класом на клітинці. */
+    .print-landscape :is(th, td) {
+        font-size: 8.5pt;
+    }
+
+    /* Фони браузер за замовчуванням НЕ друкує — і це правильно: суцільна заливка зʼїдає
+       тонер і робить аркуш нечитабельним. Виняток лише там, де колір НЕСЕ ЗМІСТ:
+       «зійшлося / не зійшлося» у звірці, бейдж порушення, блок недостачі. Це точковий
+       перелік класів, а не `*`. */
+    .printable [class*="bg-destructive"],
+    .printable [class*="bg-[var(--leaf)]"],
+    .printable [class*="bg-[var(--amber)]"],
+    .printable [data-slot="badge"] {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    /* Інвертований блок «Разом» — світлий текст на темному — без фону став би невидимим:
+       заливка не друкується, а колір тексту дорівнює кольору паперу. Тому на папері він
+       не заливка, а звичайний текст під жирною лінійкою. */
+    .printable [class*="bg-foreground"],
+    .printable [class*="bg-foreground"] * {
+        background: transparent !important;
+        color: #000 !important;
+    }
+    .printable [class*="bg-foreground"] {
+        border-top: 1.5pt solid #000;
+        border-radius: 0 !important;
+    }
+}

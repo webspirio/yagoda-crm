@@ -12,6 +12,11 @@ const COMMANDS = [
   'setPriceEverywhere',
   'addVisit',
   'addPayout',
+  'addReweigh',
+  'voidReweigh',
+  'addExpense',
+  'removeExpense',
+  'setExpensePolicy',
   'syncAll',
   'resetDemo',
 ] as const
@@ -24,6 +29,9 @@ const DOMAIN = [
   'prices',
   'receptions',
   'payouts',
+  'reweighs',
+  'expenses',
+  'policies',
   'settings',
 ] as const
 
@@ -65,6 +73,9 @@ describe('контракт store ↔ ports', () => {
       prices: true,
       receptions: true,
       payouts: true,
+      reweighs: true,
+      expenses: true,
+      policies: true,
       settings: true,
     }
     expect(Object.keys(keys).sort()).toEqual([...DOMAIN].sort())

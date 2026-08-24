@@ -18,6 +18,10 @@
 import type {
   Berry,
   BerryId,
+  DayExpense,
+  DayExpenseId,
+  DayExpenseKind,
+  ExpensePolicy,
   ISODate,
   Kg,
   Payout,
@@ -25,6 +29,8 @@ import type {
   PointId,
   PriceRecord,
   Reception,
+  Reweigh,
+  ReweighId,
   Role,
   Route,
   Settings,
@@ -45,6 +51,12 @@ export interface DomainSnapshot {
   prices: PriceRecord[]
   receptions: Reception[]
   payouts: Payout[]
+  /** Переважування їдуть у ту саму чергу, що квитанції (09 §2.2) */
+  reweighs: Reweigh[]
+  /** Позакасовий реєстр витрат керівника (09 §2.3) — касу не рухає */
+  expenses: DayExpense[]
+  /** Правило розподілу належить парі (день, пункт), не глобальній настройці (D-3) */
+  policies: ExpensePolicy[]
   settings: Settings
 }
 
@@ -127,6 +139,42 @@ interface AddPayoutInput {
   /** гасити лише прийомки цього пункту: книга кожного пункту своя */
   scopePointId?: PointId
 }
+/** Рядок переважування, як його набирає вагар: той самий жест, що на прийомці (09 §2.2) */
+interface ReweighLineInput {
+  berryId: BerryId
+  /** назва товару — рівень, на якому рахується недостача (I49); див. types.ts, розбіжність 2 */
+  product: string
+  grossKg: Kg
+  palletKg: Kg
+  tare: TareLine[]
+  tareWeightKg: Kg
+  tareUnits: number
+  netKg: Kg
+  note?: string
+}
+interface AddReweighInput {
+  /** день ЯГОДИ, а не день заїзду машини */
+  berryDate: ISODate
+  fromPointId: PointId
+  atPointId: PointId
+  operator: string
+  lines: ReweighLineInput[]
+}
+interface AddExpenseInput {
+  date: ISODate
+  pointId: PointId
+  label: string
+  amount: Uah
+  createdBy: string
+  note?: string
+  /**
+   * Існує РІВНО для того, щоб `I43` («`addExpense({kind:'shortfall'})` відхилено») було
+   * перевіряним твердженням, а не обіцянкою в документі: усе, крім `'manual'` та
+   * `undefined`, повертає `undefined` і нічого не пише. Рядка недостачі в СТАНІ не буває —
+   * його синтезує `costOfDay()` щоразу заново.
+   */
+  kind?: DayExpenseKind
+}
 
 /**
  * 4 · Мутації. Сьогодні синхронні; підписи навмисно готові стати Promise.
@@ -144,6 +192,19 @@ export interface Commands {
   setPriceEverywhere(input: SetPriceEverywhereInput): void
   addVisit(input: AddVisitInput): { receptions: Reception[]; payout?: Payout }
   addPayout(input: AddPayoutInput): Payout | undefined
+  /** Документ народжується одразу `posted` разом зі знімком прийомки (D-2, D-5) */
+  addReweigh(input: AddReweighInput): Reweigh
+  /** Сторно не видаляє: документ лишається зі слідом (I54). Порожня причина — no-op */
+  voidReweigh(id: ReweighId, reason: string, operator: string): void
+  addExpense(input: AddExpenseInput): DayExpense | undefined
+  /**
+   * РОЗШИРЕННЯ ПРОТИ `09 §2.3`: у спеці цієї команди немає. Додана свідомо — без неї
+   * одруківка керівника в реєстрі витрат незворотна, а екран, з якого не можна прибрати
+   * помилково введений рядок на 13 000 ₴ замість 1 300 ₴, непридатний до роботи.
+   */
+  removeExpense(id: DayExpenseId): void
+  /** upsert по парі (date, pointId): правило належить ДНЮ, не настройці (D-3) */
+  setExpensePolicy(input: ExpensePolicy): void
   syncAll(): void
   resetDemo(): void
 }
