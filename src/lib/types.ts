@@ -288,6 +288,165 @@ export interface Settings {
 
 export type Role = 'operator' | 'owner'
 
+/* ------------------------- ящики (21 §2.1–2.5) ------------------------- */
+
+/*
+ * ЕКСПОРТОВАНИЙ ТУТ РІВНО ОДИН ID — той, у якого вже є справжній імпортер: `CrateIssueId`
+ * бере `calc.ts` під ключ Map у `openCrateIssues()`. Решта чотирьох живуть усередині
+ * файлу, бо `deadcode` вважає експорт мертвим, поки його не імпортує ІНШИЙ файл, а
+ * дописувати такий експорт у baseline заборонено (`CLAUDE.md`, правило 3). Це та сама
+ * дисципліна, що вже записана в `ports.ts`: «експортувати їх поштучно можна буде тоді,
+ * коли з'явиться той, хто імпортує». Хвиля 2 (стор) і хвиля 3 (екрани) саме це й зроблять.
+ */
+type CrateAllotmentId = string
+export type CrateIssueId = string
+type CrateReturnId = string
+type CrateShipmentId = string
+type TransferId = string
+
+/**
+ * Спосіб видачі ящиків людині: «Якщо, наприклад, до 50, це буде за кошти кожен ящик.
+ * Якщо після 50, це буде за розписку» (дзвінок №4, ряд. 1081).
+ *
+ * `'deposit'` — за кошти: людина лишає завдаток, і ці гроші ФІЗИЧНО заходять у касу.
+ * `'receipt'` — за розписку: грошей немає взагалі, лишається папір.
+ */
+export type CrateIssueMode = 'deposit' | 'receipt'
+
+/**
+ * Наділ ящиків на точку. НЕ поле на Point, а історія: «я за те, щоб поняття фіксованої
+ * суми… їм потрібно бачити очима візуально, від якої суми їм потрібно відштовхуватись»
+ * (1067–1068). Зміна наділу 600 → 800 — це НОВИЙ запис, старий баланс не перераховується.
+ */
+export interface CrateAllotment {
+  id: CrateAllotmentId
+  pointId: PointId
+  /** «Тобто це поки по 600 ящиків» (940) */
+  units: number
+  /** «ми зафіксували від певного дня… з 15-го, наприклад, серпня» (946) */
+  effectiveFrom: ISODate
+  setBy: string
+  setDate: ISODate
+  setTime: ClockTime
+  /** Обовʼязкова при зміні наявного наділу: «нам треба, щоб було 800» (1062) */
+  reason?: string
+}
+
+export interface CrateIssue {
+  id: CrateIssueId
+  date: ISODate
+  time: ClockTime
+  pointId: PointId
+  supplierId: SupplierId
+  units: number
+  mode: CrateIssueMode
+  /**
+   * ЗНІМОК ціни ящика на момент видачі, а не посилання на довідник тари. Ціну Чешки
+   * змінює керівник (`06 §6` п. 11) — якби повернення читало поточну ціну, зміна
+   * 120 → 130 заднім числом переписала б суму, яку ми винні за ящики, взяті місяць тому.
+   * За розписку — РІВНО 0, тому завдаток рахується однією формулою для обох способів.
+   */
+  depositPerUnit: Uah
+  /** round2(units × depositPerUnit) — готівка, що зайшла в касу за ящики */
+  depositTaken: Uah
+  /** «І тоді вже в процесі ми формуємо цю розписку» (1084) — номер паперу */
+  receiptNo?: string
+  operatorId: string
+  /** Заповнюються при сторно; сам документ не зникає (`06 §3` — тільки INSERT) */
+  voidedDate?: ISODate
+  voidedBy?: string
+  voidReason?: string
+}
+
+/** Частина повернення, віднесена на одну конкретну видачу (FIFO, 21 §3.2). */
+export interface CrateReturnAllocation {
+  issueId: CrateIssueId
+  units: number
+  /** Узятий із ТІЄЇ видачі, не з довідника — інакше зміна ціни переписала б борг */
+  perUnit: Uah
+  amount: Uah
+}
+
+/**
+ * Повернення ящиків, у т.ч. ЧАСТКОВЕ: «людина брала 20 ящиків, но вона, наприклад,
+ * сьогодні хоче сім ящиків тільки повернути» (1101).
+ */
+export interface CrateReturn {
+  id: CrateReturnId
+  date: ISODate
+  time: ClockTime
+  pointId: PointId
+  supplierId: SupplierId
+  units: number
+  /** «воно автоматично підтягує йому, як та людина брала ящики» (1087) — FIFO по видачах */
+  allocations: CrateReturnAllocation[]
+  /** round2(Σ allocations.amount) — готівка, що вийшла з каси за ящики */
+  depositRefund: Uah
+  operatorId: string
+  voidedDate?: ISODate
+  voidedBy?: string
+  voidReason?: string
+}
+
+/**
+ * Вечірнє відправлення ящиків на базу разом із ягодою.
+ * «не вони мають вносити, а тобто сама система, сама програма має вичитати» (1115) —
+ * тому `withBerryUnits` це ЗНІМОК, порахований рушієм, а не поле вводу.
+ */
+export interface CrateShipment {
+  id: CrateShipmentId
+  /** День ЯГОДИ, за який відвантажують */
+  date: ISODate
+  pointId: PointId
+  /** Знімок на момент проведення: Σ Чешок у квитанціях дня */
+  withBerryUnits: number
+  /** Скільки квитанцій дало цей знімок — щоб пізня квитанція була ВИДНА, а не тиха */
+  receptionCount: number
+  /** «іменно заламані ящики… треба їм якось виділити строчку» (1117) — РУКАМИ */
+  brokenUnits: number
+  operatorId: string
+  postedDate: ISODate
+  postedTime: ClockTime
+  voidedDate?: ISODate
+  voidedBy?: string
+  voidReason?: string
+}
+
+/**
+ * `'sent'` — виїхало з бази, але точка ще не підтвердила: «це не півтори години, десь
+ * так» (1014). У цьому стані переказ НЕ рухає ні касу, ні наділ.
+ * `'disputed'` — точка натиснула «Не сходиться». Теж не рухає нічого: «щоб керівник
+ * просто змінював, щоб не вони, бо то ужас буде» (1185).
+ */
+type TransferStatus = 'sent' | 'accepted' | 'disputed' | 'void'
+
+/** Переказ база → точка: ящики і гроші однією поїздкою (M44). */
+export interface Transfer {
+  id: TransferId
+  date: ISODate
+  pointId: PointId
+  /** Порожні ящики назад на точку */
+  crates: number
+  /** Готівка на ягоду */
+  cash: Uah
+  /** «підписує в зошиті перевізник» (1014) — ТЕКСТ, не обліковий запис (рішення Р-2) */
+  carrier: string
+  sentBy: string
+  sentTime: ClockTime
+  status: TransferStatus
+  acceptedBy?: string
+  acceptedTime?: ClockTime
+  /** Лише при 'disputed': що нарахувала точка. ІНФОРМАЦІЯ — у формули не входить */
+  reportedCrates?: number
+  reportedCash?: Uah
+  disputeNote?: string
+  /** «або другий раз подати їм» (1185) — виправлення це НОВИЙ документ */
+  correctionOf?: TransferId
+  voidedDate?: ISODate
+  voidedBy?: string
+  voidReason?: string
+}
+
 /**
  * Маршрут живе тут, а не в store.ts: `UiState.route` у ports.ts мусить бути саме `Route`,
  * інакше контракт розширив би `name` до `string` і Shell.tsx втратив би перевірку назви

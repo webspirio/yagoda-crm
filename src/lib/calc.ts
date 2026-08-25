@@ -1,6 +1,14 @@
 import type {
   Allocation,
   Berry,
+  ClockTime,
+  CrateAllotment,
+  CrateIssue,
+  CrateIssueId,
+  CrateIssueMode,
+  CrateReturn,
+  CrateReturnAllocation,
+  CrateShipment,
   DayExpense,
   ExpensePolicy,
   ISODate,
@@ -15,6 +23,7 @@ import type {
   SupplierId,
   TareLine,
   TareType,
+  Transfer,
   Uah,
 } from './types'
 
@@ -1241,4 +1250,301 @@ export function topSuppliers(
         a.village.localeCompare(b.village, 'uk') ||
         a.name.localeCompare(b.name, 'uk'),
     )
+}
+
+/* ------------------------- ящики (21 §3.1–3.4) ------------------------- */
+
+/*
+ * ЧОМУ ЦЕ ТУТ, А НЕ В НОВОМУ `crates.ts`. Та сама причина, що й у `costOfDay()` вище:
+ * завдаток за ящик — це готівка в тій самій шухляді, що й гроші за ягоду, і два грошові
+ * рушії в двох файлах означали б два місця, де можна округлити по-різному. Наявні
+ * функції не змінені — тільки додавання нижче.
+ *
+ * ОДИНИЦІ ТУТ ЦІЛІ. Ящик не буває дробовим, тому кількості ніде не проходять через
+ * round2() — це не недогляд, а межа: round2 живе на грошах, Math.trunc на ящиках.
+ */
+
+/**
+ * ДЕМОНСТРАЦІЙНИЙ ДЕФОЛТ, НЕ УЗГОДЖЕНА ПОЛІТИКА (`21 §10`, `Q-19`).
+ * «Якщо, наприклад, до 50, це буде за кошти кожен ящик. Якщо після 50, це буде за
+ * розписку» (дзвінок №4, ряд. 1081). Межа ВКЛЮЧНА: 50 — ще за кошти, 51 — уже за
+ * розписку. Клієнт цього не підтверджувала: «до 50» можна прочитати й як «менше 50».
+ */
+export const CRATE_RECEIPT_THRESHOLD = 50
+
+/**
+ * Спосіб видачі за порогом. Це ПІДСТАВЛЕННЯ, а не заборона: приймальник може перемкнути
+ * руками, і тоді екран показує попередження (`21 §2.3`). Клієнтка описує поріг як спосіб
+ * вибору кнопки — «ми обираємо, якщо за кошти, ми натискаємо в себе за кошти» (1083).
+ */
+export function crateIssueMode(units: number, threshold = CRATE_RECEIPT_THRESHOLD): CrateIssueMode {
+  return units > threshold ? 'receipt' : 'deposit'
+}
+
+/**
+ * Запис, що ДІЄ на дату: з найбільшим `effectiveFrom ≤ date`. Спільний для наділу ящиків
+ * і наділу каси — обидва є історією, а не полем на точці, і читаються однаково.
+ * Повертає `null`, коли наділу на цю дату ще не було: на екрані це «—», не 0.
+ */
+export function effectiveAt<
+  T extends { id: string; pointId: PointId; effectiveFrom: ISODate; setDate: ISODate; setTime: ClockTime },
+>(records: T[], pointId: PointId, date: ISODate): T | null {
+  // Розрив за (setDate, setTime, id) — не косметика. Два наділи з ОДНІЄЮ effectiveFrom
+  // трапляються буквально: керівник поставив 800 із 15.07, побачив 712 ящиків того дня і
+  // тим самим числом поставив 900. Без розриву перемагав би той, хто раніше в масиві,
+  // тобто порядок у localStorage вирішував би, скільки ящиків на точці.
+  const key = (r: T) => `${r.effectiveFrom}|${r.setDate}|${r.setTime}|${r.id}`
+  let best: T | null = null
+  for (const r of records) {
+    if (r.pointId !== pointId) continue
+    if (r.effectiveFrom > date) continue
+    if (!best || key(r) > key(best)) best = r
+  }
+  return best
+}
+
+const notVoided = <T extends { voidedDate?: ISODate }>(d: T) => !d.voidedDate
+
+/** Видача з непогашеним залишком. `open` — скільки ящиків цієї видачі ще в людини. */
+export interface OpenCrateIssue {
+  issue: CrateIssue
+  open: number
+}
+
+/**
+ * Відкриті видачі людини, НАЙСТАРІША ПЕРША. Це контракт FIFO: `allocateCrateReturn()`
+ * покладається саме на цей порядок, рівно як `allocatePayout()` покладається на
+ * `openDebts()`. Погашене рахується з `allocations` наявних повернень — з того ж місця,
+ * звідки `openDebts()` бере погашення боргів.
+ */
+export function openCrateIssues(
+  supplierId: SupplierId,
+  issues: CrateIssue[],
+  returns: CrateReturn[],
+): OpenCrateIssue[] {
+  const consumed = new Map<CrateIssueId, number>()
+  for (const r of returns) {
+    if (r.supplierId !== supplierId || !notVoided(r)) continue
+    for (const a of r.allocations) {
+      consumed.set(a.issueId, (consumed.get(a.issueId) ?? 0) + a.units)
+    }
+  }
+  return issues
+    .filter((i) => i.supplierId === supplierId && notVoided(i))
+    .map((issue) => ({ issue, open: issue.units - (consumed.get(issue.id) ?? 0) }))
+    .filter((x) => x.open > 0)
+    .sort((a, b) =>
+      a.issue.date === b.issue.date
+        ? a.issue.time.localeCompare(b.issue.time) || a.issue.id.localeCompare(b.issue.id)
+        : a.issue.date.localeCompare(b.issue.date),
+    )
+}
+
+/** Ящиковий баланс людини: «щоби було показано на балансі, скільки в цієї людини є» (1085). */
+export interface CrateBalance {
+  /** усього взято за всі часи */
+  taken: number
+  /** усього повернуто */
+  returned: number
+  /** ящиків у людини зараз */
+  units: number
+  /** із них узятих за кошти — за ці ящики в нас лежать гроші */
+  deposit: number
+  /** із них узятих за розписку — грошового покриття немає взагалі */
+  receipt: number
+  /** ₴ завдатків, які ми винні цій людині за її ящики */
+  depositHeld: Uah
+  /** відкриті видачі, найстаріша перша */
+  open: OpenCrateIssue[]
+  /**
+   * `units − Σ open`. Нуль, поки кожне повернення розкладене рівно на свою кількість.
+   * Ненуль означає документ, у якому `units` не дорівнює сумі `allocations` — рівно той
+   * клас тихої помилки, який `reconcileDay().drift` ловить у грошах.
+   */
+  drift: number
+}
+
+export function crateBalance(
+  supplierId: SupplierId,
+  issues: CrateIssue[],
+  returns: CrateReturn[],
+): CrateBalance {
+  const open = openCrateIssues(supplierId, issues, returns)
+  const mine = issues.filter((i) => i.supplierId === supplierId && notVoided(i))
+  const back = returns.filter((r) => r.supplierId === supplierId && notVoided(r))
+  const taken = mine.reduce((n, i) => n + i.units, 0)
+  const returned = back.reduce((n, r) => n + r.units, 0)
+  const units = taken - returned
+  const openUnits = open.reduce((n, x) => n + x.open, 0)
+  return {
+    taken,
+    returned,
+    units,
+    deposit: open.filter((x) => x.issue.mode === 'deposit').reduce((n, x) => n + x.open, 0),
+    receipt: open.filter((x) => x.issue.mode === 'receipt').reduce((n, x) => n + x.open, 0),
+    // Фільтр за mode тут НАДЛИШКОВИЙ, поки документ узгоджений: за розписку
+    // `depositPerUnit` дорівнює 0, тому вона й так додала б нуль. Він стоїть навмисно —
+    // видача під розписку з ненульовою ціною завдатку не має права ТИХО зробити нас
+    // винними грошей, яких ми не брали. Знайдено мутаційною рецензією: без цього рядка
+    // зіпсований документ рухав би гроші, і жоден тест цього не бачив.
+    depositHeld: sum(
+      open.filter((x) => x.issue.mode === 'deposit'),
+      (x) => round2(x.open * x.issue.depositPerUnit),
+    ),
+    open,
+    drift: units - openUnits,
+  }
+}
+
+/**
+ * Розкласти повернення по відкритих видачах, найстаріша перша, і порахувати гроші за
+ * ЗНІМКОМ ціни кожної видачі. Саме це має на увазі «воно автоматично підтягує йому, як
+ * та людина брала ящики, тобто чи за розписку, чи за кошти» (1087): питати людину не
+ * треба, бо порядок видач уже все каже.
+ *
+ * Повернення понад узяте НЕ розкладається мовчки: сума розкладеного менша за `units`, і
+ * цю різницю зобовʼязаний побачити той, хто викликає (`I64` — це `block` на вводі).
+ */
+export function allocateCrateReturn(units: number, open: OpenCrateIssue[]): CrateReturnAllocation[] {
+  let left = Math.trunc(units)
+  const out: CrateReturnAllocation[] = []
+  for (const item of open) {
+    if (left <= 0) break
+    const take = Math.min(left, item.open)
+    out.push({
+      issueId: item.issue.id,
+      units: take,
+      perUnit: item.issue.depositPerUnit,
+      amount: round2(take * item.issue.depositPerUnit),
+    })
+    left -= take
+  }
+  return out
+}
+
+/** ₴ до видачі за повернені ящики. Окремою функцією, бо це гроші, а не кількість. */
+export function crateRefund(allocations: CrateReturnAllocation[]): Uah {
+  return sum(allocations, (a) => a.amount)
+}
+
+/**
+ * Склад наділу точки — «щоб вони візуально це бачили» (1129).
+ * `allotment = onHand + inField + atBase` — це дослівно її тотожність: «на користуванні
+ * стільки-то, на ранок стільки-то і віддано з ягодою… і в сумі воно сходиться 600» (1046).
+ */
+export interface CrateStanding {
+  /** `null`, коли наділу на цю дату ще не призначали — на екрані «—», не 0 */
+  allotment: number | null
+  /** у людей: видано − повернуто */
+  inField: number
+  /** у нас: відправлено з ягодою і боєм − повернуто переказами, які точка ПРИЙНЯЛА */
+  atBase: number
+  /** порожніх на точці; `null` без наділу */
+  onHand: number | null
+  /** «в мінусі має бути 140 ящиків» (1049) — це inField + atBase, і воно є завжди */
+  shortfall: number
+  /** складові atBase, щоб «у нас» не було чорною скринькою */
+  shipped: number
+  returnedToPoint: number
+}
+
+export function crateStanding(input: {
+  pointId: PointId
+  date: ISODate
+  allotments: CrateAllotment[]
+  issues: CrateIssue[]
+  returns: CrateReturn[]
+  shipments: CrateShipment[]
+  transfers: Transfer[]
+}): CrateStanding {
+  const { pointId, date } = input
+  const mine = <T extends { pointId: PointId; date: ISODate }>(list: T[]) =>
+    list.filter((d) => d.pointId === pointId && d.date <= date)
+
+  const issued = mine(input.issues.filter(notVoided)).reduce((n, i) => n + i.units, 0)
+  const back = mine(input.returns.filter(notVoided)).reduce((n, r) => n + r.units, 0)
+  const shipped = mine(input.shipments.filter(notVoided)).reduce(
+    (n, s) => n + s.withBerryUnits + s.brokenUnits,
+    0,
+  )
+  // Переказ рахується ЛИШЕ прийнятий: «поки точка не натиснула "Прийняв", ці ящики ще
+  // не її» (`I68`). 'sent' і 'disputed' не рухають наділ — у цьому й сенс підтвердження.
+  const returnedToPoint = mine(input.transfers)
+    .filter((t) => t.status === 'accepted')
+    .reduce((n, t) => n + t.crates, 0)
+
+  const inField = issued - back
+  const atBase = shipped - returnedToPoint
+  const rec = effectiveAt(input.allotments, pointId, date)
+  const allotment = rec ? rec.units : null
+  return {
+    allotment,
+    inField,
+    atBase,
+    onHand: allotment === null ? null : allotment - inField - atBase,
+    shortfall: inField + atBase,
+    shipped,
+    returnedToPoint,
+  }
+}
+
+/**
+ * Кількість ящиків із ягодою за день — рахує СИСТЕМА, поля вводу немає: «не вони мають
+ * вносити, а тобто сама система, сама програма має вичитати» (1115).
+ *
+ * Ящиком вважається РІВНО одна тара — Чешка (рішення `Р-1`, `21 §3.4`). Її id приходить
+ * параметром, а не читається з `seed.ts`: цей рушій не має права залежати від демо-даних.
+ */
+export interface CrateShipmentDraft {
+  withBerryUnits: number
+  /** скільки квитанцій дало цей знімок — щоб пізніша квитанція була видна, а не тиха */
+  receptionCount: number
+}
+
+export function crateShipmentDraft(input: {
+  date: ISODate
+  pointId: PointId
+  receptions: Reception[]
+  crateTareId: string
+}): CrateShipmentDraft {
+  const day = input.receptions.filter((r) => r.date === input.date && r.pointId === input.pointId)
+  return {
+    withBerryUnits: day.reduce(
+      (n, r) => n + r.tare.filter((l) => l.tareId === input.crateTareId).reduce((m, l) => m + l.count, 0),
+      0,
+    ),
+    receptionCount: day.length,
+  }
+}
+
+/**
+ * `I62` і `I64` — обидва `block`, і обидва живуть ТУТ, а не у формі. Причина та сама, що
+ * в `reweighLineValid()`: це та сама перевірка, що й у рушії, і розійтися вони не мають
+ * права. Форма покаже текст, стор відмовить у команді — але правило одне.
+ *
+ * `ok: false` при `onHand === null` — навмисно: точка без наділу ящиків їх не роздає,
+ * бо видані з неї ящики не потрапили б у жоден склад наділу і зникли б з обліку тихо.
+ */
+export interface CrateCheck {
+  ok: boolean
+  /** скільки максимум можна цією операцією; `null`, коли операція неможлива взагалі */
+  max: number | null
+}
+
+/** `I62`: «на точці зараз 341 порожній ящик — 500 видати нема з чого». */
+export function checkCrateIssue(units: number, onHand: number | null): CrateCheck {
+  if (onHand === null) return { ok: false, max: null }
+  const max = Math.max(0, onHand)
+  return { ok: Number.isInteger(units) && units > 0 && units <= max, max }
+}
+
+/** `I64`: «людина брала 20, повернути 25 не може». */
+export function checkCrateReturn(units: number, balance: number): CrateCheck {
+  const max = Math.max(0, balance)
+  return { ok: Number.isInteger(units) && units > 0 && units <= max, max }
+}
+
+/** Разом відправлено: з ягодою плюс бій. «віддаємо і ті, що з ягодою, і ті, що ламані» (977). */
+export function shipmentTotal(s: { withBerryUnits: number; brokenUnits: number }) {
+  return s.withBerryUnits + s.brokenUnits
 }
