@@ -124,7 +124,7 @@ export function CratesPage() {
           </p>
         ) : null}
 
-        <InFieldTable rows={rows} inField={standing.inField} />
+        <InFieldTable rows={rows} inField={standing.inField} pointId={pointId} />
 
         <p className="text-xs leading-relaxed text-muted-foreground">
           Ящики, узяті за розписку, грошового покриття не мають узагалі — у колонці

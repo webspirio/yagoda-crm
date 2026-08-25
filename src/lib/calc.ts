@@ -1311,6 +1311,13 @@ export function effectiveAt<
   return best
 }
 
+/**
+ * День, яким переказ входить у книги. Прийнятий — днем ПРИЙНЯТТЯ (`acceptedDate`), бо саме
+ * тоді гроші й ящики фізично опинилися на точці; для старих документів без цього поля
+ * падаємо на день відправлення, щоб збережений payload не зник із книги мовчки.
+ */
+const transferDay = (t: Transfer) => t.acceptedDate ?? t.date
+
 const notVoided = <T extends { voidedDate?: ISODate }>(d: T) => !d.voidedDate
 
 /** Видача з непогашеним залишком. `open` — скільки ящиків цієї видачі ще в людини. */
@@ -1341,9 +1348,19 @@ export function openCrateIssues(
     .filter((i) => i.supplierId === supplierId && notVoided(i))
     .map((issue) => ({ issue, open: issue.units - (consumed.get(issue.id) ?? 0) }))
     .filter((x) => x.open > 0)
+    // Розрив нічиї — ПОРЯДКОМ У ЖУРНАЛІ, і id у ключі свідомо НЕМАЄ. Перша версія
+    // розривала його через `a.issue.id.localeCompare(b.issue.id)`, а id генерується
+    // `Math.random()` — і на двох видачах ОДНІЄЇ хвилини (штатний випадок: людина бере
+    // 50 за кошти і 60 за розписку одним візитом, бо поріг 50) сума до видачі ставала
+    // підкиданням монети. Зміряно на 1 000 прогонів: повернення 10 ящиків дало 1 200,00 ₴
+    // у 493 випадках і 0,00 ₴ у 507. Це та сама помилка, яку `effectiveAt()` уже
+    // виправив вище; тут вона лишалася, бо тест підбирав id руками (`ci-a` < `ci-b`) і
+    // тому був зелений на алфавіті, а не на порядку надходження.
+    // `Array.prototype.sort` у V8 стабільний, а журнал append-only — отже при рівних
+    // (date, time) перемагає той, хто прийшов раніше, і це детерміновано.
     .sort((a, b) =>
       a.issue.date === b.issue.date
-        ? a.issue.time.localeCompare(b.issue.time) || a.issue.id.localeCompare(b.issue.id)
+        ? a.issue.time.localeCompare(b.issue.time)
         : a.issue.date.localeCompare(b.issue.date),
     )
 }
@@ -1414,16 +1431,25 @@ export function crateBalance(
  * цю різницю зобовʼязаний побачити той, хто викликає (`I64` — це `block` на вводі).
  */
 export function allocateCrateReturn(units: number, open: OpenCrateIssue[]): CrateReturnAllocation[] {
+  // `Math.trunc(NaN)` це NaN, а `NaN <= 0` хибне — без цього рядка цикл не переривався і
+  // клав проводки з `units: NaN`. Межу тримає сама функція, як це робить `round2()`, а не
+  // той, хто її кличе: сьогодні всі виклики йдуть за `checkCrateReturn`, а завтра ні.
+  if (!Number.isFinite(units)) return []
   let left = Math.trunc(units)
   const out: CrateReturnAllocation[] = []
   for (const item of open) {
     if (left <= 0) break
     const take = Math.min(left, item.open)
+    // Друга половина `I66`, і вона МУСИТЬ стояти тут, а не в тому, хто кличе. `depositHeld`
+    // уже фільтрує за `mode` свідомо — після мутаційної рецензії; без дзеркального рядка
+    // тут документ `mode:'receipt'` із ненульовою ціною показував би 0 ₴ боргу і при цьому
+    // ВИДАВАВ би 120 ₴/ящик із шухляди. Це протилежний бік тієї самої помилки.
+    const perUnit = item.issue.mode === 'deposit' ? item.issue.depositPerUnit : 0
     out.push({
       issueId: item.issue.id,
       units: take,
-      perUnit: item.issue.depositPerUnit,
-      amount: round2(take * item.issue.depositPerUnit),
+      perUnit,
+      amount: round2(take * perUnit),
     })
     left -= take
   }
@@ -1477,8 +1503,10 @@ export function crateStanding(input: {
   )
   // Переказ рахується ЛИШЕ прийнятий: «поки точка не натиснула "Прийняв", ці ящики ще
   // не її» (`I68`). 'sent' і 'disputed' не рухають наділ — у цьому й сенс підтвердження.
-  const returnedToPoint = mine(input.transfers)
-    .filter((t) => t.status === 'accepted')
+  const returnedToPoint = input.transfers
+    .filter(
+      (t) => t.pointId === pointId && t.status === 'accepted' && transferDay(t) <= date,
+    )
     .reduce((n, t) => n + t.crates, 0)
 
   const inField = issued - back
@@ -1544,6 +1572,20 @@ export function checkCrateIssue(units: number, onHand: number | null): CrateChec
   if (onHand === null) return { ok: false, max: null }
   const max = Math.max(0, onHand)
   return { ok: Number.isInteger(units) && units > 0 && units <= max, max }
+}
+
+/**
+ * Межа переказу ЯЩИКІВ. База повертає точці те, що ТРИМАЄ, — тобто `atBase`, а не
+ * `shortfall`. Різниця не косметична: `shortfall = inField + atBase`, і на Шипинках 04.08
+ * це 459 проти 264 — 195 ящиків лежать у ЛЮДЕЙ і базі не належать. Переказ на 459 зробив
+ * би `atBase = −195`, `onHand = 800` при 195 у полі, і `checkCrateIssue` дозволив би
+ * видати ящики, яких на точці немає, — тобто єдиний block ящикової частини перестав би
+ * означати щось. Стенограма каже це прямо: мінус 140 = 100 у людей + 40 у нас, база
+ * повертає 40, і мінус стає 100, а не нуль (1049–1052).
+ */
+export function checkCrateTransfer(units: number, atBase: number): CrateCheck {
+  const max = Math.max(0, atBase)
+  return { ok: Number.isInteger(units) && units >= 0 && units <= max, max }
 }
 
 /** `I64`: «людина брала 20, повернути 25 не може». */
@@ -1641,7 +1683,7 @@ export function cashStanding(input: {
   const berryOut = sum(perDay, (r) => r.cashOut)
 
   const accepted = input.transfers.filter(
-    (t) => t.pointId === pointId && inWindow(t.date) && t.status === 'accepted',
+    (t) => t.pointId === pointId && inWindow(transferDay(t)) && t.status === 'accepted',
   )
   const cashIn = sum(accepted, (t) => t.cash)
 
@@ -1683,7 +1725,7 @@ export function cashStanding(input: {
     paidToday: today ? today.paidToday : 0,
     paidForPastDays: today ? today.paidForPastDays : 0,
     cashInToday: sum(
-      accepted.filter((t) => t.date === date),
+      accepted.filter((t) => transferDay(t) === date),
       (t) => t.cash,
     ),
   }

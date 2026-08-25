@@ -118,6 +118,7 @@ describe('наділи: ящики і каса (UC-35)', () => {
   beforeEach(() => {
     useStore.getState().resetDemo()
     // Команди наділів і переказів — керівницькі (§7), тому пристрій тут під роллю власника.
+    // «Прийняв» і «Не сходиться» — навпаки, дії ТОЧКИ, тому перед ними роль перемикається.
     useStore.setState({ role: 'owner' })
   })
 
@@ -446,6 +447,7 @@ describe('перекази база → точка (UC-22, UC-36, UC-37, I68, I6
   beforeEach(() => {
     useStore.getState().resetDemo()
     // Команди наділів і переказів — керівницькі (§7), тому пристрій тут під роллю власника.
+    // «Прийняв» і «Не сходиться» — навпаки, дії ТОЧКИ, тому перед ними роль перемикається.
     useStore.setState({ role: 'owner' })
   })
 
@@ -474,7 +476,8 @@ describe('перекази база → точка (UC-22, UC-36, UC-37, I68, I6
       cash: 150_000,
       carrier: 'Перевізник Р.',
     })
-    const accepted = useStore.getState().acceptTransfer(sent!.id, 'Оксана Г.')
+    useStore.setState({ role: 'operator' })
+    const accepted = useStore.getState().acceptTransfer(sent!.id)
     expect(accepted?.status).toBe('accepted')
     expect(accepted?.acceptedBy).toBe('Оксана Г.')
     const after = cashOfPoint('p1')
@@ -492,11 +495,14 @@ describe('перекази база → точка (UC-22, UC-36, UC-37, I68, I6
       cash: 150_000,
       carrier: 'Перевізник Р.',
     })
-    useStore.getState().acceptTransfer(sent!.id, 'Оксана Г.')
-    expect(useStore.getState().acceptTransfer(sent!.id, 'Оксана Г.')).toBeUndefined()
+    useStore.setState({ role: 'operator' })
+    useStore.getState().acceptTransfer(sent!.id)
+    useStore.setState({ role: 'operator' })
+    expect(useStore.getState().acceptTransfer(sent!.id)).toBeUndefined()
     expect(cashOfPoint('p1').berryCash).toBe(151_616.1)
     // і неіснуючий id теж нічого не рухає
-    expect(useStore.getState().acceptTransfer('tf_немає', 'Оксана Г.')).toBeUndefined()
+    useStore.setState({ role: 'operator' })
+    expect(useStore.getState().acceptTransfer('tf_немає')).toBeUndefined()
   })
 
   it("«Не сходиться» не рухає нічого: 20 ящиків проти нарахованих 18, каса p5 без змін", () => {
@@ -507,6 +513,7 @@ describe('перекази база → точка (UC-22, UC-36, UC-37, I68, I6
       cash: 11_787.77,
       carrier: 'Перевізник Р.',
     })
+    useStore.setState({ role: 'operator' })
     const doc = useStore.getState().disputeTransfer(sent!.id, {
       reportedCrates: 18,
       reportedCash: 11_787.77,
@@ -517,7 +524,8 @@ describe('перекази база → точка (UC-22, UC-36, UC-37, I68, I6
     expect(cashOfPoint('p5').berryCash).toBe(before.berryCash)
     expect(cashOfPoint('p5').cashIn).toBe(before.cashIn)
     // заявлений переказ уже не приймають кнопкою «Прийняв» — його закриває керівник
-    expect(useStore.getState().acceptTransfer(sent!.id, 'Тарас Л.')).toBeUndefined()
+    useStore.setState({ role: 'operator' })
+    expect(useStore.getState().acceptTransfer(sent!.id)).toBeUndefined()
   })
 
   it('I69: приймальник переказ не сторнує — tf23 лишається disputed', () => {
@@ -551,7 +559,8 @@ describe('перекази база → точка (UC-22, UC-36, UC-37, I68, I6
       (t) => t.status === 'accepted' && t.pointId === 'p5',
     ).length
     expect(acceptedBefore).toBe(5)
-    useStore.getState().acceptTransfer(fixed!.id, 'Тарас Л.')
+    useStore.setState({ role: 'operator' })
+    useStore.getState().acceptTransfer(fixed!.id)
     // і аж тепер ті 18 ящиків повернулися на точку — шостим прийнятим переказом
     expect(useStore.getState().transfers.filter((t) => t.status === 'accepted' && t.pointId === 'p5').length).toBe(6)
   })
@@ -668,7 +677,7 @@ describe('персист v6', () => {
     const opts = store.persist.getOptions()
     expect(opts.name).toBe('yagoda-crm-demo-v6')
     expect(opts.version).toBe(6)
-    const saved = Object.keys(opts.partialize!(store.getState()) as Record<string, unknown>)
+    const saved = Object.keys(opts.partialize!(store.getState()) as unknown as Record<string, unknown>)
     expect(saved.length).toBe(21)
     for (const k of [
       'crateAllotments',
@@ -746,6 +755,7 @@ describe('прогалини мутаційної рецензії (стор)', 
     vi.setSystemTime(new Date(`${TODAY}T12:30:00`))
     useStore.getState().resetDemo()
     // Команди наділів і переказів — керівницькі (§7), тому пристрій тут під роллю власника.
+    // «Прийняв» і «Не сходиться» — навпаки, дії ТОЧКИ, тому перед ними роль перемикається.
     useStore.setState({ role: 'owner' })
   })
 
@@ -756,14 +766,17 @@ describe('прогалини мутаційної рецензії (стор)', 
     const doc = sendOne()
     useStore.setState({ role: 'owner' })
     useStore.getState().voidTransfer(doc.id, 'помилка суми', 'Керівник')
-    expect(useStore.getState().acceptTransfer(doc.id, 'Оксана Г.')).toBeUndefined()
+    useStore.setState({ role: 'operator' })
+    expect(useStore.getState().acceptTransfer(doc.id)).toBeUndefined()
     expect(useStore.getState().transfers.find((t) => t.id === doc.id)!.status).toBe('void')
   })
 
   it('ПРИЙНЯТИЙ переказ не можна перекинути в «не сходиться» — 150 000 лишаються в касі', () => {
     const doc = sendOne()
-    useStore.getState().acceptTransfer(doc.id, 'Оксана Г.')
+    useStore.setState({ role: 'operator' })
+    useStore.getState().acceptTransfer(doc.id)
     const before = cashOfPoint('p1').cashIn
+    useStore.setState({ role: 'operator' })
     expect(
       useStore.getState().disputeTransfer(doc.id, { reportedCrates: 38, reportedCash: 140_000, note: 'менше' }),
     ).toBeUndefined()
@@ -774,7 +787,8 @@ describe('прогалини мутаційної рецензії (стор)', 
   it('перехід стану дає НОВИЙ обʼєкт: старий примірник лишається у стані sent', () => {
     const doc = sendOne()
     const before = useStore.getState().transfers.find((t) => t.id === doc.id)!
-    useStore.getState().acceptTransfer(doc.id, 'Оксана Г.')
+    useStore.setState({ role: 'operator' })
+    useStore.getState().acceptTransfer(doc.id)
     const after = useStore.getState().transfers.find((t) => t.id === doc.id)!
     expect(before.status).toBe('sent')
     expect(after.status).toBe('accepted')
@@ -799,15 +813,23 @@ describe('прогалини мутаційної рецензії (стор)', 
   })
 
   it('наділ каси без причини не змінюється, навіть на нову дату', () => {
+    const before = useStore.getState().cashFloats.length
     expect(
       useStore.getState().setCashFloat({ pointId: 'p1', amount: 600_000, effectiveFrom: '2026-08-04' }),
     ).toBeUndefined()
+    // `undefined` каже лише «нам нічого не повернули». Друге твердження — про СТАН: команда,
+    // яка вставила б запис і повернула undefined, першим рядком не ловилася б узагалі.
+    expect(useStore.getState().cashFloats.length).toBe(before)
+    expect(cashOfPoint('p1').float).toBe(500_000)
   })
 
   it('відʼємний наділ каси не приймається: −1,00 ₴ це відмова', () => {
+    const before = useStore.getState().cashFloats.length
     expect(
       useStore.getState().setCashFloat({ pointId: 'p1', amount: -1, effectiveFrom: '2026-08-04', reason: 'помилка' }),
     ).toBeUndefined()
+    expect(useStore.getState().cashFloats.length).toBe(before)
+    expect(cashOfPoint('p1').float).toBe(500_000)
   })
 
   it('перерахунок не пишеться на зміну, що вже пішла до керівника', () => {
@@ -829,7 +851,13 @@ describe('прогалини мутаційної рецензії (стор)', 
 
   it('без Чешки в довіднику видача за кошти не проходить, хоч інша тара є', () => {
     useStore.setState({ tareTypes: [{ id: 'tr_lubianka', name: 'Лубʼянка', weight: 0.3, price: 50 }] })
+    const before = useStore.getState().crateIssues.length
+    const cash = cashOfPoint('p1').crateCash
     expect(useStore.getState().issueCrates({ pointId: 'p1', supplierId: 's7', units: 10 })).toBeUndefined()
+    // Ціни завдатку взяти нема звідки, тому документа не має бути ЗОВСІМ: видача з
+    // `depositPerUnit: undefined` пройшла б повз перший рядок і зіпсувала б касу за ящики.
+    expect(useStore.getState().crateIssues.length).toBe(before)
+    expect(cashOfPoint('p1').crateCash).toBe(cash)
   })
 
   it('баланс людини МЕРЕЖЕВИЙ: узяла 10 на p1 і 20 на p3 — повертає 15 на p1', () => {
@@ -865,7 +893,7 @@ describe('персист: прогалини рецензії', () => {
       ],
       receptions: [{ ...store.getState().receptions[0], id: 'rc_offline', synced: false }],
     })
-    const saved = store.persist.getOptions().partialize!(store.getState()) as Record<string, unknown>
+    const saved = store.persist.getOptions().partialize!(store.getState()) as unknown as Record<string, unknown>
     expect((saved.shifts as unknown[]).length).toBe(1)
     expect((saved.receptions as { id: string }[]).some((r) => r.id === 'rc_offline')).toBe(true)
   })
@@ -914,6 +942,7 @@ describe('прогалини критика (стор)', () => {
     vi.setSystemTime(new Date(`${TODAY}T12:30:00`))
     useStore.getState().resetDemo()
     // Команди наділів і переказів — керівницькі (§7), тому пристрій тут під роллю власника.
+    // «Прийняв» і «Не сходиться» — навпаки, дії ТОЧКИ, тому перед ними роль перемикається.
     useStore.setState({ role: 'owner' })
   })
 
@@ -921,7 +950,8 @@ describe('прогалини критика (стор)', () => {
     const doc = useStore
       .getState()
       .sendTransfer({ pointId: 'p1', crates: 40, cash: 150_000, carrier: 'Перевізник Р.' })!
-    useStore.getState().acceptTransfer(doc.id, 'Оксана Г.')
+    useStore.setState({ role: 'operator' })
+    useStore.getState().acceptTransfer(doc.id)
     expect(cashOfPoint('p1').cashIn).toBeGreaterThan(0)
     useStore.setState({ role: 'owner' })
     expect(useStore.getState().voidTransfer(doc.id, 'точка прийняла помилково', 'Керівник')).toBeDefined()
@@ -991,7 +1021,318 @@ describe('права: керівницькі команди з пристрою 
       .getState()
       .sendTransfer({ pointId: 'p1', crates: 40, cash: 150_000, carrier: 'Перевізник Р.' })!
     useStore.setState({ role: 'operator' })
-    expect(useStore.getState().acceptTransfer(doc.id, 'Оксана Г.')).toBeDefined()
+    useStore.setState({ role: 'operator' })
+    expect(useStore.getState().acceptTransfer(doc.id)).toBeDefined()
     expect(useStore.getState().issueCrates({ pointId: 'p1', supplierId: 's7', units: 5 })).toBeDefined()
+  })
+})
+
+/**
+ * `G12` / `I58` — єдиний block на готівку в цих фазах. Три з пʼятьох рецензентів знайшли
+ * незалежно, що `checkBerryPayout()` існувала, була протестована і НЕ ВИКЛИКАЛАСЯ ЗВІДКИ:
+ * приймальник міг вивести касу за ягоду скільки завгодно в мінус, а екран лише фарбував
+ * число червоним постфактум. Це прямий наслідок C10 — тієї самої клітинки на −118 089 ₴,
+ * проти якої будується весь продукт.
+ */
+describe('G12: виплата впирається в касу за ягоду', () => {
+  beforeEach(() => {
+    vi.setSystemTime(new Date(`${TODAY}T12:30:00`))
+    useStore.getState().resetDemo()
+  })
+
+  it('на Шипинках у книзі 1 616,10 ₴ — виплата 42 500,00 не проходить і НЕ пишеться', () => {
+    expect(cashOfPoint('p1').berryCash).toBe(1_616.1)
+    const before = useStore.getState().payouts.length
+    const supplierId = useStore.getState().receptions.find((r) => r.pointId === 'p1' && r.debt > 0)!
+      .supplierId
+    expect(
+      useStore.getState().addPayout({
+        date: TODAY,
+        pointId: 'p1',
+        supplierId,
+        amount: 42_500,
+        operator: 'Оксана Г.',
+      }),
+    ).toBeUndefined()
+    expect(useStore.getState().payouts.length).toBe(before)
+    expect(cashOfPoint('p1').berryCash).toBe(1_616.1)
+  })
+
+  it('візит, який виводить із шухляди більше, ніж у ній є, не створює жодної квитанції', () => {
+    const before = useStore.getState().receptions.length
+    const res = useStore.getState().addVisit({
+      date: TODAY,
+      pointId: 'p1',
+      supplierId: useStore.getState().suppliers[0].id,
+      operator: 'Оксана Г.',
+      carriedIn: 0,
+      paid: 10_000,
+      lines: [
+        {
+          berryId: 'v_mal_v',
+          gross: 72.6,
+          pallet: 0,
+          tare: [{ tareId: 'tr_cheshka', count: 1 }],
+          tareWeight: 1.2,
+          net: 71.43,
+          price: 140,
+          bonus: 0,
+          amount: 10_000,
+        },
+      ],
+    })
+    expect(res.receptions).toEqual([])
+    expect(useStore.getState().receptions.length).toBe(before)
+  })
+
+  it('рівно те, що є в касі, видати МОЖНА: 1 616,10 проходить', () => {
+    const supplierId = useStore.getState().receptions.find((r) => r.pointId === 'p1' && r.debt > 0)!
+      .supplierId
+    expect(
+      useStore.getState().addPayout({
+        date: TODAY,
+        pointId: 'p1',
+        supplierId,
+        amount: 1_616.1,
+        operator: 'Оксана Г.',
+      }),
+    ).toBeDefined()
+    expect(cashOfPoint('p1').berryCash).toBe(0)
+  })
+
+  it('після прийнятого переказу та сама виплата проходить: 150 000 → 42 500 можна', () => {
+    useStore.setState({ role: 'owner' })
+    const tf = useStore
+      .getState()
+      .sendTransfer({ pointId: 'p1', crates: 0, cash: 150_000, carrier: 'Перевізник Р.' })!
+    useStore.setState({ role: 'operator' })
+    useStore.setState({ role: 'operator' })
+    useStore.getState().acceptTransfer(tf.id)
+    expect(cashOfPoint('p1').berryCash).toBe(151_616.1)
+    const supplierId = useStore.getState().receptions.find((r) => r.pointId === 'p1' && r.debt > 0)!
+      .supplierId
+    expect(
+      useStore.getState().addPayout({
+        date: TODAY,
+        pointId: 'p1',
+        supplierId,
+        amount: 42_500,
+        operator: 'Оксана Г.',
+      }),
+    ).toBeDefined()
+  })
+
+  it('завдатки за ящики виплату за ягоду НЕ фінансують: 15 416,10 у шухляді, а видати можна 1 616,10', () => {
+    const cash = cashOfPoint('p1')
+    expect(cash.expectedCash).toBe(15_416.1)
+    expect(cash.crateCash).toBe(13_800)
+    const supplierId = useStore.getState().receptions.find((r) => r.pointId === 'p1' && r.debt > 0)!
+      .supplierId
+    expect(
+      useStore
+        .getState()
+        .addPayout({ date: TODAY, pointId: 'p1', supplierId, amount: 5_000, operator: 'Оксана Г.' }),
+    ).toBeUndefined()
+  })
+})
+
+/**
+ * ЩАСЛИВА ГІЛКА МЕЖІ ПЕРСИСТУ — усі вісім нових ключів, а не два.
+ *
+ * Знайдено рецензією і відтворено мутацією: якщо звуження віддає `current` в ОБИДВА боки
+ * (тобто мовчки викидає все, що людина ввела за день, і підставляє свіжий сід), то
+ * 6 із 8 ключів проходили і повний набір тестів, і `ratchet:persist` — у ВСІХ восьми
+ * випадках храповик лишався зеленим. Він перевіряє, що звуження НАПИСАНЕ, а не що воно
+ * ПРАЦЮЄ; smoke теж не побачить, бо браузер щоразу починає з порожнім localStorage.
+ *
+ * Тому тут стверджується саме тотожність: із `merge` виходить РІВНО те, що прийшло в
+ * payload, а не значення зі свіжого сіду.
+ */
+describe('персист: збережене справді відновлюється (усі вісім ключів)', () => {
+  afterAll(() => vi.unstubAllGlobals())
+
+  it('кожен із восьми нових ключів повертається з payload, а не із сіду', async () => {
+    const store = await persistedStore()
+    const merge = store.persist.getOptions().merge!
+    const fresh = store.getState() as unknown as Record<string, unknown[]>
+
+    /** По одному розпізнаваному запису на ключ: числа навмисно неможливі для сіду. */
+    const kept: Record<string, unknown[]> = {
+      crateAllotments: [
+        { id: 'ka', pointId: 'p1', units: 777, effectiveFrom: TODAY, setBy: 'Керівник', setDate: TODAY, setTime: '07:07' },
+      ],
+      cashFloats: [
+        { id: 'kf', pointId: 'p1', amount: 777_777, effectiveFrom: TODAY, setBy: 'Керівник', setDate: TODAY, setTime: '07:07' },
+      ],
+      crateIssues: [
+        { id: 'ki', date: TODAY, time: '07:07', pointId: 'p1', supplierId: 's1', units: 777, mode: 'deposit', depositPerUnit: 120, depositTaken: 93_240, operatorId: 'О.' },
+      ],
+      crateReturns: [
+        { id: 'kr', date: TODAY, time: '07:07', pointId: 'p1', supplierId: 's1', units: 7, allocations: [], depositRefund: 0, operatorId: 'О.' },
+      ],
+      crateShipments: [
+        { id: 'ks', date: TODAY, pointId: 'p1', withBerryUnits: 777, receptionCount: 7, brokenUnits: 7, operatorId: 'О.', postedDate: TODAY, postedTime: '07:07' },
+      ],
+      transfers: [
+        { id: 'kt', date: TODAY, pointId: 'p1', crates: 777, cash: 777.77, carrier: 'П.', sentBy: 'Керівник', sentTime: '07:07', status: 'sent' },
+      ],
+      shifts: [
+        { id: 'kh', pointId: 'p1', operatorId: 'О.', date: TODAY, openedTime: '07:07', openingFloat: 777, status: 'open' },
+      ],
+      cashCounts: [
+        { id: 'kc', shiftId: 'kh', pointId: 'p1', date: TODAY, at: '07:07', countedCash: 777, expectedAtCount: 777, discrepancy: 0, countedBy: 'О.' },
+      ],
+    }
+
+    for (const [key, value] of Object.entries(kept)) {
+      const merged = merge({ [key]: value }, fresh as never) as unknown as Record<string, unknown[]>
+      // саме payload — і не сід
+      expect(merged[key], `${key}: payload мусить пережити merge`).toEqual(value)
+      expect(merged[key], `${key}: сідове значення не має підмінити payload`).not.toEqual(fresh[key])
+    }
+  })
+
+  it('зіпсований payload на кожному з восьми ключів падає у СВІЖИЙ СІД, а не в порожнечу', async () => {
+    const store = await persistedStore()
+    const merge = store.persist.getOptions().merge!
+    const fresh = store.getState() as unknown as Record<string, unknown[]>
+    for (const key of [
+      'crateAllotments',
+      'cashFloats',
+      'crateIssues',
+      'crateReturns',
+      'crateShipments',
+      'transfers',
+      'shifts',
+      'cashCounts',
+    ]) {
+      const merged = merge({ [key]: 'зламано' }, store.getState()) as unknown as Record<string, unknown[]>
+      expect(merged[key], key).toEqual(fresh[key])
+    }
+  })
+})
+
+/**
+ * Сторно ящикових документів і вихід зі зміни, що чекала пояснення. Три з пʼятьох
+ * рецензентів назвали це незалежно: поля `voidedDate` існували в типах, рушій по них
+ * фільтрував, тести їх покривали — а СТАВИТИ їх не було чим, і `awaiting_explanation`
+ * був глухим кутом назавжди.
+ */
+describe('сторно ящикових документів і закриття зміни керівником', () => {
+  beforeEach(() => {
+    vi.setSystemTime(new Date(`${TODAY}T12:30:00`))
+    useStore.getState().resetDemo()
+  })
+
+  it('UC-21 A4: друге відправлення дня можна сторнувати — 264 у нас, а не 439', () => {
+    const st = useStore.getState()
+    const dup = st.postShipment({ pointId: 'p1', date: TODAY, brokenUnits: 0 })!
+    expect(standingOfPoint('p1').atBase).toBe(264 + 173)
+    useStore.setState({ role: 'owner' })
+    expect(useStore.getState().voidCrateShipment(dup.id, 'провели двічі')).toBeDefined()
+    expect(standingOfPoint('p1').atBase).toBe(264)
+    // документ НЕ зник — він лишився зі слідом
+    const kept = useStore.getState().crateShipments.find((x) => x.id === dup.id)!
+    expect(kept.voidedBy).toBe('Керівник')
+    expect(kept.voidReason).toBe('провели двічі')
+  })
+
+  it('помилкова видача сторнується: 195 у людей і 13 800,00 ₴ повертаються', () => {
+    const st = useStore.getState()
+    const wrong = st.issueCrates({ pointId: 'p1', supplierId: 's7', units: 30 })!
+    expect(standingOfPoint('p1').inField).toBe(225)
+    useStore.setState({ role: 'owner' })
+    expect(useStore.getState().voidCrateIssue(wrong.id, 'вписали 30 замість 3')).toBeDefined()
+    expect(standingOfPoint('p1').inField).toBe(195)
+    expect(cashOfPoint('p1').crateCash).toBe(13_800)
+  })
+
+  it('приймальник сторнувати не може, і причина обовʼязкова', () => {
+    const doc = useStore.getState().postShipment({ pointId: 'p1', date: TODAY, brokenUnits: 0 })!
+    expect(useStore.getState().voidCrateShipment(doc.id, 'спроба')).toBeUndefined()
+    useStore.setState({ role: 'owner' })
+    expect(useStore.getState().voidCrateShipment(doc.id, '   ')).toBeUndefined()
+    expect(useStore.getState().voidCrateShipment(doc.id, 'причина')).toBeDefined()
+    // вдруге той самий документ не сторнується
+    expect(useStore.getState().voidCrateShipment(doc.id, 'ще раз')).toBeUndefined()
+  })
+
+  it('зміна з розбіжністю −10 000,00 виходить із глухого кута лише через керівника', () => {
+    const shift = useStore
+      .getState()
+      .openShift({ pointId: 'p2', operatorId: 'Тарас Б.', openingFloat: 10_000 })!
+    useStore.getState().closeShift({ shiftId: shift.id, countedCash: 1 })
+    const stuck = useStore.getState().shifts.find((s) => s.id === shift.id)!
+    expect(stuck.status).toBe('awaiting_explanation')
+    // приймальник не закриває
+    expect(useStore.getState().settleShift(shift.id, 'знайшли')).toBeUndefined()
+    useStore.setState({ role: 'owner' })
+    expect(useStore.getState().settleShift(shift.id, '   ')).toBeUndefined()
+    const done = useStore.getState().settleShift(shift.id, 'знайшли по камерах: передали зайве')!
+    expect(done.status).toBe('closed')
+    expect(done.closedBy).toBe('Керівник')
+    // РОЗБІЖНІСТЬ НЕ ЗНИКЛА — вона лишилася в документі
+    expect(done.discrepancy).toBe(stuck.discrepancy)
+  })
+
+  it('відкриту зміну «закрити поясненням» не можна — спершу перерахунок', () => {
+    const shift = useStore
+      .getState()
+      .openShift({ pointId: 'p2', operatorId: 'Тарас Б.', openingFloat: 10_000 })!
+    useStore.setState({ role: 'owner' })
+    expect(useStore.getState().settleShift(shift.id, 'без перерахунку')).toBeUndefined()
+    // Зміна мусить лишитися ВІДКРИТОЮ: «закрито поясненням» без перерахунку означало б
+    // зміну, яку ніхто не рахував, зі статусом «розібралися».
+    const after = useStore.getState().shifts.find((s) => s.id === shift.id)!
+    expect(after.status).toBe('open')
+    expect(after.closedBy).toBeUndefined()
+  })
+})
+
+describe('валідація чисел і дат у командах', () => {
+  beforeEach(() => {
+    vi.setSystemTime(new Date(`${TODAY}T12:30:00`))
+    useStore.getState().resetDemo()
+    useStore.setState({ role: 'owner' })
+  })
+
+  it('наділ із датою не-ISO не пишеться: 6 записів як було', () => {
+    const before = useStore.getState().crateAllotments.length
+    expect(
+      useStore.getState().setCrateAllotment({ pointId: 'p1', units: 900, effectiveFrom: 'завтра', reason: 'спроба' }),
+    ).toBeUndefined()
+    expect(useStore.getState().crateAllotments.length).toBe(before)
+  })
+
+  it('відправлення майбутнім днем не пишеться', () => {
+    const before = useStore.getState().crateShipments.length
+    expect(useStore.getState().postShipment({ pointId: 'p1', date: '2027-01-01', brokenUnits: 3 })).toBeUndefined()
+    expect(useStore.getState().crateShipments.length).toBe(before)
+    expect(useStore.getState().crateShipments.some((s) => s.date > TODAY)).toBe(false)
+  })
+
+  it('зміна не відкривається з NaN і з мінусом', () => {
+    const before = useStore.getState().shifts.length
+    expect(
+      useStore.getState().openShift({ pointId: 'p2', operatorId: 'Тарас Б.', openingFloat: Number.NaN }),
+    ).toBeUndefined()
+    expect(
+      useStore.getState().openShift({ pointId: 'p2', operatorId: 'Тарас Б.', openingFloat: -50_000 }),
+    ).toBeUndefined()
+    // Жодної нової зміни, і в жодній наявній немає NaN: `openingFloat: NaN` пройшов би в
+    // документ мовчки, а на екрані став би «NaN ₴» аж на перерахунку.
+    expect(useStore.getState().shifts.length).toBe(before)
+    expect(useStore.getState().shifts.every((s) => Number.isFinite(s.openingFloat))).toBe(true)
+  })
+
+  it('заявка «не сходиться» без коментаря не пишеться', () => {
+    const doc = useStore
+      .getState()
+      .sendTransfer({ pointId: 'p1', crates: 40, cash: 150_000, carrier: 'Перевізник Р.' })!
+    useStore.setState({ role: 'operator' })
+    expect(
+      useStore.getState().disputeTransfer(doc.id, { reportedCrates: 38, reportedCash: 150_000, note: '  ' }),
+    ).toBeUndefined()
+    expect(useStore.getState().transfers.find((t) => t.id === doc.id)!.status).toBe('sent')
   })
 })

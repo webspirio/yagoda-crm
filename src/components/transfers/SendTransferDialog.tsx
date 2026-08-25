@@ -35,6 +35,14 @@ import type { ISODate, Transfer } from '@/lib/types'
  *    заради якого цей екран існує, почав би показувати число, якого база нікому не винна.
  *    Тому ввід підрізається до заборгованості, а поруч стоїть кнопка «уся заборгованість».
  *
+ * **ЯЩИКИ ЙДУТЬ НЕ ЗА ТИМ ЧИСЛОМ, ЩО ГРОШІ, І ЦЕ ГОЛОВНА ПРАВКА ЦЬОГО ФАЙЛА.** Гроші
+ * підставляються за заборгованістю, а ящики — за `atBase`: базі належить лише те, що вона
+ * ТРИМАЄ. `shortfall = inField + atBase`, і на Шипинках 04.08 це 459 проти 264 — 195
+ * ящиків лежать у ЛЮДЕЙ, переказом вони не вертаються взагалі. Форма підставляла 459,
+ * `checkCrateTransfer` (стор) від 04.08 таке ВІДМОВЛЯЄ — тобто кнопка «Надіслати» мовчки
+ * нічого не робила б. Тепер поле підставлене і підрізане по `atBase`, а 459 лишається
+ * НА ЕКРАНІ окремим рядком із поясненням, чому ці числа різні.
+ *
  * Режим виправлення (`original ≠ null`) — це `UC-36` крок 3: старий документ СТОРНУЄТЬСЯ, а
  * новий народжується з `correctionOf`. Правки старого немає взагалі (`06 §3`), і причина
  * сторно обовʼязкова — стор відмовить у команді з порожньою причиною, тому форма питає її
@@ -70,12 +78,18 @@ export function SendTransferDialog({
   const reportedCash = original?.reportedCash ?? original?.cash ?? 0
   const reportedCrates = original?.reportedCrates ?? original?.crates ?? 0
   const suggestedCash = original ? reportedCash : Math.max(0, owed ?? 0)
-  const suggestedCrates = original ? reportedCrates : Math.max(0, crates.shortfall)
   // Стеля не може виявитися нижчою за факт, який ми ж і підставили: заявлений «не
   // сходиться» переказ не рухає нічого (`I68`), тому заборгованість його вже містить —
   // але покладатися на це мовчки не можна.
   const maxCash = Math.max(0, owed ?? 0, suggestedCash)
-  const maxCrates = Math.max(0, crates.shortfall, suggestedCrates)
+  // Ящикова стеля — ЖОРСТКА, і на відміну від грошової вона НЕ піднімається під факт:
+  // `checkCrateTransfer(units, atBase)` у сторі відмовить, а відмова без причини на екрані
+  // — це та сама мовчазна кнопка, від якої рятує решта цього файла. Тому заявлене точкою
+  // число теж підрізається, і рядок під полем каже, що саме підрізано.
+  const maxCrates = Math.max(0, crates.atBase)
+  const suggestedCrates = Math.min(maxCrates, original ? reportedCrates : maxCrates)
+  // «Не хватає» і «база тримає» — два різні числа, і поки вони різні, форма це каже вголос.
+  const heldBackByPeople = crates.shortfall > maxCrates
 
   const [cashInput, setCashInput] = React.useState('')
   const [cratesInput, setCratesInput] = React.useState('')
@@ -128,7 +142,9 @@ export function SendTransferDialog({
       correctionOf: original?.id,
     })
     if (!doc) {
-      toast.error('Переказ не пройшов', { description: 'Створити переказ може лише керівник.' })
+      toast.error('Переказ не пройшов', {
+        description: `Створити переказ може лише керівник, і ящиків не більше, ніж база тримає (${num(maxCrates)}).`,
+      })
       return
     }
     onOpenChange(false)
@@ -200,9 +216,18 @@ export function SendTransferDialog({
               className="h-11"
               onClick={() => setCratesInput(String(maxCrates))}
             >
-              Усі — {num(maxCrates)}
+              Усі, що в нас — {num(maxCrates)}
             </Button>
           </div>
+
+          {heldBackByPeople ? (
+            <p className="-mt-1 text-xs leading-relaxed text-muted-foreground">
+              Не хватає до наділу {num(crates.shortfall)} ящ., а база тримає{' '}
+              {num(crates.atBase)}: решта {num(crates.inField)} у людей. Ці переказом не
+              вертаються — їх приносять самі здавальники, тому надіслати більше за{' '}
+              {num(maxCrates)} не можна.
+            </p>
+          ) : null}
 
           <div className="grid gap-1.5">
             {/* Р-2: перевізник — ТЕКСТ, а не обліковий запис. Ролей у системі лишається дві. */}

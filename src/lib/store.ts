@@ -3,6 +3,8 @@ import { persist } from 'zustand/middleware'
 import {
   allocateCrateReturn,
   allocatePayout,
+  checkBerryPayout,
+  checkCrateTransfer,
   cashStanding,
   checkCrateIssue,
   checkCrateRefund,
@@ -176,6 +178,24 @@ function transferTransition(
 
 const seed = buildSeed()
 
+/**
+ * Спільне тіло трьох сторно ящикових документів: роль, непорожня причина, слід замість
+ * видалення. Винесене, бо три однакові команди — це три місця, де можна забути гейт.
+ */
+function voidCrateDoc<T extends { id: string; voidedDate?: ISODate }>(
+  role: Role,
+  list: T[],
+  id: string,
+  reason: string,
+): { list: T[]; doc: T } | undefined {
+  if (role !== 'owner') return undefined
+  if (!reason.trim()) return undefined
+  const found = list.find((d) => d.id === id)
+  if (!found || found.voidedDate) return undefined
+  const doc: T = { ...found, voidedDate: TODAY, voidedBy: OWNER, voidReason: reason }
+  return { list: list.map((d) => (d === found ? doc : d)), doc }
+}
+
 export const useStore = create<State>()(
   persist(
     (set, get) => ({
@@ -293,6 +313,13 @@ export const useStore = create<State>()(
           ).reduce((s, o) => s + o.open, 0),
         )
         const paidToPast = round2(Math.min(Math.max(0, paid - accrued), openTotal))
+        // G12 / I58 на візиті: із шухляди виходить `paidToday + paidToPast`, і обидва —
+        // готівка за ягоду. Перевіряємо СУМУ, а не доданки: людині байдуже, яка її частина
+        // закриває сьогоднішню ягоду, а яка давній залишок — шухляда одна.
+        const cashLeaving = round2(paidToday + paidToPast)
+        if (cashLeaving > 0 && !checkBerryPayout(cashLeaving, cashOf(st, pointId, date).berryCash).ok) {
+          return { receptions: [], payout: undefined }
+        }
         const perLine = splitPaidAcrossLines(amounts, paidToday)
 
         const visitId = `v_${Math.random().toString(36).slice(2, 9)}`
@@ -341,6 +368,12 @@ export const useStore = create<State>()(
 
       addPayout: ({ date, pointId, supplierId, amount, operator, visitId, scopePointId }) => {
         const st = get()
+        // G12 / I58: «У касі 12 400 ₴, ви видаєте 42 500 ₴. Готівки не вистачає.»
+        // Впирається саме в касу ЗА ЯГОДУ, а не в суму шухляди: інакше виплата за ягоду
+        // з'їла б чужі завдатки за ящики (21 §3.5). До цієї правки функція `checkBerryPayout`
+        // існувала, була протестована — і не викликалася звідки, тобто єдиний block на
+        // готівку в цій фазі не діяв, а екран лише фарбував мінус червоним постфактум.
+        if (!checkBerryPayout(amount, cashOf(st, pointId, date).berryCash).ok) return undefined
         const scoped = scopePointId
           ? st.receptions.filter((r) => r.pointId === scopePointId)
           : st.receptions
@@ -496,6 +529,10 @@ export const useStore = create<State>()(
 
       setCrateAllotment: ({ pointId, units, effectiveFrom, reason }) => {
         const st = get()
+        // `effectiveAt()` порівнює `effectiveFrom` ЛЕКСИКОГРАФІЧНО. Рядок довільної форми
+        // або ніколи не стає діючим (і тоді `checkCrateIssue` мовчки відмовляє в кожній
+        // видачі), або сортується поперед усього. `ISO_DATE` у цьому файлі вже є.
+        if (!ISO_DATE.test(effectiveFrom)) return undefined
         // §7: наділ змінює КЕРІВНИК — «чи може керівник збільшувати доступну кількість
         // ящиків?» (1062). Роль перевіряється тут, а не лише в UI: `setBy` нижче прибитий
         // до OWNER, тому без цієї перевірки документ приймальника стверджував би, що його
@@ -526,6 +563,7 @@ export const useStore = create<State>()(
 
       setCashFloat: ({ pointId, amount, effectiveFrom, reason }) => {
         const st = get()
+        if (!ISO_DATE.test(effectiveFrom)) return undefined
         // §7: наділ каси теж лише керівник — «фіксована сума на користування» (1146).
         if (st.role !== 'owner') return undefined
         // «технологія з грошима така сама, як з ящиками» (1144) — і правило про причину теж.
@@ -567,7 +605,7 @@ export const useStore = create<State>()(
         // ЗНІМОК ціни, а не посилання на довідник: керівник міняє ціну Чешки (06 §6 п. 11), а
         // повернення рахується за тим завдатком, з яким ящики брали (I65).
         // За розписку — РІВНО 0, тому обидва способи рахуються однією формулою (I66).
-        const perUnit = chosen === 'deposit' && cheshka ? cheshka.price : 0
+        const perUnit = chosen === 'deposit' && cheshka ? round2(cheshka.price) : 0
         const doc: CrateIssue = {
           id: `ci_${rid()}`,
           date: TODAY,
@@ -619,6 +657,10 @@ export const useStore = create<State>()(
 
       postShipment: ({ pointId, date, brokenUnits }) => {
         const st = get()
+        // Єдина команда, що приймає дату ззовні. Майбутнє відправлення — не помилка вводу,
+        // а документ, який `crateStanding` чесно врахує на ту дату; але дня, якого ще не
+        // було, у книзі бути не може.
+        if (!ISO_DATE.test(date) || date > TODAY) return undefined
         // Бій — ЄДИНЕ число цієї команди, яке вводить людина: «іменно заламані ящики… треба
         // їм якось виділити строчку» (1117). Нуль валідний — «ламані не кожен день» (993).
         if (!Number.isInteger(brokenUnits) || brokenUnits < 0) return undefined
@@ -655,8 +697,13 @@ export const useStore = create<State>()(
         // Відʼємний переказ — це вилучення каси з точки, документа для якого немає взагалі:
         // прийнятий, він тихо зменшив би `berryCash` і зробив би «не хватає до наділу»
         // більшим, ніж база справді винна.
-        if (!Number.isInteger(crates) || crates < 0) return undefined
         if (!Number.isFinite(cash) || cash < 0) return undefined
+        // База повертає точці те, що ТРИМАЄ (`atBase`), а не те, чого точці не хватає
+        // (`shortfall = inField + atBase`). Різниця не косметична: на Шипинках 04.08 це
+        // 264 проти 459 — 195 ящиків лежать у ЛЮДЕЙ і базі не належать. Переказ на 459
+        // зробив би `atBase = −195`, `onHand = 800` при 195 у полі, і `checkCrateIssue`
+        // дозволив би видати ящики, яких на точці немає.
+        if (!checkCrateTransfer(crates, standingOf(st, pointId, TODAY).atBase).ok) return undefined
         const doc: Transfer = {
           id: `tf_${rid()}`,
           date: TODAY,
@@ -675,14 +722,23 @@ export const useStore = create<State>()(
         return doc
       },
 
-      acceptTransfer: (id, acceptedBy) => {
+      acceptTransfer: (id) => {
         const st = get()
+        // §7: «Прийняв» тисне ТОЧКА (1172). Роль перевіряється тут, а не лише у формі —
+        // за тим самим правилом, що й `voidTransfer` трьома командами нижче.
+        if (st.role !== 'operator') return undefined
         // ЛИШЕ зі 'sent'. Заявлений «не сходиться» переказ прийняти тихо не можна — його
         // закриває керівник новим документом (UC-36); а повторне «Прийняв» по вже прийнятому
         // додало б ті самі гроші в касу вдруге.
+        // Автор і дата виводяться ТУТ, а не приходять параметром: `operatorId` у всіх
+        // документах цієї фази береться з `OPERATORS[pointId]` (`Р-4`), і приймати рядок
+        // від викликача означало б дозволити документ із підписом, якого ніхто не ставив.
+        const target = st.transfers.find((t) => t.id === id)
+        if (!target) return undefined
         const next = transferTransition(st.transfers, id, ['sent'], {
           status: 'accepted',
-          acceptedBy,
+          acceptedBy: OPERATORS[target.pointId] ?? OWNER,
+          acceptedDate: TODAY,
           acceptedTime: nowTime(),
         })
         if (!next) return undefined
@@ -692,6 +748,12 @@ export const useStore = create<State>()(
 
       disputeTransfer: (id, { reportedCrates, reportedCash, note }) => {
         const st = get()
+        if (st.role !== 'operator') return undefined
+        // Заявка «не сходиться» зупиняє гроші так само, як сторно, — і заслуговує того
+        // самого правила: без причини її не відрізнити від випадкового кліку.
+        if (!note.trim()) return undefined
+        if (!Number.isInteger(reportedCrates) || reportedCrates < 0) return undefined
+        if (!Number.isFinite(reportedCash) || reportedCash < 0) return undefined
         // «Не сходиться» — це ЗАЯВКА: `reportedCrates`/`reportedCash` не входять у жодну
         // формулу (I69), каса й наділ не рухаються взагалі. Розбіжність закриває керівник.
         const next = transferTransition(st.transfers, id, ['sent'], {
@@ -726,8 +788,58 @@ export const useStore = create<State>()(
         return next.doc
       },
 
+      /**
+       * СТОРНО ящикових документів. `§7`: «Сторнувати будь-який документ цих фаз —
+       * керівник, так, із причиною», і `UC-21 A4` прямо будує на цьому вихід із подвійного
+       * відправлення. До цієї правки поля `voidedDate/voidedBy/voidReason` існували в типах,
+       * рушій по них фільтрував, тести їх покривали — а СТАВИТИ їх було нічим: помилково
+       * вписаний бій «20» замість «2» або видача 30 замість 3 лишалися в обліку назавжди.
+       *
+       * Документ не зникає — він лишається зі слідом і просто не рахується (`06 §3`).
+       */
+      voidCrateIssue: (id, reason) => {
+        const next = voidCrateDoc(get().role, get().crateIssues, id, reason)
+        if (!next) return undefined
+        set({ crateIssues: next.list })
+        return next.doc
+      },
+      voidCrateReturn: (id, reason) => {
+        const next = voidCrateDoc(get().role, get().crateReturns, id, reason)
+        if (!next) return undefined
+        set({ crateReturns: next.list })
+        return next.doc
+      },
+      voidCrateShipment: (id, reason) => {
+        const next = voidCrateDoc(get().role, get().crateShipments, id, reason)
+        if (!next) return undefined
+        set({ crateShipments: next.list })
+        return next.doc
+      },
+
+      /**
+       * Зміна, що пішла до керівника з розбіжністю, мусить мати вихід. `§7` дає керівникові
+       * право «закрити зміну з розбіжністю», але команди для цього не було: `closeShift`
+       * вимагає `status === 'open'`, тому `awaiting_explanation` був глухим кутом назавжди.
+       *
+       * Розбіжність при цьому НЕ зникає і не підганяється (`06 §7.5` п. 4) — вона лишається
+       * в документі; додається лише пояснення й підпис того, хто зміну закрив.
+       */
+      settleShift: (shiftId, explanation) => {
+        const st = get()
+        if (st.role !== 'owner') return undefined
+        if (!explanation.trim()) return undefined
+        const shift = st.shifts.find((x) => x.id === shiftId)
+        if (!shift || shift.status !== 'awaiting_explanation') return undefined
+        const doc: Shift = { ...shift, status: 'closed', explanation, closedBy: OWNER }
+        set({ shifts: st.shifts.map((x) => (x.id === shiftId ? doc : x)) })
+        return doc
+      },
+
       openShift: ({ pointId, operatorId, openingFloat }) => {
         const st = get()
+        // Те саме правило, що в `setCashFloat`: `round2()` перетворює NaN на 0, і зміна
+        // відкрилася б із хибною основою згортки, якої ніхто не вводив.
+        if (!Number.isFinite(openingFloat) || openingFloat < 0) return undefined
         // Дві відкриті зміни на одній точці — це дві книги на одну шухляду: перерахунок
         // о 16:00 не мав би до чого чіплятися однозначно, а закриття закрило б випадкову.
         if (st.shifts.some((x) => x.pointId === pointId && x.status === 'open')) return undefined
@@ -748,6 +860,7 @@ export const useStore = create<State>()(
 
       countCash: ({ shiftId, countedCash, note }) => {
         const st = get()
+        if (!Number.isFinite(countedCash) || countedCash < 0) return undefined
         const shift = st.shifts.find((x) => x.id === shiftId)
         // Перерахунок чіпляється до ВІДКРИТОЇ зміни: на закритій він не має чого фіксувати,
         // а розбіжність там уже зафіксована окремим числом.
@@ -777,6 +890,7 @@ export const useStore = create<State>()(
 
       closeShift: ({ shiftId, countedCash, explanation }) => {
         const st = get()
+        if (!Number.isFinite(countedCash) || countedCash < 0) return undefined
         const shift = st.shifts.find((x) => x.id === shiftId)
         if (!shift || shift.status !== 'open') return undefined
         const expected = cashOf(st, shift.pointId, shift.date).expectedCash

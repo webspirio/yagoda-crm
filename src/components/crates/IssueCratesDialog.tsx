@@ -210,19 +210,28 @@ export function IssueCratesDialog({
           ) : null}
 
           {/* `I62`, дослівний текст інваріанта. Показуємо ЛИШЕ коли є що показати: до
-              введення кількості це була б відмова на порожньому місці. */}
+              введення кількості це була б відмова на порожньому місці.
+
+              ЧИСЛО ТУТ — `onHand`, А НЕ `check.max`, І ЦЕ ВИПРАВЛЕННЯ. `checkCrateIssue`
+              віддає `max = Math.max(0, onHand)` — стеля видачі, і вона правильна: видати
+              з мінуса не можна нічого. Але ДРУКУВАТИ її як «скільки на точці» означало
+              писати «На точці зараз 0 порожніх», коли рядком нижче стоїть −307. Два різні
+              числа про одну шухляду в тому самому вікні — рівно та тиха розбіжність, від
+              якої цей проєкт і рятує. Стеля лишається у `check.ok`, тобто в кнопці. */}
           {units > 0 && !check.ok ? (
             <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {check.max === null
+              {onHand === null
                 ? 'Цій точці ще не призначали наділу ящиків — видавати нема з чого.'
-                : `На точці зараз ${num(check.max)} ${emptyCrateWord(check.max)} — ${num(units)} видати нема з чого.`}
+                : `На точці зараз ${num(onHand)} ${emptyCrateWord(onHand)} — ${num(units)} видати нема з чого.`}
             </p>
           ) : null}
 
           <p className="text-sm text-muted-foreground">
             {onHand === null
               ? 'Наділу цій точці ще не призначали.'
-              : `На точці зараз ${num(onHand)} ${emptyCrateWord(onHand)}.`}
+              : onHand < 0
+                ? `На точці зараз ${num(onHand)} ${emptyCrateWord(onHand)}: наділ пробитий, і видавати нема з чого, поки не повернуть люди або не привезе база.`
+                : `На точці зараз ${num(onHand)} ${emptyCrateWord(onHand)}.`}
           </p>
         </div>
 

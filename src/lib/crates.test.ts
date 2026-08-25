@@ -4,6 +4,7 @@ import {
   allocateCrateReturn,
   checkCrateIssue,
   checkCrateReturn,
+  checkCrateTransfer,
   crateBalance,
   crateIssueMode,
   crateRefund,
@@ -316,7 +317,13 @@ describe('crateBalance — журнал клієнтки: 275 узято, 80 п�
   ]
 
   it('усього видано 275 ящиків', () => {
-    expect(LEDGER.reduce((n, [, u]) => n + u, 0)).toBe(275)
+    // Той самий клас, що й у canonical-crates: раніше цей рядок додавав числа САМОГО
+    // масиву і був би зелений, навіть якби `crateBalance()` не вмів рахувати `taken`
+    // взагалі. Тепер 275 віддає рушій, а форма аркуша (15 рядків, 13 людей) стоїть окремо.
+    const everyone = [...new Set(LEDGER.map(([s]) => s))]
+    expect(LEDGER).toHaveLength(15)
+    expect(everyone).toHaveLength(13)
+    expect(everyone.reduce((n, s) => n + crateBalance(s, issues, returns).taken, 0)).toBe(275)
   })
 
   it('людина з двох рядків має баланс 40, а не 30: 30 + 10', () => {
@@ -419,6 +426,49 @@ describe('crateStanding — «і в сумі воно сходиться 600» (
     })
     expect(st.atBase).toBe(89)
     expect(st.onHand).toBe(711)
+  })
+
+  /*
+   * Той самий рядок `mine()` тримає межу дня для ВСІХ трьох масивів, але свідок у нього
+   * був лише один — відправлення. Обхід фільтрів після рецензії тестів: питання «чи є в
+   * наборі документ ЧУЖОГО ДНЯ саме для ЦЬОГО масиву?» для видач і повернень давало «ні».
+   */
+  it('видача ЗАВТРАШНЬОГО дня сьогодні в людях не стоїть: 195, а не 295', () => {
+    const st = crateStanding({
+      pointId: 'p1',
+      date: '2026-08-04',
+      allotments,
+      issues: [
+        issue({ id: 'i1', date: '2026-07-05', units: 195 }),
+        issue({ id: 'i2', date: '2026-08-05', units: 100 }),
+      ],
+      returns: [],
+      shipments: [],
+      transfers: [],
+    })
+    expect(st.inField).toBe(195)
+    expect(st.onHand).toBe(605)
+  })
+
+  it('повернення ЗАВТРАШНЬОГО дня сьогоднішнього «у людей» не зменшує: 195, а не 115', () => {
+    const issues = [issue({ id: 'i1', date: '2026-07-05', units: 195 })]
+    const st = crateStanding({
+      pointId: 'p1',
+      date: '2026-08-04',
+      allotments,
+      issues,
+      returns: [
+        ret({
+          date: '2026-08-05',
+          units: 80,
+          allocations: [{ issueId: 'i1', units: 80, perUnit: 120, amount: 9600 }],
+        }),
+      ],
+      shipments: [],
+      transfers: [],
+    })
+    expect(st.inField).toBe(195)
+    expect(st.onHand).toBe(605)
   })
 
   it('на 14.07 діє наділ 600, і порожніх 600', () => {
@@ -770,11 +820,31 @@ describe('прогалини, знайдені мутаційною реценз
     ])
   })
 
-  it('однакові дата й час — розрив за id: ci-a перед ci-b', () => {
-    const a = issue({ id: 'ci-a', date: '2026-07-12', time: '09:00', units: 5 })
-    const b = issue({ id: 'ci-b', date: '2026-07-12', time: '09:00', units: 6 })
-    expect(openCrateIssues('s1', [b, a], []).map((x) => x.issue.id)).toEqual(['ci-a', 'ci-b'])
+  it('однакові дата й час — перемагає той, хто в журналі РАНІШЕ, а не той, у кого id менший', () => {
+    // Переписано після рецензії. Попередня версія подавала [b, a] і чекала ['ci-a','ci-b'] —
+    // тобто доводила АЛФАВІТ id. А id генерується Math.random(), і на двох видачах однієї
+    // хвилини (людина бере 50 за кошти і 60 за розписку одним візитом) це робило суму до
+    // видачі підкиданням монети: зміряно 1 000 прогонів — 493 рази 1 200,00 ₴, 507 разів 0,00.
+    const first = issue({ id: 'ci-zzz', date: '2026-07-12', time: '09:00', units: 5 })
+    const second = issue({ id: 'ci-aaa', date: '2026-07-12', time: '09:00', units: 6 })
+    // журнал append-only: first прийшла першою, хоч її id алфавітно БІЛЬШИЙ
+    expect(openCrateIssues('s1', [first, second], []).map((x) => x.issue.id)).toEqual([
+      'ci-zzz',
+      'ci-aaa',
+    ])
   })
+
+  it('нічия FIFO детермінована: сто прогонів з випадковими id дають ту саму виплату', () => {
+    const rid = () => Math.random().toString(36).slice(2, 9)
+    const seen = new Set<number>()
+    for (let n = 0; n < 100; n += 1) {
+      const money = issue({ id: `ci_${rid()}`, date: '2026-07-30', time: '10:15', units: 50 })
+      const paper = issue({ id: `ci_${rid()}`, date: '2026-07-30', time: '10:15', units: 60 })
+      seen.add(crateRefund(allocateCrateReturn(10, openCrateIssues('s1', [money, paper], []))))
+    }
+    expect([...seen]).toEqual([1200])
+  })
+
 
   it('повна нічия — та сама дата дії І той самий час ухвалення: перемагає ОСТАННІЙ у журналі', () => {
     // Знайдено на реальному прогоні стора: годинник у тестах прибитий, тому дві правки в
@@ -938,5 +1008,49 @@ describe('прогалини критика (ящики)', () => {
     ]
     expect(effectiveAt(same, 'p1', '2026-08-04')?.units).toBe(900)
     expect(effectiveAt([...same].reverse(), 'p1', '2026-08-04')?.units).toBe(900)
+  })
+})
+
+describe('прогалини рецензії пʼятьох', () => {
+  it('розписка з ненульовою ціною НЕ платить при поверненні: 0,00, а не 840,00', () => {
+    // I66, друга половина. Раніше вона трималася лише на тому, що стор пише 0 — тобто рівно
+    // на тому, що мутаційна рецензія вже визнала недостатнім у сусідній функції.
+    const wrong = issue({ id: 'ci-1', units: 80, mode: 'receipt', depositPerUnit: 120, depositTaken: 0 })
+    const alloc = allocateCrateReturn(7, openCrateIssues('s1', [wrong], []))
+    expect(alloc[0].perUnit).toBe(0)
+    expect(crateRefund(alloc)).toBe(0)
+  })
+
+  it('нечислова кількість не будує проводок: NaN дає порожній розклад', () => {
+    const i1 = issue({ id: 'ci-1', units: 20 })
+    expect(allocateCrateReturn(Number.NaN, openCrateIssues('s1', [i1], []))).toEqual([])
+    expect(allocateCrateReturn(Number.POSITIVE_INFINITY, openCrateIssues('s1', [i1], []))).toEqual([])
+  })
+})
+
+describe('checkCrateTransfer — база повертає лише те, що тримає', () => {
+  it('у нас 264 — 264 повернути можна, 459 вже ні', () => {
+    expect(checkCrateTransfer(264, 264).ok).toBe(true)
+    expect(checkCrateTransfer(459, 264)).toEqual({ ok: false, max: 264 })
+  })
+
+  it('нуль ящиків у переказі валідний: везуть самі гроші', () => {
+    expect(checkCrateTransfer(0, 264).ok).toBe(true)
+  })
+
+  it('дробове й відʼємне не приймаються, а відʼємний atBase дає максимум 0', () => {
+    expect(checkCrateTransfer(2.5, 264).ok).toBe(false)
+    expect(checkCrateTransfer(-1, 264).ok).toBe(false)
+    expect(checkCrateTransfer(1, -195)).toEqual({ ok: false, max: 0 })
+  })
+
+  it('переказ ящиків днем прийняття, а не відправлення', () => {
+    const allotments: CrateAllotment[] = [
+      { id: 'a', pointId: 'p1', units: 800, effectiveFrom: '2026-06-27', setBy: 'Керівник', setDate: '2026-06-27', setTime: '08:00' },
+    ]
+    const base = { pointId: 'p1', allotments, issues: [], returns: [], shipments: [shipment({ date: '2026-08-03', withBerryUnits: 264 })] }
+    const t = transfer({ date: '2026-08-03', crates: 100, status: 'accepted', acceptedDate: '2026-08-04' })
+    expect(crateStanding({ ...base, date: '2026-08-03', transfers: [t] }).atBase).toBe(264)
+    expect(crateStanding({ ...base, date: '2026-08-04', transfers: [t] }).atBase).toBe(164)
   })
 })

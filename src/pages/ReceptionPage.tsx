@@ -28,7 +28,7 @@ import { SupplierPicker } from '@/components/reception/SupplierPicker'
 import { ReceiptDialog } from '@/components/reception/ReceiptDialog'
 import { NumPad } from '@/components/reception/NumPad'
 import { Eyebrow, EmptyState } from '@/components/common/bits'
-import { useStore } from '@/lib/store'
+import { useCashStanding, useStore } from '@/lib/store'
 import {
   allocatePayout,
   checkSurcharge,
@@ -188,10 +188,20 @@ export function ReceptionPage() {
     paidInput: parseNumeric(paidInput),
   })
 
+  // G12/I58: у касі за ЯГОДУ лежить стільки, скільки лежить. Це не сума шухляди —
+  // завдатки за ящики чужі (21 §3.5), і виплата за ягоду їх не чіпає.
+  const berryCash = useCashStanding(pointId, TODAY).berryCash
+
   React.useEffect(() => {
-    // «Видано готівкою» за замовчуванням — уся сума РАЗОМ, як вона й видається найчастіше
-    if (!paidTouched) setPaidInput(math.total > 0 ? String(math.total) : '')
-  }, [math.total, paidTouched])
+    // «Видано готівкою» за замовчуванням — уся сума РАЗОМ, як вона й видається найчастіше.
+    // АЛЕ не більше, ніж є в касі за ягоду: `G12` — це block у сторі, і підставляти в поле
+    // число, яке гарантовано впреться в нього, означало б вести людину в глухий кут.
+    // Різниця не зникає — вона лягає в ЗАЛИШОК, і саме для цього залишки й існують.
+    if (!paidTouched) {
+      const suggested = Math.min(math.total, Math.max(0, berryCash))
+      setPaidInput(suggested > 0 ? String(suggested) : '')
+    }
+  }, [math.total, paidTouched, berryCash])
 
   // які саме залишки закриє надлишок — той самий FIFO, що потім зробить addPayout,
   // тому на екрані стоять рівно ті дати, які спишуться, а не всі відкриті
@@ -931,6 +941,20 @@ export function ReceptionPage() {
                     </div>
                   </div>
                 </div>
+
+                {/*
+                  G12/I58 названий вголос, а не застосований мовчки. Без цього рядка людина
+                  бачила б, що «Разом» одне, а видається менше, і не знала б чому. Текст —
+                  той самий, що в `06 §2`: у касі стільки, видати треба стільки, різниця йде
+                  в залишок, і відновлює касу переказ від керівника.
+                */}
+                {math.paid > berryCash + 0.009 || (math.total > berryCash + 0.009 && !paidTouched) ? (
+                  <p className="mt-3 rounded-lg bg-[var(--amber)]/10 px-3 py-2 text-xs leading-relaxed text-[var(--amber)]">
+                    У касі за ягоду {uah(Math.max(0, berryCash), { decimals: 2 })} — більше зараз
+                    видати нема з чого. Різниця лягає в залишок постачальника; касу відновлює
+                    переказ від керівника.
+                  </p>
+                ) : null}
 
                 <Button className="mt-4 h-14 w-full text-base" disabled={!ready} onClick={save}>
                   <Check className="size-5" />

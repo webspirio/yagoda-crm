@@ -435,6 +435,13 @@ export interface Transfer {
   sentTime: ClockTime
   status: TransferStatus
   acceptedBy?: string
+  /**
+   * ДЕНЬ ПРИЙНЯТТЯ, не день відправлення. Спека `§2.6` вимагала `acceptedAt: ISODateTime`,
+   * і перша реалізація його загубила: обидві згортки фільтрували за `date` (днем виїзду),
+   * тому переказ, відправлений увечері 03.08 і прийнятий уранці 04.08 — а це нормальний
+   * випадок, «це не півтори години» (1014), — заднім числом додавав гроші й ящики у 03.08.
+   */
+  acceptedDate?: ISODate
   acceptedTime?: ClockTime
   /** Лише при 'disputed': що нарахувала точка. ІНФОРМАЦІЯ — у формули не входить */
   reportedCrates?: number

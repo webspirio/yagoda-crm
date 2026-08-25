@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { Check, Truck, TriangleAlert } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -12,7 +13,6 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { maskDecimalInput, parseNumeric } from '@/lib/calc'
 import { num, shortDate, uah } from '@/lib/format'
-import { OPERATORS, OWNER } from '@/lib/seed'
 import { useStore } from '@/lib/store'
 import type { Transfer } from '@/lib/types'
 
@@ -27,6 +27,12 @@ import type { Transfer } from '@/lib/types'
  * «Не сходиться» — ЗАЯВКА (`I69`): вона записує, що точка нарахувала, і не міняє суму
  * переказу ані на копійку. Виправляє керівник новим документом — «щоб керівник просто
  * змінював, щоб не вони, бо то ужас буде» (1185).
+ *
+ * ОБИДВІ КОМАНДИ ВІДМОВЛЯЮТЬ, І ОБИДВІ ВІДМОВИ ТУТ ВИДНО. `acceptTransfer` вимагає ролі
+ * приймальника і стану 'sent'; `disputeTransfer` — ще й непорожнього коментаря і чисел, які
+ * не NaN. `ports.ts` каже про них однаково: «відмова — це НЕ тихий no-op». Кнопка, яка
+ * іноді нічого не робить, гірша за відмову, названу вголос: людина натискає її вдруге й
+ * втретє і врешті вирішує, що зламалася програма, а не що їй бракує права.
  */
 export function IncomingTransfers({ pointId, canAct }: { pointId: string; canAct: boolean }) {
   const transfers = useStore((s) => s.transfers)
@@ -37,6 +43,7 @@ export function IncomingTransfers({ pointId, canAct }: { pointId: string; canAct
   const [cash, setCash] = React.useState('')
   const [crates, setCrates] = React.useState('')
   const [note, setNote] = React.useState('')
+  const [claimError, setClaimError] = React.useState('')
 
   const pending = transfers
     .filter((t) => t.pointId === pointId && (t.status === 'sent' || t.status === 'disputed'))
@@ -52,15 +59,42 @@ export function IncomingTransfers({ pointId, canAct }: { pointId: string; canAct
     setCash(t.cash.toFixed(2))
     setCrates(String(t.crates))
     setNote('')
+    setClaimError('')
+  }
+
+  const accept = (t: Transfer) => {
+    const doc = acceptTransfer(t.id)
+    if (!doc) {
+      toast.error('Переказ не прийнято', {
+        description:
+          '«Прийняв» тисне приймальник точки, і лише по переказу, який ще в дорозі. Каса не змінилася.',
+      })
+      return
+    }
+    toast.success('Переказ прийнято', {
+      description: `${uah(doc.cash, { decimals: 2 })} і ${num(doc.crates)} ящ. зайшли в касу й у наділ.`,
+    })
   }
 
   const submitClaim = () => {
-    if (!claim || !note.trim()) return
-    disputeTransfer(claim.id, {
+    if (!claim) return
+    // Порожній коментар — відмова САМОГО СТОРА, тому й тут це не мовчазний `return`:
+    // «Заявити» без причини не відрізнити від випадкового кліку по кнопці.
+    if (!note.trim()) {
+      setClaimError('Напишіть, що саме не так: без цього заявку не приймають.')
+      return
+    }
+    const doc = disputeTransfer(claim.id, {
       reportedCrates: Math.trunc(parseNumeric(crates)),
       reportedCash: parseNumeric(cash),
       note: note.trim(),
     })
+    if (!doc) {
+      setClaimError(
+        'Заявку не прийнято: заявляє приймальник точки, числа мають бути невідʼємними, а переказ — ще в дорозі.',
+      )
+      return
+    }
     setClaim(null)
   }
 
@@ -88,7 +122,7 @@ export function IncomingTransfers({ pointId, canAct }: { pointId: string; canAct
             </div>
             {canAct ? (
               <div className="flex shrink-0 items-center gap-2">
-                <Button size="sm" onClick={() => acceptTransfer(t.id, OPERATORS[pointId] ?? OWNER)}>
+                <Button size="sm" onClick={() => accept(t)}>
                   <Check className="size-3.5" />
                   Прийняв
                 </Button>
@@ -167,11 +201,15 @@ export function IncomingTransfers({ pointId, canAct }: { pointId: string; canAct
               <span className="text-xs text-muted-foreground">Що саме не так</span>
               <Textarea
                 value={note}
-                onChange={(e) => setNote(e.target.value)}
+                onChange={(e) => {
+                  setNote(e.target.value)
+                  setClaimError('')
+                }}
                 rows={2}
                 placeholder="Порахували при перевізнику: двох ящиків не було"
               />
             </label>
+            {claimError ? <p className="text-xs text-destructive">{claimError}</p> : null}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setClaim(null)}>

@@ -332,11 +332,18 @@ export interface Commands {
   /** Створює керівник; документ народжується у стані 'sent' і не рухає нічого (`I68`) */
   sendTransfer(input: SendTransferInput): Transfer | undefined
   /** «Прийняв» — і ТІЛЬКИ тут переказ починає рухати касу й наділ (1172) */
-  acceptTransfer(id: string, acceptedBy: string): Transfer | undefined
+  acceptTransfer(id: string): Transfer | undefined
   /** «Не сходиться» — заявка з числом і коментарем; не рухає нічого (`I68`) */
   disputeTransfer(id: string, input: DisputeTransferInput): Transfer | undefined
   /** Сторно переказу — ЛИШЕ керівник (`I69`, 1184–1185); порожня причина — no-op */
   voidTransfer(id: string, reason: string, by: string): Transfer | undefined
+  /** Сторно ящикових документів — лише керівник, із причиною (`21 §7`) */
+  voidCrateIssue(id: string, reason: string): CrateIssue | undefined
+  voidCrateReturn(id: string, reason: string): CrateReturn | undefined
+  voidCrateShipment(id: string, reason: string): CrateShipment | undefined
+  /** Керівник закриває зміну, що чекала пояснення; розбіжність лишається в документі */
+  settleShift(shiftId: string, explanation: string): Shift | undefined
+
   openShift(input: OpenShiftInput): Shift | undefined
   /** Перерахунок серед дня; нічого не виправляє, лише фіксує факт (1197, `I70`) */
   countCash(input: CountCashInput): CashCount | undefined
