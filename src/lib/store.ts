@@ -1000,3 +1000,40 @@ export function pendingCount(receptions: Reception[], payouts: Payout[], reweigh
     reweighs.filter((r) => !r.synced).length
   )
 }
+
+/**
+ * ЄДИНИЙ спосіб для екранів прочитати касу й наділ точки. Без цих двох хуків кожна
+ * сторінка збирала б виклик `cashStanding()` сама — і кожна тягла б за собою ще один
+ * примірник дати відкриття книги. Їх уже було три (сід, стор, тести), і один із них
+ * розійшовся б мовчки: інша дата дає інший залишок на екрані, а не червоний тест.
+ *
+ * Хуки, а не чисті функції, свідомо: сторінці потрібна ПІДПИСКА на зміни стану, і
+ * підписатися на 8 масивів поштучно в кожній сторінці — це вісім шансів забути один.
+ */
+export function useCashStanding(pointId: string, date: ISODate) {
+  const st = useStore()
+  return cashStanding({
+    pointId,
+    date,
+    openedOn: CASH_BOOK_FROM,
+    floats: st.cashFloats,
+    receptions: st.receptions,
+    payouts: st.payouts,
+    transfers: st.transfers,
+    issues: st.crateIssues,
+    returns: st.crateReturns,
+  })
+}
+
+export function useCrateStanding(pointId: string, date: ISODate) {
+  const st = useStore()
+  return crateStanding({
+    pointId,
+    date,
+    allotments: st.crateAllotments,
+    issues: st.crateIssues,
+    returns: st.crateReturns,
+    shipments: st.crateShipments,
+    transfers: st.transfers,
+  })
+}

@@ -1583,6 +1583,8 @@ export function shipmentTotal(s: { withBerryUnits: number; brokenUnits: number }
 export interface CashStanding {
   /** діючий наділ; `null`, коли наділу на цю дату ще не призначали — на екрані «—» */
   float: Uah | null
+  /** день, з якого книга цієї точки справді ведеться: не раніше за її перший наділ */
+  openedOn: ISODate
   /** наділ на день відкриття книги — з нього починається згортка */
   openingBalance: Uah
   /** Σ переказів, які точка ПРИЙНЯЛА */
@@ -1615,7 +1617,16 @@ export function cashStanding(input: {
   issues: CrateIssue[]
   returns: CrateReturn[]
 }): CashStanding {
-  const { pointId, date, openedOn } = input
+  const { pointId, date } = input
+  // КНИГА ВІДКРИВАЄТЬСЯ НЕ РАНІШЕ, НІЖ ЗʼЯВИВСЯ НАДІЛ ЦІЄЇ ТОЧКИ. Спільна дата на всю
+  // мережу ламається на точці, яка почала працювати пізніше: згортка бере її видатки з
+  // дня відкриття книги, а підсумок, від якого вона мала б починатися, — нуль, бо наділу
+  // на той день ще не було. Зміряно на демо: Конищів (наділ із 01.08, книга з 29.07)
+  // показував «у касі −51 130,18 ₴» — число, якого не буває.
+  const firstFloat = input.floats
+    .filter((f) => f.pointId === pointId)
+    .reduce<ISODate | null>((min, f) => (min === null || f.effectiveFrom < min ? f.effectiveFrom : min), null)
+  const openedOn = firstFloat && firstFloat > input.openedOn ? firstFloat : input.openedOn
   const inWindow = (d: ISODate) => d >= openedOn && d <= date
 
   const recs = input.receptions.filter((r) => r.pointId === pointId)
@@ -1661,6 +1672,7 @@ export function cashStanding(input: {
   const today = perDay.find((r) => r.date === date)
   return {
     float: current ? current.amount : null,
+    openedOn,
     openingBalance,
     cashIn,
     berryOut,

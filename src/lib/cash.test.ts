@@ -477,15 +477,42 @@ describe('прогалини другої рецензії (каса)', () => {
     expect(s.berryCash).toBe(186_646.08)
   })
 
-  it('наділу на день відкриття не було — книга починається з нуля, а не з сьогоднішнього наділу', () => {
+  it('точка почала працювати пізніше — книга відкривається її наділом, а не нулем', () => {
+    // Виправлено після ручного обходу зібраного артефакту: спільна дата відкриття на всю
+    // мережу давала Конищеву «у касі −51 130,18 ₴». Книга точки не може починатися раніше
+    // за її ж наділ — інакше згортка бере видатки, а підсумку, від якого їх віднімати, ще
+    // немає.
     const s = stand({
       floats: [float({ amount: 500_000, effectiveFrom: '2026-08-01' })],
       receptions: [rec('2026-08-04', 1_000)],
     })
-    expect(s.openingBalance).toBe(0)
-    expect(s.float).toBe(500_000)
+    expect(s.openedOn).toBe('2026-08-01')
+    expect(s.openingBalance).toBe(500_000)
+    expect(s.berryCash).toBe(499_000)
+    expect(s.floatShortfall).toBe(1_000)
+  })
+
+  it('видатки ДО появи наділу точки в її книгу не входять: 01.08 читається, 31.07 ні', () => {
+    const s = stand({
+      floats: [float({ amount: 500_000, effectiveFrom: '2026-08-01' })],
+      receptions: [rec('2026-07-31', 999_999), rec('2026-08-01', 1_000)],
+    })
+    expect(s.openedOn).toBe('2026-08-01')
+    expect(s.berryOut).toBe(1_000)
+    expect(s.berryCash).toBe(499_000)
+  })
+
+  it('наділ зʼявився РАНІШЕ за книгу — виграє дата книги, а не наділу', () => {
+    const s = stand({ floats: [float({ amount: 500_000, effectiveFrom: '2026-06-27' })] })
+    expect(s.openedOn).toBe(OPENED)
+  })
+
+  it('точка без наділу взагалі: книга від спільної дати, наділ і «не хватає» — «—»', () => {
+    const s = stand({ floats: [], receptions: [rec('2026-08-04', 1_000)] })
+    expect(s.openedOn).toBe(OPENED)
+    expect(s.float).toBeNull()
+    expect(s.floatShortfall).toBeNull()
     expect(s.berryCash).toBe(-1_000)
-    expect(s.floatShortfall).toBe(501_000)
   })
 })
 
