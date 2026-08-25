@@ -10,6 +10,8 @@ import { PricesPage } from '@/pages/PricesPage'
 import { SuppliersPage } from '@/pages/SuppliersPage'
 import { SupplierPage } from '@/pages/SupplierPage'
 import { DebtsPage } from '@/pages/DebtsPage'
+import { CratesPage } from '@/pages/CratesPage'
+import { PointCashPage } from '@/pages/PointCashPage'
 
 /*
  * ЩО ТУТ ЛІНИВЕ І ЧОМУ САМЕ ЦЕ.
@@ -19,9 +21,11 @@ import { DebtsPage } from '@/pages/DebtsPage'
  * в перший чанк через один розділ, доступний лише власникові, і приймальник на точці
  * завантажував її на мобільному інтернеті, ніколи не відкриваючи.
  *
- * У ПЕРШОМУ чанку лишаються шість екранів, за якими приймальник сидить постійно: прийомка,
- * каса за день, ціни дня, постачальники, картка постачальника, залишки. Ділити їх означало б
- * платити мережевим запитом за перший же перехід у звичайній роботі.
+ * У ПЕРШОМУ чанку лишаються вісім екранів, за якими приймальник сидить постійно: прийомка,
+ * ящики, каса за день, каса точки, ціни дня, постачальники, картка постачальника, залишки.
+ * Ділити їх означало б платити мережевим запитом за перший же перехід у звичайній роботі.
+ * «Ящики» і «Каса точки» тут саме тому: обидва відкриваються по кілька разів на день і
+ * обидва потрібні на мобільному інтернеті на точці.
  *
  * `Sparkline` до `recharts` відношення не має (власний SVG) і лишається як був.
  *
@@ -52,6 +56,10 @@ const NetworkAveragePage = React.lazy(() =>
 )
 const OwnerSheetPage = React.lazy(() =>
   import('@/pages/OwnerSheetPage').then((m) => ({ default: m.OwnerSheetPage })),
+)
+// Перекази бачить лише керівник — на точці цей чанк не завантажується жодного разу
+const TransfersPage = React.lazy(() =>
+  import('@/pages/TransfersPage').then((m) => ({ default: m.TransfersPage })),
 )
 
 /**
@@ -131,6 +139,8 @@ export default function App() {
             {route.name === 'suppliers' && <SuppliersPage />}
             {route.name === 'supplier' && <SupplierPage id={route.id!} />}
             {route.name === 'debts' && <DebtsPage />}
+            {route.name === 'crates' && <CratesPage />}
+            {route.name === 'pointcash' && <PointCashPage />}
             {route.name === 'journal' && <JournalPage />}
             {route.name === 'dashboard' && <DashboardPage />}
             {route.name === 'points' && <PointsPage />}
@@ -139,6 +149,7 @@ export default function App() {
             {route.name === 'reweigh' && <ReweighPage />}
             {route.name === 'network' && <NetworkAveragePage />}
             {route.name === 'sheet' && <OwnerSheetPage />}
+            {route.name === 'transfers' && <TransfersPage />}
           </React.Suspense>
         </ErrorBoundary>
       </Shell>

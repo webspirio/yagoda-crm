@@ -776,6 +776,19 @@ describe('прогалини, знайдені мутаційною реценз
     expect(openCrateIssues('s1', [b, a], []).map((x) => x.issue.id)).toEqual(['ci-a', 'ci-b'])
   })
 
+  it('повна нічия — та сама дата дії І той самий час ухвалення: перемагає ОСТАННІЙ у журналі', () => {
+    // Знайдено на реальному прогоні стора: годинник у тестах прибитий, тому дві правки в
+    // одну хвилину збігаються і за setDate, і за setTime. Перша версія розривала таку нічию
+    // по id, а id — це Math.random(): результат був то 800, то 900. Журнал append-only, тому
+    // «останній у масиві» і є «ухвалений останнім».
+    const tie: CrateAllotment[] = [
+      { id: 'a-x', pointId: 'p1', units: 800, effectiveFrom: '2026-07-15', setBy: 'Керівник', setDate: '2026-07-15', setTime: '12:30' },
+      { id: 'a-y', pointId: 'p1', units: 900, effectiveFrom: '2026-07-15', setBy: 'Керівник', setDate: '2026-07-15', setTime: '12:30' },
+    ]
+    expect(effectiveAt(tie, 'p1', '2026-08-04')?.units).toBe(900)
+    expect(effectiveAt(tie, 'p1', '2026-08-04')?.id).toBe('a-y')
+  })
+
   it('два наділи з ОДНІЄЮ датою дії: перемагає пізніше ухвалений — 900, не 800', () => {
     const same: CrateAllotment[] = [
       { id: 'a2', pointId: 'p1', units: 800, effectiveFrom: '2026-07-15', setBy: 'Керівник', setDate: '2026-07-15', setTime: '08:00' },
@@ -914,5 +927,16 @@ describe('прогалини другого раунду', () => {
       date: '2026-08-04', pointId: 'p1', receptions, crateTareId: CHESHKA,
     })
     expect(asCheshka.withBerryUnits).toBe(40)
+  })
+})
+
+describe('прогалини критика (ящики)', () => {
+  it('пізніший ДЕНЬ ухвалення перемагає пізніший час доби попереднього дня', () => {
+    const same: CrateAllotment[] = [
+      { id: 'a-early-day-late-hour', pointId: 'p1', units: 800, effectiveFrom: '2026-07-15', setBy: 'Керівник', setDate: '2026-07-15', setTime: '19:20' },
+      { id: 'a-late-day-early-hour', pointId: 'p1', units: 900, effectiveFrom: '2026-07-15', setBy: 'Керівник', setDate: '2026-07-16', setTime: '08:00' },
+    ]
+    expect(effectiveAt(same, 'p1', '2026-08-04')?.units).toBe(900)
+    expect(effectiveAt([...same].reverse(), 'p1', '2026-08-04')?.units).toBe(900)
   })
 })

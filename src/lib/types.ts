@@ -447,6 +447,71 @@ export interface Transfer {
   voidReason?: string
 }
 
+/* ------------------------- каса як підзвіт (21 §2.2, §2.7) ------------------------- */
+
+type CashFloatId = string
+type ShiftId = string
+type CashCountId = string
+
+/**
+ * Наділ каси на точку. Форма НАВМИСНО дзеркальна до `CrateAllotment`: клієнтка сама
+ * сказала «технологія з грошима така сама, як з ящиками» (дзвінок №4, ряд. 1144).
+ * Різний по точках — «кожна точка може бути і різне» (1164).
+ */
+export interface CashFloat {
+  id: CashFloatId
+  pointId: PointId
+  /** «фіксована сума на користування», «ми ставимо 100 000 фіксовано» (1146, 1133) */
+  amount: Uah
+  effectiveFrom: ISODate
+  setBy: string
+  setDate: ISODate
+  setTime: ClockTime
+  reason?: string
+}
+
+/**
+ * Зміна приймальника. Форма з `06 §7.2` без змін.
+ * `openingFloat` — це ПЕРЕРАХУНОК приймальника, а не «скільки має бути»: якби система
+ * показувала очікуване до вводу, перерахунок перетворився б на переписування (`06 §7.3`).
+ */
+export interface Shift {
+  id: ShiftId
+  pointId: PointId
+  operatorId: string
+  date: ISODate
+  openedTime: ClockTime
+  openingFloat: Uah
+  closedTime?: ClockTime
+  countedCash?: Uah
+  /** countedCash − expectedCash. Обчислюване; поля вводу немає в жодної ролі (`I70`) */
+  discrepancy?: Uah
+  status: 'open' | 'awaiting_explanation' | 'closed'
+  explanation?: string
+  /** При розбіжності закриває керівник, не приймальник (`06 §6` п. 5) */
+  closedBy?: string
+}
+
+/**
+ * Перерахунок каси СЕРЕД ДНЯ — сутність, якої в `06 §7` немає: там перерахунок був лише
+ * на відкритті й закритті. Клієнтка попросила його окремо і пояснила навіщо: «якщо він за
+ * півдня його перерахує і передивиться… щоб не цілий день передивлятися» (1197).
+ * Перерахунок нічого не ВИПРАВЛЯЄ — він лише фіксує факт (`I70`, ряд. 1222).
+ */
+export interface CashCount {
+  id: CashCountId
+  shiftId: ShiftId
+  pointId: PointId
+  date: ISODate
+  at: ClockTime
+  countedCash: Uah
+  /** знімок очікуваної на момент перерахунку — щоб пізніша подія не переписала розбіжність */
+  expectedAtCount: Uah
+  discrepancy: Uah
+  countedBy: string
+  note?: string
+}
+
 /**
  * Маршрут живе тут, а не в store.ts: `UiState.route` у ports.ts мусить бути саме `Route`,
  * інакше контракт розширив би `name` до `string` і Shell.tsx втратив би перевірку назви
@@ -467,6 +532,9 @@ export type RouteName =
   | 'reweigh'
   | 'network'
   | 'sheet'
+  | 'crates'
+  | 'pointcash'
+  | 'transfers'
 
 export interface Route {
   name: RouteName

@@ -1,13 +1,48 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { allocatePayout, openDebts, productDay, round2, splitPaidAcrossLines } from './calc'
-import { buildSeed, DEFAULT_SETTINGS, nextCode, nowTime, TODAY } from './seed'
+import {
+  allocateCrateReturn,
+  allocatePayout,
+  cashStanding,
+  checkCrateIssue,
+  checkCrateRefund,
+  checkCrateReturn,
+  crateBalance,
+  crateIssueMode,
+  crateRefund,
+  crateShipmentDraft,
+  crateStanding,
+  openDebts,
+  productDay,
+  round2,
+  shiftDiscrepancy,
+  shiftStatusFor,
+  splitPaidAcrossLines,
+} from './calc'
+import {
+  buildSeed,
+  CASH_BOOK_FROM,
+  DEFAULT_SETTINGS,
+  DEFAULT_TARE_ID,
+  nextCode,
+  nowTime,
+  OPERATORS,
+  OWNER,
+  TODAY,
+} from './seed'
 import type { Commands, DomainSnapshot, Queries, UiState } from './ports'
 import type {
+  CashCount,
+  CashFloat,
+  CrateAllotment,
+  CrateIssue,
+  CrateReturn,
+  CrateShipment,
   DayExpense,
   ExpensePolicy,
   ISODate,
   Payout,
+  PointId,
   PriceRecord,
   Reception,
   Reweigh,
@@ -16,8 +51,10 @@ import type {
   Role,
   Route,
   Settings,
+  Shift,
   Supplier,
   TareType,
+  Transfer,
 } from './types'
 
 /**
@@ -47,6 +84,7 @@ try {
   localStorage.removeItem('yagoda-crm-demo-v2')
   localStorage.removeItem('yagoda-crm-demo-v3')
   localStorage.removeItem('yagoda-crm-demo-v4')
+  localStorage.removeItem('yagoda-crm-demo-v5')
 } catch {
   // приватний режим без localStorage — демо однаково працює з пам'яті
 }
@@ -72,6 +110,68 @@ function isSettings(v: unknown): v is Settings {
     typeof s.surchargeMax === 'number' &&
     Number.isFinite(s.surchargeMax)
   )
+}
+
+/*
+ * День, з якого ведеться касова книга, приходить ОДНИМ примірником із `seed.ts`
+ * (`CASH_BOOK_FROM`). Це ПАРАМЕТР рушія, а не константа всередині нього (`21 §3.5`):
+ * `cashStanding()` про демо-дані не знає нічого, рівно як `crateShipmentDraft()` не знає,
+ * який `tareId` вважається ящиком. Другий примірник тут був би тихою розбіжністю: інша
+ * дата — інший залишок на екрані, ніж той, з якого сід зробив `CashCount`.
+ */
+
+/** Той самий хвіст id, що вже стоїть у `addVisit`/`addPayout`; винесений, бо тепер його 12 */
+const rid = () => Math.random().toString(36).slice(2, 9)
+
+/**
+ * Склад наділу точки на дату. Читає ЛИШЕ знімок — тому й типізований `DomainSnapshot`, а не
+ * `State`: команда не має права підмішати сюди рольовий стан пристрою.
+ */
+function standingOf(st: DomainSnapshot, pointId: PointId, date: ISODate) {
+  return crateStanding({
+    pointId,
+    date,
+    allotments: st.crateAllotments,
+    issues: st.crateIssues,
+    returns: st.crateReturns,
+    shipments: st.crateShipments,
+    transfers: st.transfers,
+  })
+}
+
+/** Каса точки на дату: дві книги в одній шухляді (`21 §3.5`). Та сама згортка, що на екрані. */
+function cashOf(st: DomainSnapshot, pointId: PointId, date: ISODate) {
+  return cashStanding({
+    pointId,
+    date,
+    openedOn: CASH_BOOK_FROM,
+    floats: st.cashFloats,
+    receptions: st.receptions,
+    payouts: st.payouts,
+    transfers: st.transfers,
+    issues: st.crateIssues,
+    returns: st.crateReturns,
+  })
+}
+
+/**
+ * Перехід переказу в новий стан. Три команди — «Прийняв», «Не сходиться» і сторно —
+ * відрізняються лише полями, які дописують; спільне в них головне: перехід дозволений ЛИШЕ
+ * з перелічених станів, і документ ЗАМІНЮЄТЬСЯ новим обʼєктом, а не мутується на місці.
+ *
+ * Тип статусу береться як `Transfer['status']`: окремого експортованого типу немає навмисно —
+ * `TransferStatus` у `types.ts` локальний, бо імпортера в нього досі немає.
+ */
+function transferTransition(
+  list: Transfer[],
+  id: string,
+  from: Transfer['status'][],
+  patch: Partial<Transfer>,
+): { list: Transfer[]; doc: Transfer } | undefined {
+  const found = list.find((t) => t.id === id)
+  if (!found || !from.includes(found.status)) return undefined
+  const doc: Transfer = { ...found, ...patch }
+  return { list: list.map((t) => (t === found ? doc : t)), doc }
 }
 
 const seed = buildSeed()
@@ -381,6 +481,324 @@ export const useStore = create<State>()(
           ],
         })),
 
+      /* ---------------- ящики і каса як підзвіт (21 §2, §3, §7) ----------------
+       * ТІЛЬКИ INSERT (06 §3): жодна з дванадцяти команд нижче не править наявний документ
+       * заднім числом. Сторно — новий стан документа зі слідом (`voided*`) або новий
+       * документ із `correctionOf`, а не витирання. Причина не теоретична: у файлі клієнтки
+       * 60 клітинок «Залишок» набрані руками поверх формули, і 20 з них не сходяться зі
+       * своїм же рядком (PART C 3). Документ, який можна переписати, рано чи пізно переписують.
+       *
+       * ВІДМОВА — це `undefined`, за тим самим правилом, що вже діє в `addPayout` і
+       * `addExpense`. Самі ПРАВИЛА відмови лежать у `calc.ts` (`checkCrateIssue`,
+       * `checkCrateReturn`, `checkCrateRefund`) і викликаються звідси, а не повторюються:
+       * форма покаже текст, стор відмовить у команді — але правило одне на двох.
+       */
+
+      setCrateAllotment: ({ pointId, units, effectiveFrom, reason }) => {
+        const st = get()
+        // §7: наділ змінює КЕРІВНИК — «чи може керівник збільшувати доступну кількість
+        // ящиків?» (1062). Роль перевіряється тут, а не лише в UI: `setBy` нижче прибитий
+        // до OWNER, тому без цієї перевірки документ приймальника стверджував би, що його
+        // ухвалив керівник — брехня в підписі гірша за відсутність підпису.
+        if (st.role !== 'owner') return undefined
+        // Зміна ДІЮЧОГО наділу без причини — це і є те переписане число, від якого рятує
+        // історія: «нам треба, щоб було 800» (1062) мусить лишитися в документі. Перший
+        // наділ точки причини не потребує — попереднього рівня не було, пояснювати нема чого.
+        if (st.crateAllotments.some((a) => a.pointId === pointId) && !reason?.trim()) return undefined
+        // Ящик не буває дробовим і не буває відʼємним: таке число мовчки зробило б
+        // `onHand` відʼємним, і видача перестала б проходити взагалі, без жодного пояснення.
+        if (!Number.isInteger(units) || units < 0) return undefined
+        const doc: CrateAllotment = {
+          id: `ca_${rid()}`,
+          pointId,
+          units,
+          effectiveFrom,
+          setBy: OWNER,
+          setDate: TODAY,
+          setTime: nowTime(),
+          reason,
+        }
+        // Старий запис ЛИШАЄТЬСЯ, і баланс не перераховується (UC-35 крок 2): діючий наділ
+        // на дату обирає `effectiveAt()` — саме тому це масив, а не поле на точці.
+        set({ crateAllotments: [...st.crateAllotments, doc] })
+        return doc
+      },
+
+      setCashFloat: ({ pointId, amount, effectiveFrom, reason }) => {
+        const st = get()
+        // §7: наділ каси теж лише керівник — «фіксована сума на користування» (1146).
+        if (st.role !== 'owner') return undefined
+        // «технологія з грошима така сама, як з ящиками» (1144) — і правило про причину теж.
+        if (st.cashFloats.some((f) => f.pointId === pointId) && !reason?.trim()) return undefined
+        // NaN із порожнього поля вводу `round2()` перетворює на 0 (це його свідома межа —
+        // краще 0 ₴ на екрані, ніж «NaN ₴» на квитанції). Тут саме тому й потрібна відмова:
+        // інакше керівник побачив би наділ 0,00 ₴, якого він не ставив, а «не хватає до
+        // наділу» сказало б, що база точці не винна нічого.
+        if (!Number.isFinite(amount) || amount < 0) return undefined
+        const doc: CashFloat = {
+          id: `cf_${rid()}`,
+          pointId,
+          amount: round2(amount),
+          effectiveFrom,
+          setBy: OWNER,
+          setDate: TODAY,
+          setTime: nowTime(),
+          reason,
+        }
+        set({ cashFloats: [...st.cashFloats, doc] })
+        return doc
+      },
+
+      issueCrates: ({ pointId, supplierId, units, mode, receiptNo }) => {
+        const st = get()
+        // I62: «на точці зараз 341 порожній ящик — 500 видати нема з чого». `onHand === null`
+        // (наділу на цю дату ще не було) теж відмова: видані з такої точки ящики не потрапили
+        // б у жоден склад наділу і зникли б з обліку тихо.
+        if (!checkCrateIssue(units, standingOf(st, pointId, TODAY).onHand).ok) return undefined
+        // Поріг 50 — ПІДСТАВЛЕННЯ, а не заборона (21 §2.3): «ми обираємо, якщо за кошти, ми
+        // натискаємо в себе за кошти» (1083). Передане руками перемагає підставлене.
+        const chosen = mode ?? crateIssueMode(units)
+        const cheshka = st.tareTypes.find((t) => t.id === DEFAULT_TARE_ID)
+        // Ящик — це ЧЕШКА (рішення Р-1). Якщо її в довіднику немає (а довідник приїжджає з
+        // localStorage і його там правлять руками), видача за кошти НЕ мовчить нулем:
+        // `depositTaken = 0` при `mode:'deposit'` зробив би нас винними нуль за ящики, за які
+        // ми справді взяли гроші, і `I66` читав би саме це поле як «розписку».
+        if (chosen === 'deposit' && !cheshka) return undefined
+        // ЗНІМОК ціни, а не посилання на довідник: керівник міняє ціну Чешки (06 §6 п. 11), а
+        // повернення рахується за тим завдатком, з яким ящики брали (I65).
+        // За розписку — РІВНО 0, тому обидва способи рахуються однією формулою (I66).
+        const perUnit = chosen === 'deposit' && cheshka ? cheshka.price : 0
+        const doc: CrateIssue = {
+          id: `ci_${rid()}`,
+          date: TODAY,
+          time: nowTime(),
+          pointId,
+          supplierId,
+          units,
+          mode: chosen,
+          depositPerUnit: perUnit,
+          depositTaken: round2(units * perUnit),
+          // Номер паперу існує лише там, де є папір: за кошти розписки не формують.
+          receiptNo: chosen === 'receipt' ? receiptNo : undefined,
+          operatorId: OPERATORS[pointId] ?? OWNER,
+        }
+        set({ crateIssues: [...st.crateIssues, doc] })
+        return doc
+      },
+
+      returnCrates: ({ pointId, supplierId, units }) => {
+        const st = get()
+        // Баланс людини НЕ фільтрується по точці: `crateBalance()` і `openCrateIssues()`
+        // ведуть його по ЛЮДИНІ, і фільтр тут зробив би стор і рушій двома різними
+        // відповідями на питання «скільки ящиків у цієї людини».
+        const balance = crateBalance(supplierId, st.crateIssues, st.crateReturns)
+        // I64: «людина брала 20, повернути 25 не може». Ящик «нізвідки» — помилка вводу.
+        if (!checkCrateReturn(units, balance.units).ok) return undefined
+        // FIFO по її ж видачах, і гроші — за ЗНІМКОМ ціни кожної: «воно автоматично підтягує
+        // йому, як та людина брала ящики» (1087). Питати людину не треба, порядок видач каже все.
+        const allocations = allocateCrateReturn(units, balance.open)
+        const refund = crateRefund(allocations)
+        // I59: впирається В КАСУ ЗА ЯЩИКИ і НІКОЛИ в касу за ягоду — «не може бути такого,
+        // що зараз коштів немає в касі, ну, ми маємо віддати» (1102). Порожня каса за ягоду
+        // цю операцію не блокує: вона сюди навіть не передається.
+        if (!checkCrateRefund(refund, cashOf(st, pointId, TODAY).crateCash).ok) return undefined
+        const doc: CrateReturn = {
+          id: `cr_${rid()}`,
+          date: TODAY,
+          time: nowTime(),
+          pointId,
+          supplierId,
+          units,
+          allocations,
+          depositRefund: refund,
+          operatorId: OPERATORS[pointId] ?? OWNER,
+        }
+        set({ crateReturns: [...st.crateReturns, doc] })
+        return doc
+      },
+
+      postShipment: ({ pointId, date, brokenUnits }) => {
+        const st = get()
+        // Бій — ЄДИНЕ число цієї команди, яке вводить людина: «іменно заламані ящики… треба
+        // їм якось виділити строчку» (1117). Нуль валідний — «ламані не кожен день» (993).
+        if (!Number.isInteger(brokenUnits) || brokenUnits < 0) return undefined
+        // I63: поля вводу для кількості з ягодою не існує в жодної ролі — «не вони мають
+        // вносити, а сама програма має вичитати» (1115). Записується ЗНІМОК разом із
+        // кількістю квитанцій, які його дали: пізніша квитанція має бути ВИДНА (warn), а не
+        // тихо переписати вже відправлений день.
+        const draft = crateShipmentDraft({
+          date,
+          pointId,
+          receptions: st.receptions,
+          crateTareId: DEFAULT_TARE_ID,
+        })
+        const doc: CrateShipment = {
+          id: `cs_${rid()}`,
+          date,
+          pointId,
+          withBerryUnits: draft.withBerryUnits,
+          receptionCount: draft.receptionCount,
+          brokenUnits,
+          operatorId: OPERATORS[pointId] ?? OWNER,
+          postedDate: TODAY,
+          postedTime: nowTime(),
+        }
+        set({ crateShipments: [...st.crateShipments, doc] })
+        return doc
+      },
+
+      sendTransfer: ({ pointId, crates, cash, carrier, correctionOf }) => {
+        const st = get()
+        // §7: переказ створює КЕРІВНИК — «ви клікаєте: я відправляю цій точці» (1172).
+        // Точка може лише прийняти або заявити «не сходиться».
+        if (st.role !== 'owner') return undefined
+        // Відʼємний переказ — це вилучення каси з точки, документа для якого немає взагалі:
+        // прийнятий, він тихо зменшив би `berryCash` і зробив би «не хватає до наділу»
+        // більшим, ніж база справді винна.
+        if (!Number.isInteger(crates) || crates < 0) return undefined
+        if (!Number.isFinite(cash) || cash < 0) return undefined
+        const doc: Transfer = {
+          id: `tf_${rid()}`,
+          date: TODAY,
+          pointId,
+          crates,
+          cash: round2(cash),
+          carrier,
+          sentBy: OWNER,
+          sentTime: nowTime(),
+          // I68: народжується 'sent' і не рухає НІЧОГО — ні касу, ні наділ, — поки точка не
+          // натиснула «Прийняв». «це не півтори години, десь так» (1014): дорога — стан, не аварія.
+          status: 'sent',
+          correctionOf,
+        }
+        set({ transfers: [...st.transfers, doc] })
+        return doc
+      },
+
+      acceptTransfer: (id, acceptedBy) => {
+        const st = get()
+        // ЛИШЕ зі 'sent'. Заявлений «не сходиться» переказ прийняти тихо не можна — його
+        // закриває керівник новим документом (UC-36); а повторне «Прийняв» по вже прийнятому
+        // додало б ті самі гроші в касу вдруге.
+        const next = transferTransition(st.transfers, id, ['sent'], {
+          status: 'accepted',
+          acceptedBy,
+          acceptedTime: nowTime(),
+        })
+        if (!next) return undefined
+        set({ transfers: next.list })
+        return next.doc
+      },
+
+      disputeTransfer: (id, { reportedCrates, reportedCash, note }) => {
+        const st = get()
+        // «Не сходиться» — це ЗАЯВКА: `reportedCrates`/`reportedCash` не входять у жодну
+        // формулу (I69), каса й наділ не рухаються взагалі. Розбіжність закриває керівник.
+        const next = transferTransition(st.transfers, id, ['sent'], {
+          status: 'disputed',
+          reportedCrates,
+          reportedCash,
+          disputeNote: note,
+        })
+        if (!next) return undefined
+        set({ transfers: next.list })
+        return next.doc
+      },
+
+      voidTransfer: (id, reason, by) => {
+        const st = get()
+        // I69: «щоб керівник просто змінював, щоб не вони, бо то ужас буде» (1185). Роль
+        // перевіряється САМЕ тут, а не лише в UI: це block-інваріант, а місце block-ів у
+        // цьому проєкті — рушій і стор, форма лише малює текст.
+        if (st.role !== 'owner') return undefined
+        // Порожня причина — no-op, як у `voidReweigh`: сторно без причини не відрізнити від
+        // випадкового кліку, а документ після нього вже не повернути.
+        if (!reason.trim()) return undefined
+        const next = transferTransition(st.transfers, id, ['sent', 'accepted', 'disputed'], {
+          // Документ НЕ зникає — він лишається зі слідом і просто не рахується (06 §3)
+          status: 'void',
+          voidedDate: TODAY,
+          voidedBy: by,
+          voidReason: reason,
+        })
+        if (!next) return undefined
+        set({ transfers: next.list })
+        return next.doc
+      },
+
+      openShift: ({ pointId, operatorId, openingFloat }) => {
+        const st = get()
+        // Дві відкриті зміни на одній точці — це дві книги на одну шухляду: перерахунок
+        // о 16:00 не мав би до чого чіплятися однозначно, а закриття закрило б випадкову.
+        if (st.shifts.some((x) => x.pointId === pointId && x.status === 'open')) return undefined
+        const doc: Shift = {
+          id: `sf_${rid()}`,
+          pointId,
+          operatorId,
+          date: TODAY,
+          openedTime: nowTime(),
+          // ПЕРЕРАХУНОК приймальника на ранок, а не «скільки має бути»: якби система
+          // показувала очікуване до вводу, перерахунок став би переписуванням (06 §7.3).
+          openingFloat: round2(openingFloat),
+          status: 'open',
+        }
+        set({ shifts: [...st.shifts, doc] })
+        return doc
+      },
+
+      countCash: ({ shiftId, countedCash, note }) => {
+        const st = get()
+        const shift = st.shifts.find((x) => x.id === shiftId)
+        // Перерахунок чіпляється до ВІДКРИТОЇ зміни: на закритій він не має чого фіксувати,
+        // а розбіжність там уже зафіксована окремим числом.
+        if (!shift || shift.status !== 'open') return undefined
+        // I70: очікувану суму й розбіжність рахує рушій — поля вводу для них немає в жодної
+        // ролі. Людина вводить рівно одне число: скільки грошей вона порахувала в шухляді.
+        const expected = cashOf(st, shift.pointId, shift.date).expectedCash
+        const counted = round2(countedCash)
+        const doc: CashCount = {
+          id: `cc_${rid()}`,
+          shiftId,
+          pointId: shift.pointId,
+          date: shift.date,
+          at: nowTime(),
+          countedCash: counted,
+          // ЗНІМОК очікуваної на момент перерахунку: пізніша подія дня не має права
+          // переписати розбіжність, яку вже показали людині.
+          expectedAtCount: expected,
+          discrepancy: shiftDiscrepancy(counted, expected),
+          countedBy: shift.operatorId,
+          note,
+        }
+        // Перерахунок нічого не ВИПРАВЛЯЄ — він лише фіксує факт (1197, 1222).
+        set({ cashCounts: [...st.cashCounts, doc] })
+        return doc
+      },
+
+      closeShift: ({ shiftId, countedCash, explanation }) => {
+        const st = get()
+        const shift = st.shifts.find((x) => x.id === shiftId)
+        if (!shift || shift.status !== 'open') return undefined
+        const expected = cashOf(st, shift.pointId, shift.date).expectedCash
+        const counted = round2(countedCash)
+        const discrepancy = shiftDiscrepancy(counted, expected)
+        // Порогів у v1 НЕМАЄ (Q-23): будь-яка розбіжність ≠ 0 йде до керівника. Тому
+        // `closedBy` ставиться ЛИШЕ при нулі — при розбіжності зміна висить
+        // 'awaiting_explanation', і закриває її керівник (06 §6 п. 5), а не той, хто рахував.
+        const status = shiftStatusFor(discrepancy)
+        const doc: Shift = {
+          ...shift,
+          closedTime: nowTime(),
+          countedCash: counted,
+          discrepancy,
+          status,
+          explanation,
+          closedBy: status === 'closed' ? shift.operatorId : undefined,
+        }
+        set({ shifts: st.shifts.map((x) => (x.id === shiftId ? doc : x)) })
+        return doc
+      },
+
       syncAll: () =>
         set((st) => ({
           receptions: st.receptions.map((r) => (r.synced ? r : { ...r, synced: true })),
@@ -402,14 +820,16 @@ export const useStore = create<State>()(
       },
     }),
     {
-      // v5: у знімку з'явились `reweighs`, `expenses` і `policies` (09 §2.2/§2.3), а
-      // Порічка отримала інший сезон — отже вся послідовність генератора інша. Причина та
-      // сама, що вже записана для v4 і v3: старий стан має форму, якої більше немає, тому
-      // скидаємо, а не міграємо. Без бампа браузер, який уже відкривав демо, віддав би зі
-      // свого v4 стан БЕЗ переважувань — і «Собівартість дня» показала б порожній аркуш
-      // саме на тому екрані, заради якого фаза й робилась.
-      name: 'yagoda-crm-demo-v5',
-      version: 5,
+      // v6: у знімку зʼявилися вісім ключів ящиків і каси-підзвіту (21 §2.8). Причина
+      // бампа та сама, що вже записана для v5, v4 і v3: старий стан має форму, якої більше
+      // немає, тому скидаємо, а не міграємо. Без бампа браузер, який уже відкривав демо,
+      // віддав би зі свого v5 стан БЕЗ жодного ящика — `merge` підставив би сюди свіжий сід
+      // лише для ВІДСУТНІХ ключів, тому екрани ящиків і каси намалювалися б, але поверх
+      // прийомок зі старого payload-а: наділ, видачі й перекази з одного світу, квитанції з
+      // іншого. `withBerryUnits` відправлень, порахований по чужих квитанціях, — це саме та
+      // тиха розбіжність, яку I63 і мусить робити видимою.
+      name: 'yagoda-crm-demo-v6',
+      version: 6,
       migrate: () => undefined,
       partialize: (s) => ({
         suppliers: s.suppliers,
@@ -420,6 +840,14 @@ export const useStore = create<State>()(
         reweighs: s.reweighs,
         expenses: s.expenses,
         policies: s.policies,
+        crateAllotments: s.crateAllotments,
+        cashFloats: s.cashFloats,
+        crateIssues: s.crateIssues,
+        crateReturns: s.crateReturns,
+        crateShipments: s.crateShipments,
+        transfers: s.transfers,
+        shifts: s.shifts,
+        cashCounts: s.cashCounts,
         settings: s.settings,
         role: s.role,
         activePointId: s.activePointId,
@@ -488,6 +916,38 @@ export const useStore = create<State>()(
           // гроші: Σ manual — це половина пулу розподілу
           expenses: Array.isArray(p.expenses) ? (p.expenses as DayExpense[]) : current.expenses,
           policies: Array.isArray(p.policies) ? (p.policies as ExpensePolicy[]) : current.policies,
+          // ящики і каса як підзвіт (21 §2.8): вісім ключів, вісім звужень тієї самої форми
+          // без масиву `effectiveAt()` не знайде жодного запису — обʼєкт дає TypeError на
+          // `for…of`, а рядок мовчки крутиться по літерах. Тихий випадок гірший: наділу
+          // «немає», `onHand` стає null, і `checkCrateIssue()` відмовляє в КОЖНІЙ видачі
+          crateAllotments: Array.isArray(p.crateAllotments)
+            ? (p.crateAllotments as CrateAllotment[])
+            : current.crateAllotments,
+          // гроші: з наділу на день відкриття книги починається вся згортка каси, і саме до
+          // діючого рахується «не хватає до наділу» — обидва читає той самий `effectiveAt()`
+          cashFloats: Array.isArray(p.cashFloats) ? (p.cashFloats as CashFloat[]) : current.cashFloats,
+          // гроші: Σ depositTaken — це половина каси за ящики, і той самий масив читає
+          // баланс людини. Не-масив падає на `.filter()` ще до першої копійки
+          crateIssues: Array.isArray(p.crateIssues) ? (p.crateIssues as CrateIssue[]) : current.crateIssues,
+          // гроші: `depositRefund` — друга половина каси за ящики, а `openCrateIssues()` ще й
+          // ітерує цей масив у циклі, тому не-масив це TypeError просто під час FIFO-розкладу
+          crateReturns: Array.isArray(p.crateReturns)
+            ? (p.crateReturns as CrateReturn[])
+            : current.crateReturns,
+          // не гроші, але ящики: без відправлень `atBase` = 0, `onHand` завищений на всі
+          // відвантажені — і видача дозволить те, чого на точці фізично немає (I62)
+          crateShipments: Array.isArray(p.crateShipments)
+            ? (p.crateShipments as CrateShipment[])
+            : current.crateShipments,
+          // і гроші, і ящики: прийнятий переказ додає `cash` у касу за ягоду і `crates` у
+          // наділ; без масиву падає `.filter()` ще до того, як хоч одне з двох порахується
+          transfers: Array.isArray(p.transfers) ? (p.transfers as Transfer[]) : current.transfers,
+          // не гроші напряму, але саме до відкритої зміни чіпляється перерахунок: без масиву
+          // `countCash()` не знайде зміни й відмовить, а `openShift()` відкриє другу книгу
+          shifts: Array.isArray(p.shifts) ? (p.shifts as Shift[]) : current.shifts,
+          // журнал перерахунків: втрата не рухає жодної суми, але «розбіжність зафіксували»
+          // і «розбіжності не рахували» на екрані виглядають однаково — а це різні речі
+          cashCounts: Array.isArray(p.cashCounts) ? (p.cashCounts as CashCount[]) : current.cashCounts,
           settings: isSettings(p.settings) ? p.settings : current.settings,
           // не гроші, але невідомий рядок лишає інтерфейс ні в тому, ні в тому режимі:
           // Shell малює навігацію приймальника, а перевірки власника не застосовуються

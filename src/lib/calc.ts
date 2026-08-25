@@ -2,6 +2,7 @@ import type {
   Allocation,
   Berry,
   ClockTime,
+  CashFloat,
   CrateAllotment,
   CrateIssue,
   CrateIssueId,
@@ -1289,16 +1290,23 @@ export function crateIssueMode(units: number, threshold = CRATE_RECEIPT_THRESHOL
 export function effectiveAt<
   T extends { id: string; pointId: PointId; effectiveFrom: ISODate; setDate: ISODate; setTime: ClockTime },
 >(records: T[], pointId: PointId, date: ISODate): T | null {
-  // Розрив за (setDate, setTime, id) — не косметика. Два наділи з ОДНІЄЮ effectiveFrom
-  // трапляються буквально: керівник поставив 800 із 15.07, побачив 712 ящиків того дня і
-  // тим самим числом поставив 900. Без розриву перемагав би той, хто раніше в масиві,
-  // тобто порядок у localStorage вирішував би, скільки ящиків на точці.
-  const key = (r: T) => `${r.effectiveFrom}|${r.setDate}|${r.setTime}|${r.id}`
+  // Розрив нічиї — не косметика. Два наділи з ОДНІЄЮ effectiveFrom трапляються буквально:
+  // керівник поставив 800 із 15.07, побачив 712 ящиків того дня і тим самим числом поставив
+  // 900. Порядок такий: пізніша дата дії, потім пізніший час УХВАЛЕННЯ, а якщо збіглося й
+  // це — ОСТАННІЙ у журналі.
+  //
+  // Чому саме `>=`, а не `>`, і чому id у ключі НЕМАЄ. Перша версія розривала нічию по id, і
+  // це давало ВИПАДКОВИЙ результат: id генерується Math.random(), тому дві правки, зроблені
+  // в одну хвилину, давали то 800, то 900. Журнал тут append-only, отже «останній у масиві»
+  // і є «ухвалений останнім» — це єдиний детермінований розрив, який ще й означає те, що
+  // треба. Порядок масиву значення має ТІЛЬКИ при повній нічиї; на різних датах результат
+  // від нього не залежить, і на це є окремий тест.
+  const key = (r: T) => `${r.effectiveFrom}|${r.setDate}|${r.setTime}`
   let best: T | null = null
   for (const r of records) {
     if (r.pointId !== pointId) continue
     if (r.effectiveFrom > date) continue
-    if (!best || key(r) > key(best)) best = r
+    if (!best || key(r) >= key(best)) best = r
   }
   return best
 }
@@ -1547,4 +1555,188 @@ export function checkCrateReturn(units: number, balance: number): CrateCheck {
 /** Разом відправлено: з ягодою плюс бій. «віддаємо і ті, що з ягодою, і ті, що ламані» (977). */
 export function shipmentTotal(s: { withBerryUnits: number; brokenUnits: number }) {
   return s.withBerryUnits + s.brokenUnits
+}
+
+/* ------------------------- каса як підзвіт (21 §3.5, §3.6) ------------------------- */
+
+/*
+ * ГОЛОВНЕ ПРАВИЛО ЦІЄЇ СЕКЦІЇ: каса — ЗГОРТКА ПОДІЙ (`I56`). Жодна функція нижче не
+ * приймає діапазону дат і не має параметра «фільтр». Саме фільтр і зламав їхній Excel:
+ * `E3 = E1 − SUBTOTAL(109; N)` залежить від дати-фільтра в `H1:J1`, тому «змінили фільтр —
+ * змінилася готівка в касі», і зараз ця клітинка показує −118 089 ₴ (`C10`).
+ *
+ * ДРУГЕ ПРАВИЛО: `reconcileDay()` НЕ переписаний. Готівка за ягоду береться саме з нього
+ * (`cashOut = paidToday + Σ payout.amount`), тому дві цифри — «видано за день» на звіті дня
+ * і «видано» в касі — не можуть розійтися: вони з одного джерела.
+ */
+
+/**
+ * ДВІ КНИГИ В ОДНІЙ ШУХЛЯДІ. «Окрема каса за ящики, окрема каса за ягоду» (ряд. 1104) —
+ * але завдаток за ящик це фізична готівка в тій самій шухляді, тому приймальник рахує
+ * ОДНУ купу, і `expectedCash` — сума двох книг.
+ *
+ * Розділення живе не в підрахунку, а в ЗАБОРОНАХ: виплата за ягоду впирається в
+ * `berryCash` (`G12`, `I58`), а повернення завдатку — в `crateCash` і НІКОЛИ в `berryCash`
+ * (`I59`, ряд. 1102: «не може бути такого, що зараз коштів немає в касі, ну, ми маємо
+ * віддати»).
+ */
+export interface CashStanding {
+  /** діючий наділ; `null`, коли наділу на цю дату ще не призначали — на екрані «—» */
+  float: Uah | null
+  /** наділ на день відкриття книги — з нього починається згортка */
+  openingBalance: Uah
+  /** Σ переказів, які точка ПРИЙНЯЛА */
+  cashIn: Uah
+  /** Σ cashOut усіх днів книги — рівно те, що віддає reconcileDay() */
+  berryOut: Uah
+  /** каса за ягоду */
+  berryCash: Uah
+  /** каса за ящики: завдатки взяті − повернені */
+  crateCash: Uah
+  /** що має лежати в шухляді */
+  expectedCash: Uah
+  /** «щоб бачили вони, що їм не хватає до 200» (1193); `null` без наділу */
+  floatShortfall: Uah | null
+  /** розклад сьогоднішнього дня — H9: одне число «видано» цього не пояснює */
+  paidToday: Uah
+  paidForPastDays: Uah
+  cashInToday: Uah
+}
+
+export function cashStanding(input: {
+  pointId: PointId
+  date: ISODate
+  /** день, з якого ведеться книга: подій до нього не читаємо (`21 §8.1`) */
+  openedOn: ISODate
+  floats: CashFloat[]
+  receptions: Reception[]
+  payouts: Payout[]
+  transfers: Transfer[]
+  issues: CrateIssue[]
+  returns: CrateReturn[]
+}): CashStanding {
+  const { pointId, date, openedOn } = input
+  const inWindow = (d: ISODate) => d >= openedOn && d <= date
+
+  const recs = input.receptions.filter((r) => r.pointId === pointId)
+  const pays = input.payouts.filter((p) => p.pointId === pointId)
+
+  // Дні беруться з самих документів, а не з календаря: день без жодної події не має ані
+  // видачі, ані приходу, і рахувати його нема чого.
+  const days = [...new Set([...recs.map((r) => r.date), ...pays.map((p) => p.date)])]
+    .filter(inWindow)
+    .sort()
+  const perDay = days.map((d) => reconcileDay(d, recs, pays))
+  const berryOut = sum(perDay, (r) => r.cashOut)
+
+  const accepted = input.transfers.filter(
+    (t) => t.pointId === pointId && inWindow(t.date) && t.status === 'accepted',
+  )
+  const cashIn = sum(accepted, (t) => t.cash)
+
+  const opening = effectiveAt(input.floats, pointId, openedOn)
+  const openingBalance = opening ? opening.amount : 0
+  const berryCash = round2(openingBalance + cashIn - berryOut)
+
+  // ДВІ КНИГИ — ДВА РІЗНІ ВІКНА, і це не описка.
+  // Ягода згортається від `openedOn`, бо на той день у неї вже є підсумок — наділ; усе,
+  // що було раніше, в ньому враховано.
+  // Завдатки за ящики такого підсумку НЕ мають: у них немає наділу, лише накопичений
+  // залишок від першої видачі. Завдаток, узятий у липні, ФІЗИЧНО лежить у шухляді в
+  // серпні, поки людина не принесла ящики назад. Тому тут `date`, а не `inWindow`:
+  // з вікном 195 ящиків стояли б у людей, а грошей за них у шухляді не було б — і
+  // приймальник побачив би суму, якої в нього на руках немає.
+  const upto = (d: ISODate) => d <= date
+  const taken = sum(
+    input.issues.filter((i) => i.pointId === pointId && upto(i.date) && !i.voidedDate),
+    (i) => i.depositTaken,
+  )
+  const refunded = sum(
+    input.returns.filter((r) => r.pointId === pointId && upto(r.date) && !r.voidedDate),
+    (r) => r.depositRefund,
+  )
+  const crateCash = round2(taken - refunded)
+
+  const current = effectiveAt(input.floats, pointId, date)
+  const today = perDay.find((r) => r.date === date)
+  return {
+    float: current ? current.amount : null,
+    openingBalance,
+    cashIn,
+    berryOut,
+    berryCash,
+    crateCash,
+    expectedCash: round2(berryCash + crateCash),
+    floatShortfall: current ? round2(current.amount - berryCash) : null,
+    paidToday: today ? today.paidToday : 0,
+    paidForPastDays: today ? today.paidForPastDays : 0,
+    cashInToday: sum(
+      accepted.filter((t) => t.date === date),
+      (t) => t.cash,
+    ),
+  }
+}
+
+/**
+ * `G12` (`06 §2`) і `I58`: виплата за ягоду впирається В КАСУ ЗА ЯГОДУ, а не в суму
+ * шухляди — інакше гроші за ягоду з'їли б чужі завдатки за ящики.
+ * «У касі 12 400 ₴, ви видаєте 42 500 ₴. Готівки не вистачає.»
+ */
+export function checkBerryPayout(amount: Uah, berryCash: Uah): CrateCheck {
+  const max = Math.max(0, round2(berryCash))
+  return { ok: amount > 0 && round2(amount) <= max, max }
+}
+
+/**
+ * `I59`: повернення завдатку впирається В КАСУ ЗА ЯЩИКИ і НІКОЛИ в касу за ягоду. Це і є
+ * механічний зміст двох кас: «не може бути такого, що зараз коштів немає в касі, ну, ми
+ * маємо віддати» (ряд. 1102). Порожня `berryCash` цю операцію не блокує — вона сюди навіть
+ * не передається, і це не недогляд підпису, а саме правило.
+ */
+export function checkCrateRefund(amount: Uah, crateCash: Uah): CrateCheck {
+  const max = Math.max(0, round2(crateCash))
+  return { ok: amount >= 0 && round2(amount) <= max, max }
+}
+
+/**
+ * Розбіжність зміни: пораховано − очікувано. Відʼємна — недостача, додатна — надлишок.
+ * Ніде не «зникає» і ніколи не гаситься підгонкою очікуваної суми (`06 §7.5` п. 4):
+ * закривається окремим документом керівника.
+ */
+export function shiftDiscrepancy(countedCash: Uah, expectedCash: Uah): Uah {
+  return round2(countedCash - expectedCash)
+}
+
+/**
+ * Стан зміни за величиною розбіжності. Порогів у v1 НЕМАЄ — клієнтка чисел не називала
+ * (`Q-23`), тому будь-яка розбіжність ≠ 0 йде до керівника. Це свідомо суворіше за
+ * `06 §7.5`, де були два пороги: вигадувати їх означало б вигадати, яка недостача «буває».
+ */
+export function shiftStatusFor(discrepancy: Uah): 'closed' | 'awaiting_explanation' {
+  return round2(discrepancy) === 0 ? 'closed' : 'awaiting_explanation'
+}
+
+/** Заборгованість бази перед точкою — те саме число, що «не хватає до наділу» (1187). */
+export interface PointDebtRow {
+  pointId: PointId
+  float: Uah | null
+  berryCash: Uah
+  owed: Uah | null
+  crateShortfall: number
+}
+
+export function owedToPoints(
+  points: { id: PointId }[],
+  read: (pointId: PointId) => { cash: CashStanding; crates: CrateStanding },
+): PointDebtRow[] {
+  return points.map((p) => {
+    const { cash, crates } = read(p.id)
+    return {
+      pointId: p.id,
+      float: cash.float,
+      berryCash: cash.berryCash,
+      owed: cash.floatShortfall,
+      crateShortfall: crates.shortfall,
+    }
+  })
 }
