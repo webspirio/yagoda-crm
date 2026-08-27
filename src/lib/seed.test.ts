@@ -665,13 +665,34 @@ describe('довідники у знімку: config, users, products', () => {
   })
 
   it('ownerName() читає саме реєстр, а не свій fallback', () => {
-    expect(ownerName([{ id: 'u_x', name: 'Інша Людина', role: 'owner' }])).toBe('Інша Людина')
+    expect(
+      ownerName([{ id: 'u_x', name: 'Інша Людина', role: 'owner', login: 'x' }]),
+    ).toBe('Інша Людина')
     // порожній реєстр — зламані дані; підпис не має права стати порожнім, тому роль
     expect(ownerName([])).toBe('Керівник')
     // приймальник керівником не вважається, скільки б їх не було
-    expect(ownerName([{ id: 'u_p1', name: 'Оксана Г.', role: 'operator', pointId: 'p1' }])).toBe(
-      'Керівник',
-    )
+    expect(
+      ownerName([{ id: 'u_p1', name: 'Оксана Г.', role: 'operator', pointId: 'p1', login: 'p1' }]),
+    ).toBe('Керівник')
+  })
+
+  /**
+   * Склад реєстру звіряється з ЦИТАТОЮ клієнта, а не з кодом: «на точці Гайове один касир,
+   * точка Шипинки два касири, а в Попівцях один касир» (дзвінок №4, ряд. 558). Тому тут
+   * числа по точках, а не `length === 7`: сума зійшлася б і при неправильному розподілі.
+   */
+  it('на Шипинках двоє касирів, на решті активних точок по одному', () => {
+    const byPoint = (id: string) =>
+      seed.users.filter((u) => u.role === 'operator' && u.pointId === id).length
+    expect(byPoint('p1')).toBe(2)
+    for (const id of ['p2', 'p3', 'p4', 'p5']) expect(byPoint(id), id).toBe(1)
+  })
+
+  /** Два однакових логіни означають, що вхід під одним веде до випадкового з двох записів */
+  it('логіни унікальні й непорожні', () => {
+    const logins = seed.users.map((u) => u.login)
+    expect(logins.filter((l) => !l.trim())).toEqual([])
+    expect(new Set(logins).size).toBe(logins.length)
   })
 
   it('приймальник кожного активного пункту прийому має підпис', () => {
