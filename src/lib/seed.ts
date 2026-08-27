@@ -1,9 +1,32 @@
-import { allocatePayout, openDebts, productDay, round2, tareWeight, weigh } from './calc'
+import {
+  allocateCrateReturn,
+  allocatePayout,
+  cashStanding,
+  crateIssueMode,
+  crateRefund,
+  crateShipmentDraft,
+  openCrateIssues,
+  openDebts,
+  productDay,
+  reconcileDay,
+  round2,
+  shiftDiscrepancy,
+  shiftStatusFor,
+  shipmentTotal,
+  tareWeight,
+  weigh,
+} from './calc'
 import { addDays, toISO } from './format'
 import { SUPPLIER_SEED } from './seed-suppliers'
 import type {
   Berry,
+  CashCount,
+  CashFloat,
   ClockTime,
+  CrateAllotment,
+  CrateIssue,
+  CrateReturn,
+  CrateShipment,
   DayExpense,
   ExpensePolicy,
   ISODate,
@@ -14,9 +37,11 @@ import type {
   Reweigh,
   ReweighLine,
   Settings,
+  Shift,
   Supplier,
   TareLine,
   TareType,
+  Transfer,
 } from './types'
 
 /** Deterministic PRNG so the demo looks the same on every laptop. */
@@ -77,8 +102,15 @@ const BASE_POINT: Point = {
   active: true,
 }
 
-/** Каса на початок дня, набрана руками в `E1` ✓ PART B; Гайове — зі скриншотів ДОПОМОГА ✓ H6 */
-export const CASH_FLOAT_BY_POINT: Record<string, number> = { p1: 145_453, p3: 50_000 }
+/**
+ * Каса на початок дня, набрана руками в `E1` ✓ PART B; Гайове — зі скриншотів ДОПОМОГА ✓ H6.
+ *
+ * БЕЗ `export`: єдиний споживач цих двох чисел — наділи каси в кінці цього ж файлу
+ * (21 §8.1), а назовні вони виходять уже як `CashFloat`. Доти запис лежав у
+ * `baselines/dead-exports.json` як експорт без жодного імпортера; знахідка зникла разом
+ * зі словом `export`, і запис прибраний із baseline — це дозволений бік храповика.
+ */
+const CASH_FLOAT_BY_POINT: Record<string, number> = { p1: 145_453, p3: 50_000 }
 
 /**
  * Товар — верхній рівень, 10 позицій: 9 виміряних ✓ PART A плюс Аронія з дзвінка №4.
@@ -137,6 +169,16 @@ export const BERRIES: Berry[] = [
   // цикл цін відсіює її раніше, ніж викличе rnd(), тому сезонні анкери не рухаються
   { id: 'v_aron', name: 'Аронія', short: 'Аронія', product: 'Аронія', wholesale: false, retired: false, from: '2026-08-20', to: '2026-10-15', basePrice: 28 },
 ]
+
+/**
+ * День, з якого ведеться касова книга демо (`21 §8.1`). Свідоме звуження: подій каси за
+ * всі 39 днів було б 200+, а доводять вони рівно те саме, що й за сім.
+ *
+ * ЕКСПОРТУЄТЬСЯ, бо `store.ts` передає це саме число в `cashStanding({ openedOn })`. Поки
+ * примірників було два, вони мали шанс розійтися мовчки — і тоді екран каси показував би
+ * інший залишок, ніж той, з якого зроблено `CashCount` у сіді.
+ */
+export const CASH_BOOK_FROM: ISODate = '2026-07-29'
 
 /** `Data_Import!G/H/I` ✓ PART A. Чешка стоїть у 1 701 з 1 701 рядка ✓ H5 */
 export const TARE_TYPES: TareType[] = [
@@ -373,6 +415,15 @@ export interface SeedData {
   reweighs: Reweigh[]
   expenses: DayExpense[]
   policies: ExpensePolicy[]
+  /* ---- ящики і каса як підзвіт (21 §2.8): вісім ключів, назви — з контракту ---- */
+  crateAllotments: CrateAllotment[]
+  cashFloats: CashFloat[]
+  crateIssues: CrateIssue[]
+  crateReturns: CrateReturn[]
+  crateShipments: CrateShipment[]
+  transfers: Transfer[]
+  shifts: Shift[]
+  cashCounts: CashCount[]
 }
 
 /** Рядок у роботі — до нього ще не приклеєні id, code і час сортування */
@@ -1373,6 +1424,378 @@ export function buildSeed(): SeedData {
     })
   }
 
+  /* ---------------- ЯЩИКИ І КАСА ЯК ПІДЗВІТ (21 §8.1) ---------------- */
+  /*
+   * ПРАВИЛО РОЗМІЩЕННЯ, без якого поїдуть заморожені анкери сезону: увесь цей блок стоїть
+   * у КІНЦІ buildSeed() і крутить ВЛАСНИЙ генератор. На послідовності `rnd()` у циклі
+   * прийомки тримаються 1 701 рядок / 38 днів / 47 441 кг / 5 968 793 ₴ — один зайвий
+   * виклик `rnd()` до того циклу зсунув би кожне з цих чисел. Нижче — тільки `crnd()`.
+   */
+  const crnd = mulberry32(20260805)
+  const crateInt = (a: number, b: number) => a + Math.floor(crnd() * (b - a + 1))
+  /** Вечір: «наший перевізник ввечері сідає і їде на точку» (дзвінок №4, ряд. 1144) */
+  const clock = (from: number, to: number) => `${pad(crateInt(from, to), 2)}:${pad(crateInt(0, 59), 2)}`
+
+  /**
+   * День, з якого ведеться касова книга — за сім днів до TODAY. Не з 27.06: подій каси за
+   * 39 днів було б 200+, а доводять вони рівно те саме, що й за сім. Це СВІДОМЕ звуження
+   * (21 §8.1), і воно назване тут, а не сховане у формі даних.
+   */
+  const CASH_BOOK_OPEN = CASH_BOOK_FROM
+
+  /*
+   * НАДІЛ — це історія, а не поле на точці: «я за те, щоб поняття фіксованої суми… їм
+   * потрібно бачити очима візуально, від якої суми їм потрібно відштовхуватись»
+   * (1067–1068). Тому на Шипинках ДВА записи: зміна 600 → 800 має бути видима як подія з
+   * датою, автором і причиною, а не як переписане число.
+   */
+  const crateAllotments: CrateAllotment[] = [
+    {
+      id: 'ca1', pointId: 'p1', units: 600, effectiveFrom: SEASON_START,
+      setBy: OWNER, setDate: SEASON_START, setTime: '08:00',
+      reason: 'Число клієнтки: «Тобто це поки по 600 ящиків» (дзвінок №4, ряд. 940)',
+    },
+    {
+      id: 'ca2', pointId: 'p1', units: 800, effectiveFrom: '2026-07-15',
+      setBy: OWNER, setDate: '2026-07-15', setTime: '08:10',
+      reason: 'Зміряно на цьому ж сіді: 15.07 відвантажено 712 ящиків — наділ 600 не покривав дня. «нам треба на точці, щоб було 800» (1062)',
+    },
+    {
+      id: 'ca3', pointId: 'p2', units: 1_200, effectiveFrom: '2026-08-01',
+      setBy: OWNER, setDate: '2026-08-01', setTime: '07:40',
+      reason: 'Демонстраційний дефолт. Зміряно: два дні відвантажень поспіль дають до 1 008 ящиків, і всі вони лежать у нас, поки не поїдуть назад',
+    },
+    {
+      id: 'ca4', pointId: 'p3', units: 200, effectiveFrom: SEASON_START,
+      setBy: OWNER, setDate: SEASON_START, setTime: '08:00',
+      reason: 'Демонстраційний дефолт: максимум відвантаження Гайового — 80 ящиків за день',
+    },
+    {
+      id: 'ca5', pointId: 'p4', units: 200, effectiveFrom: SEASON_START,
+      setBy: OWNER, setDate: SEASON_START, setTime: '08:00',
+      reason: 'Демонстраційний дефолт: максимум відвантаження Попівців — 101 ящик за день',
+    },
+    {
+      id: 'ca6', pointId: 'p5', units: 150, effectiveFrom: SEASON_START,
+      setBy: OWNER, setDate: SEASON_START, setTime: '08:00',
+      reason: 'Демонстраційний дефолт: максимум відвантаження Михайлівців — 47 ящиків за день',
+    },
+  ]
+
+  /*
+   * НАДІЛ КАСИ — форма навмисно дзеркальна до наділу ящиків: «технологія з грошима така
+   * сама, як з ящиками» (1144). Два числа взяті з їхнього файлу (`CASH_FLOAT_BY_POINT`),
+   * решта — демонстраційні дефолти, і кожен позначений як дефолт у своїй причині.
+   */
+  const cashFloats: CashFloat[] = [
+    {
+      id: 'cf1', pointId: 'p1', amount: CASH_FLOAT_BY_POINT.p1, effectiveFrom: SEASON_START,
+      setBy: OWNER, setDate: SEASON_START, setTime: '08:00',
+      reason: 'Клітинка E1 їхнього файла — каса на початок дня, набрана руками ✓ PART B',
+    },
+    {
+      id: 'cf2', pointId: 'p1', amount: 500_000, effectiveFrom: '2026-07-10',
+      setBy: OWNER, setDate: '2026-07-10', setTime: '08:20',
+      reason: 'Зміряно: 13 днів із 39 видали більше за 145 453 ₴, максимум 493 735 ₴ (15.07). Демонстраційний дефолт — справжнє число має назвати клієнт (Q-21)',
+    },
+    // Конищів відкрився 01.08, і наділ каси починається тим самим днем. Зміряно на цьому
+    // сіді: 50 000 ₴ його не покривають — точка завжди на день позаду, тому 04.08 каса за
+    // ягоду виходить −1 130,18 ₴ (при книзі, відкритій 01.08). Це не вада демо-даних, а
+    // рівно те, про що Q-21: модель наділу правильна, конкретне число — ні. Екран, який
+    // відкриє книгу Конищева 29.07 замість 01.08, отримає ще й нульовий початковий
+    // залишок, бо на 29.07 наділу в нього ще не було взагалі.
+    {
+      id: 'cf3', pointId: 'p2', amount: 100_000, effectiveFrom: '2026-08-01',
+      setBy: OWNER, setDate: '2026-08-01', setTime: '07:40',
+      reason:
+        'Демонстраційний дефолт. Спершу тут стояло 50 000 — за максимумом ОДНОГО дня ' +
+        '(42 935 ₴), і на екрані керівника Конищів показував відʼємну касу: перекази ' +
+        'везуть вчорашнє, тому точка несе борг за ДВА дні, а не за один. Максимум двох ' +
+        'днів поспіль — 64 235 ₴ (03.08 + 02.08). Знайдено ручним обходом артефакту.',
+    },
+    {
+      id: 'cf4', pointId: 'p3', amount: CASH_FLOAT_BY_POINT.p3, effectiveFrom: SEASON_START,
+      setBy: OWNER, setDate: SEASON_START, setTime: '08:00',
+      reason: 'Скриншот Гайового ✓ H6. Зміряно: 0 днів із 39 із перевищенням цього наділу',
+    },
+    {
+      id: 'cf5', pointId: 'p4', amount: 60_000, effectiveFrom: SEASON_START,
+      setBy: OWNER, setDate: SEASON_START, setTime: '08:00',
+      reason: 'Демонстраційний дефолт: максимум видатку Попівців за день — 51 019 ₴',
+    },
+    {
+      id: 'cf6', pointId: 'p5', amount: 30_000, effectiveFrom: SEASON_START,
+      setBy: OWNER, setDate: SEASON_START, setTime: '08:00',
+      reason: 'Демонстраційний дефолт: максимум видатку Михайлівців за день — 26 621 ₴',
+    },
+  ]
+
+  /*
+   * ВИДАЧІ Й ПОВЕРНЕННЯ — ТІЛЬКИ НА ШИПИНКАХ, і це перенесений журнал клієнтки (21 §8.2):
+   * 15 рядків, 13 людей, 275 ящиків, рядок у рядок з аркуша `Ящики`. Пара в масиві —
+   * [людина, ящиків], і індекс людини ПОВТОРЮЄТЬСЯ там, де в її файлі одна й та сама
+   * особа стоїть двома рядками: рядки 9 і 10 (15 + 5) та рядки 7 і 12 (30 + 10) ✓ H2.
+   * Саме заради цих двох пар підсумок по людині має що підсумовувати.
+   *
+   * Спосіб видачі НЕ проставлений руками: його дає `crateIssueMode()` за порогом 50, і
+   * рівно один рядок із п'ятнадцяти (80 ящиків) виходить за розписку. Звідси й три різні
+   * числа §8.2, яких із самої таблиці не видно: 275 × 120 = 33 000 ₴ стверджує її аркуш,
+   * 195 × 120 = 23 400 ₴ коштують ящики, що зараз у полі, а 115 × 120 = 13 800 ₴ ми
+   * справді тримаємо готівкою — за 80 ящиків під розписку грошей немає взагалі.
+   */
+  const CRATE_JOURNAL: Array<[person: number, units: number]> = [
+    [0, 30], [1, 50], [2, 3], [3, 10], [4, 80],
+    [5, 10], [6, 30], [7, 3], [8, 15], [8, 5],
+    [9, 10], [6, 10], [10, 8], [11, 1], [12, 10],
+  ]
+  const crateFolk = suppliers.filter((s) => s.homePointId === 'p1').slice(0, 13)
+  /** Завдаток за ящик — це ЦІНА ЧЕШКИ (рішення Р-1): у їхньому журналі `Ціна тари` = 120 в усіх 15 рядках */
+  const cheshka = TARE_TYPES.find((t) => t.id === DEFAULT_TARE_ID)!
+
+  /*
+   * Дати видач — 29–31.07, тобто всередині касової книги, а не «десь у липні». Це не
+   * косметика: `cashStanding()` читає завдатки з вікна [openedOn … date], і видача,
+   * датована 10.07, дала б на екрані каси за ящики 0,00 ₴ при 195 ящиках у людей.
+   */
+  const crateIssues: CrateIssue[] = CRATE_JOURNAL.map(([person, units], i) => {
+    const mode = crateIssueMode(units)
+    // За розписку — РІВНО 0 (21 §2.3): тоді завдаток і повернення рахуються однією
+    // формулою для обох способів, без окремої гілки й без двох полів, які мусять
+    // брехати узгоджено.
+    const perUnit = mode === 'deposit' ? cheshka.price : 0
+    return {
+      id: `ci${i + 1}`,
+      date: addDays(CASH_BOOK_OPEN, Math.floor(i / 5)),
+      // Година зростає в межах дня: `openCrateIssues()` сортує за (дата, час, id), і
+      // FIFO повернення читає саме цей порядок.
+      time: `${pad(8 + (i % 5), 2)}:${pad(crateInt(0, 59), 2)}`,
+      pointId: 'p1',
+      supplierId: crateFolk[person].id,
+      units,
+      mode,
+      depositPerUnit: perUnit,
+      depositTaken: round2(units * perUnit),
+      receiptNo: mode === 'receipt' ? 'Р-0001' : undefined,
+      operatorId: OPERATORS.p1,
+    }
+  })
+
+  /*
+   * Два повернення з її ж журналу: 30 і 50 ящиків, обидва повні. Розклад по видачах не
+   * рахується руками — його дає `allocateCrateReturn()` по FIFO, а гроші бере зі ЗНІМКА
+   * ціни тієї видачі: «воно автоматично підтягує, як та людина брала» (1087).
+   * Разом: 3 600 + 6 000 = 9 600 ₴ з каси за ящики, і в нас лишається 13 800 ₴.
+   */
+  const crateReturns: CrateReturn[] = []
+  for (const back of [
+    { id: 'cr1', supplierId: crateFolk[0].id, units: 30, date: addDays(CASH_BOOK_OPEN, 2), time: '11:20' },
+    { id: 'cr2', supplierId: crateFolk[1].id, units: 50, date: '2026-08-02', time: '10:05' },
+  ]) {
+    const allocations = allocateCrateReturn(
+      back.units,
+      openCrateIssues(back.supplierId, crateIssues, crateReturns),
+    )
+    crateReturns.push({
+      ...back,
+      pointId: 'p1',
+      allocations,
+      depositRefund: crateRefund(allocations),
+      operatorId: OPERATORS.p1,
+    })
+  }
+
+  /*
+   * ВЕЧІРНІ ВІДПРАВЛЕННЯ — на кожній активній точці за 29.07–04.08. `withBerryUnits`
+   * рахує РУШІЙ із квитанцій дня по Чешці: «не вони мають вносити, а сама програма має
+   * вичитати» (1115). Бій — руками, і не щодня: «ламані не кожен день можуть бути» (993).
+   *
+   * День, у якому точка не прийняла жодної квитанції, відправлення НЕ отримує взагалі:
+   * машини ввечері не було. Це стосується лише Конищева 29–31.07 — він відкрився 01.08,
+   * і документ «відправлено 0 ящиків» на цих трьох днях був би подією, якої не сталося.
+   */
+  const BROKEN_BY_DAY: Record<string, number> = { '2026-07-29': 3, '2026-07-31': 1, [TODAY]: 2 }
+  const shipDays: ISODate[] = []
+  for (let d = CASH_BOOK_OPEN; d <= TODAY; d = addDays(d, 1)) shipDays.push(d)
+
+  const crateShipments: CrateShipment[] = []
+  for (const point of activePoints) {
+    for (const day of shipDays) {
+      const draft = crateShipmentDraft({
+        date: day,
+        pointId: point.id,
+        receptions,
+        crateTareId: DEFAULT_TARE_ID,
+      })
+      if (!draft.receptionCount) continue
+      crateShipments.push({
+        id: `cs${crateShipments.length + 1}`,
+        date: day,
+        pointId: point.id,
+        withBerryUnits: draft.withBerryUnits,
+        receptionCount: draft.receptionCount,
+        brokenUnits: BROKEN_BY_DAY[day] ?? 0,
+        operatorId: OPERATORS[point.id],
+        postedDate: day,
+        postedTime: clock(18, 20),
+      })
+    }
+  }
+
+  /*
+   * ПЕРЕКАЗИ ВЕЗУТЬ ВЧОРАШНЄ — і гроші, і ящики. Дослівно її процес: «ми їм сьогодні
+   * передаємо кількість ящиків за вчора і кількість грошей за вчора, яку вони вклали в
+   * ягоду» (1144). Гроші беруться з `reconcileDay(D−1).cashOut` — того самого числа, яким
+   * звіт дня показує «видано»; ящики — із суми відправлення за D−1.
+   *
+   * Наслідок, який і треба побачити на екрані: наприкінці дня каса точки дорівнює
+   * «наділ − видаток цього дня», а не наділу. Точка завжди на день позаду, і саме це
+   * вона називає заборгованістю перед точками (1187).
+   */
+  const carrier = 'Перевізник Р.'
+  const recsOf = new Map(activePoints.map((p) => [p.id, receptions.filter((r) => r.pointId === p.id)]))
+  const paysOf = new Map(activePoints.map((p) => [p.id, payouts.filter((x) => x.pointId === p.id)]))
+  const shippedOn = (pointId: string, date: ISODate) =>
+    crateShipments
+      .filter((s) => s.pointId === pointId && s.date === date)
+      .reduce((n, s) => n + shipmentTotal(s), 0)
+  const cashOutOn = (pointId: string, date: ISODate) =>
+    reconcileDay(date, recsOf.get(pointId) ?? [], paysOf.get(pointId) ?? []).cashOut
+
+  const transfers: Transfer[] = []
+  // 30.07 … 03.08: перший день книги везти нема чого (вчора книги ще не було), а сьогодні
+  // переказів немає взагалі — це друге з трьох навмисних відхилень.
+  for (const day of shipDays.slice(1, -1)) {
+    const yesterday = addDays(day, -1)
+    for (const point of activePoints) {
+      const owed = cashOutOn(point.id, yesterday)
+      const crates = shippedOn(point.id, yesterday)
+      if (!owed && !crates) continue
+      // ВІДХИЛЕННЯ 1 (M45, UC-37): 03.08 Шипинки отримують 20 000 ₴ проти витрачених
+      // 02.08 29 395,35 ₴ — база гасить борг ЧАСТИНАМИ, і 9 395,35 ₴ лишаються висіти.
+      const partial = day === '2026-08-03' && point.id === 'p1'
+      transfers.push({
+        id: `tf${transfers.length + 1}`,
+        date: day,
+        pointId: point.id,
+        crates,
+        cash: partial ? 20_000 : owed,
+        carrier,
+        sentBy: OWNER,
+        sentTime: clock(17, 18),
+        status: 'accepted',
+        acceptedBy: OPERATORS[point.id],
+        acceptedTime: clock(19, 20),
+      })
+    }
+  }
+
+  /*
+   * ВІДХИЛЕННЯ 3 (M44, UC-36): сьогодні на Михайлівцях переказ НЕ СХОДИТЬСЯ. Відправлено
+   * 20 порожніх ящиків і гроші за 03.08, точка нарахувала 18. Документ у стані 'disputed'
+   * не рухає ні касу, ні наділ (I68) — на екрані це видно як БІЛЬШИЙ борг, а не як менші
+   * ящики, бо розбіжність закриває керівник новим документом: «щоб керівник просто
+   * змінював, щоб не вони, бо то ужас буде» (1185).
+   */
+  const disputedCrates = shippedOn('p5', '2026-08-03')
+  const disputedCash = cashOutOn('p5', '2026-08-03')
+  transfers.push({
+    id: `tf${transfers.length + 1}`,
+    date: TODAY,
+    pointId: 'p5',
+    crates: disputedCrates,
+    cash: disputedCash,
+    carrier,
+    sentBy: OWNER,
+    sentTime: '17:30',
+    status: 'disputed',
+    reportedCrates: disputedCrates - 2,
+    reportedCash: disputedCash,
+    disputeNote: 'Порахували ящики при перевізнику: приїхало на два менше, ніж у переказі. Гроші зійшлися',
+  })
+
+  /*
+   * ЗМІНИ І ПЕРЕРАХУНКИ — тільки за сьогодні і тільки на двох точках (21 §8.1). Історія
+   * змін за 39 днів не сіється: вона доводила б рівно те саме, що й одна пара, і це теж
+   * свідоме звуження, назване вголос.
+   *
+   * Жодне число тут не набране руками: і «очікувано», і «пораховано» зводить
+   * `cashStanding()` — той самий рушій, яким їх покаже екран каси. Інакше демо показувало
+   * б недостачу там, де її немає, а розбіжність у цій моделі не «зникає» ніколи.
+   */
+  const cashAt = (pointId: string, date: ISODate) =>
+    cashStanding({
+      pointId,
+      date,
+      openedOn: CASH_BOOK_OPEN,
+      floats: cashFloats,
+      receptions,
+      payouts,
+      transfers,
+      issues: crateIssues,
+      returns: crateReturns,
+    })
+
+  // Гайове: зміна ЗАКРИТА з розбіжністю 0,00. `openingFloat` — це перерахунок на ранок, а
+  // на ранок у шухляді лежить те, чим закінчився вчорашній день. Закриває сам приймальник,
+  // бо `shiftStatusFor(0)` дає 'closed'; за будь-якої розбіжності це був би
+  // 'awaiting_explanation' і керівник (06 §6 п. 5).
+  const p3Expected = cashAt('p3', TODAY).expectedCash
+  // Приймальник порахував рівно те, що очікувано; нуль тут не набраний руками, а зведений
+  // тим самим `shiftDiscrepancy()`, яким його рахуватиме екран закриття зміни.
+  const p3Discrepancy = shiftDiscrepancy(p3Expected, p3Expected)
+  const shifts: Shift[] = [
+    {
+      id: 'sf1',
+      pointId: 'p3',
+      operatorId: OPERATORS.p3,
+      date: TODAY,
+      openedTime: '07:30',
+      openingFloat: cashAt('p3', addDays(TODAY, -1)).expectedCash,
+      closedTime: '20:05',
+      countedCash: p3Expected,
+      discrepancy: p3Discrepancy,
+      status: shiftStatusFor(p3Discrepancy),
+      closedBy: OPERATORS.p3,
+    },
+    // Шипинки: зміна ще ВІДКРИТА — сьогодні день у роботі, і саме на ній висить
+    // перерахунок серед дня.
+    {
+      id: 'sf2',
+      pointId: 'p1',
+      operatorId: OPERATORS.p1,
+      date: TODAY,
+      openedTime: '07:10',
+      openingFloat: cashAt('p1', addDays(TODAY, -1)).expectedCash,
+      status: 'open',
+    },
+  ]
+
+  /*
+   * Перерахунок о 16:00 — її власна вимога: «о 16 годині вони мають перерахувати свою
+   * касу» (1210), «щоб не цілий день передивлятися» (1197). Він нічого не виправляє, лише
+   * фіксує факт.
+   *
+   * Чесна межа цього числа: `cashStanding()` рахує ПО ДНЯХ, часу в ньому немає взагалі,
+   * тому знімок «о 16:00» — це знімок усього дня. Для демо так і треба (число мусить
+   * збігатися з екраном каси), але внутрішньоденної точності тут немає, і вигадувати її
+   * підгонкою суми було б гірше, ніж сказати про це рядком.
+   */
+  const p1Cash = cashAt('p1', TODAY)
+  const cashCounts: CashCount[] = [
+    {
+      id: 'cc1',
+      shiftId: 'sf2',
+      pointId: 'p1',
+      date: TODAY,
+      at: '16:00',
+      countedCash: p1Cash.expectedCash,
+      expectedAtCount: p1Cash.expectedCash,
+      discrepancy: shiftDiscrepancy(p1Cash.expectedCash, p1Cash.expectedCash),
+      countedBy: OPERATORS.p1,
+      note: 'Перерахунок серед дня: у шухляді гроші за ягоду і завдатки за ящики разом',
+    },
+  ]
+
   return {
     // База лежить поза POINTS саме тому, що POINTS годує цикл прийомки; на екрані ж
     // це звичайний пункт, тому у знімок вона їде разом з усіма (M37)
@@ -1386,6 +1809,14 @@ export function buildSeed(): SeedData {
     reweighs,
     expenses,
     policies,
+    crateAllotments,
+    cashFloats,
+    crateIssues,
+    crateReturns,
+    crateShipments,
+    transfers,
+    shifts,
+    cashCounts,
   }
 }
 

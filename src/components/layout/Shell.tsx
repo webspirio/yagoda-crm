@@ -1,6 +1,9 @@
 import * as React from 'react'
 import {
+  ArrowLeftRight,
+  Banknote,
   BarChart3,
+  Boxes,
   CalendarCheck2,
   CircleDollarSign,
   Calculator,
@@ -48,7 +51,13 @@ const NAV: { group: string; items: NavItem[] }[] = [
     group: 'Робота на точці',
     items: [
       { name: 'reception', label: 'Прийомка', icon: Scale, roles: ['operator', 'owner'] },
+      // «Блок прийомка окремо, блок ящики» (21 §Н14, дзвінок ряд. 1076) — тому ящики
+      // стоять СУСІДНІМ пунктом, а не всередині прийомки
+      { name: 'crates', label: 'Ящики', icon: Boxes, roles: ['operator', 'owner'] },
       { name: 'day', label: 'Каса за день', icon: CalendarCheck2, roles: ['operator', 'owner'] },
+      // «Каса точки» — це підзвіт (наділ, залишок, не хватає до наділу, 21 §Н17);
+      // «Каса за день» лишається звітом дня і нікуди не дівається
+      { name: 'pointcash', label: 'Каса точки', icon: Banknote, roles: ['operator', 'owner'] },
       { name: 'prices', label: 'Ціни дня', icon: CircleDollarSign, roles: ['operator', 'owner'] },
     ],
   },
@@ -70,6 +79,9 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { name: 'reweigh', label: 'Переважування', icon: Weight, roles: ['owner'] },
       { name: 'network', label: 'Середня ціна по мережі', icon: Network, roles: ['owner'] },
       { name: 'sheet', label: 'Аркуш керівника', icon: Printer, roles: ['owner'] },
+      // Надсилає гроші й ящики на точки лише керівник (21 §Н18) — приймальник тут
+      // тільки натискає «Прийняв», і робить це у своїй «Касі точки»
+      { name: 'transfers', label: 'Перекази', icon: ArrowLeftRight, roles: ['owner'] },
       { name: 'points', label: 'Точки', icon: MapPin, roles: ['owner'] },
       { name: 'refs', label: 'Тара і сорти', icon: Package, roles: ['owner'] },
     ],

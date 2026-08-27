@@ -18,6 +18,13 @@
 import type {
   Berry,
   BerryId,
+  CashCount,
+  CashFloat,
+  CrateAllotment,
+  CrateIssue,
+  CrateIssueMode,
+  CrateReturn,
+  CrateShipment,
   DayExpense,
   DayExpenseId,
   DayExpenseKind,
@@ -34,11 +41,13 @@ import type {
   Role,
   Route,
   Settings,
+  Shift,
   Supplier,
   SupplierId,
   SupplierKind,
   TareLine,
   TareType,
+  Transfer,
   Uah,
 } from './types'
 
@@ -57,6 +66,27 @@ export interface DomainSnapshot {
   expenses: DayExpense[]
   /** Правило розподілу належить парі (день, пункт), не глобальній настройці (D-3) */
   policies: ExpensePolicy[]
+  /* ---- ящики і каса як підзвіт (21 §2.8): вісім ключів, назви — з контракту ----
+     Усі вісім лежать САМЕ ТУТ, а не в `UiState`, і це не косметика: офлайн-черга
+     синхронізує рівно те, що описує `DomainSnapshot`, а ящики видають і касу рахують під
+     навісом, де звʼязку немає так само, як на прийомці. Ключ, забутий у знімку, доїхав би
+     до бази лише разом із наступним пересідом — тобто ніколи. */
+  /** Наділ ящиків — ІСТОРІЯ, не поле на точці: зміна 600 → 800 це новий запис (21 §2.1) */
+  crateAllotments: CrateAllotment[]
+  /** Наділ каси; форма дзеркальна до наділу ящиків — «технологія така сама» (1144) */
+  cashFloats: CashFloat[]
+  /** Видачі ящиків людям: за кошти (гроші в касу) або за розписку (грошей немає) */
+  crateIssues: CrateIssue[]
+  /** Повернення, у т.ч. часткові; розклад по видачах — FIFO (21 §3.2) */
+  crateReturns: CrateReturn[]
+  /** Вечірні відправлення на базу; `withBerryUnits` — знімок рушія, не поле вводу (I63) */
+  crateShipments: CrateShipment[]
+  /** Перекази база → точка; рухають касу й наділ ЛИШЕ у стані 'accepted' (I68) */
+  transfers: Transfer[]
+  /** Зміни приймальника: `discrepancy` обчислювана, поля вводу немає в жодної ролі (I70) */
+  shifts: Shift[]
+  /** Перерахунки серед дня — окремим ключем, бо це подія, а не поле зміни (21 §2.7) */
+  cashCounts: CashCount[]
   settings: Settings
 }
 
@@ -176,6 +206,83 @@ interface AddExpenseInput {
   kind?: DayExpenseKind
 }
 
+/* ---- payload-и ящиків і каси-підзвіту (21 §2). Без export — див. коментар угорі ---- */
+
+interface SetCrateAllotmentInput {
+  pointId: PointId
+  units: number
+  /** «ми зафіксували від певного дня… з 15-го, наприклад, серпня» (946) */
+  effectiveFrom: ISODate
+  /** Обовʼязкова, коли наділ на цій точці вже є: зміна — це подія, а не переписане число */
+  reason?: string
+}
+interface SetCashFloatInput {
+  pointId: PointId
+  amount: Uah
+  effectiveFrom: ISODate
+  reason?: string
+}
+interface IssueCratesInput {
+  pointId: PointId
+  supplierId: SupplierId
+  units: number
+  /**
+   * Не передано — спосіб дає `crateIssueMode()` за порогом 50. Передано — так і буде:
+   * поріг це ПІДСТАВЛЕННЯ, а не заборона, і перемикання руками дозволене (21 §2.3).
+   */
+  mode?: CrateIssueMode
+  /** «в процесі ми формуємо цю розписку» (1084) — номер паперу, лише для 'receipt' */
+  receiptNo?: string
+}
+interface ReturnCratesInput {
+  pointId: PointId
+  supplierId: SupplierId
+  units: number
+}
+interface PostShipmentInput {
+  pointId: PointId
+  /** день ЯГОДИ, за який відвантажують */
+  date: ISODate
+  /**
+   * Бій — РУКАМИ, і це єдине число цієї команди, яке вводить людина: «іменно заламані
+   * ящики… треба їм якось виділити строчку» (1117). Поля для `withBerryUnits` немає
+   * навмисно (`I63`) — його рахує рушій із квитанцій дня.
+   */
+  brokenUnits: number
+}
+interface SendTransferInput {
+  pointId: PointId
+  crates: number
+  cash: Uah
+  /** «підписує в зошиті перевізник» (1014) — ТЕКСТ, не обліковий запис (Р-2) */
+  carrier: string
+  /** UC-36: виправлення розбіжності — це НОВИЙ документ із посиланням на сторнований */
+  correctionOf?: string
+}
+interface DisputeTransferInput {
+  /** Що нарахувала точка. ІНФОРМАЦІЯ: у жодну формулу не входить (`I69`) */
+  reportedCrates: number
+  reportedCash: Uah
+  note: string
+}
+interface OpenShiftInput {
+  pointId: PointId
+  operatorId: string
+  /** ПЕРЕРАХУНОК приймальника на ранок, а не «скільки має бути» (06 §7.3) */
+  openingFloat: Uah
+}
+interface CountCashInput {
+  shiftId: string
+  /** Єдине число, яке вводить людина: очікувану суму й розбіжність рахує рушій (`I70`) */
+  countedCash: Uah
+  note?: string
+}
+interface CloseShiftInput {
+  shiftId: string
+  countedCash: Uah
+  explanation?: string
+}
+
 /**
  * 4 · Мутації. Сьогодні синхронні; підписи навмисно готові стати Promise.
  *
@@ -205,6 +312,44 @@ export interface Commands {
   removeExpense(id: DayExpenseId): void
   /** upsert по парі (date, pointId): правило належить ДНЮ, не настройці (D-3) */
   setExpensePolicy(input: ExpensePolicy): void
+
+  /* ---- ящики і каса як підзвіт (21 §2, §7). Тільки INSERT: сторно — новий документ ----
+     Кожна з дванадцяти повертає `| undefined` за тим самим правилом, що вже діє в
+     `addPayout` і `addExpense`: відмова — це НЕ виняток і не тихий no-op, а порожнє
+     значення, яке той, хто викликав, зобовʼязаний перевірити. Правила відмови живуть у
+     `calc.ts` (`checkCrateIssue`, `checkCrateReturn`, `checkCrateRefund`) — форма покаже
+     текст, стор відмовить у команді, але правило одне на двох. */
+
+  /** Новий запис наділу; старий лишається, баланс НЕ перераховується (UC-35) */
+  setCrateAllotment(input: SetCrateAllotmentInput): CrateAllotment | undefined
+  setCashFloat(input: SetCashFloatInput): CashFloat | undefined
+  /** `I62`: понад наявні порожні ящики видати не можна */
+  issueCrates(input: IssueCratesInput): CrateIssue | undefined
+  /** `I64` + `I59`: понад узяте не можна, і впирається в касу за ЯЩИКИ, не за ягоду */
+  returnCrates(input: ReturnCratesInput): CrateReturn | undefined
+  /** `I63`: кількість із ягодою — знімок рушія; людина вводить лише бій */
+  postShipment(input: PostShipmentInput): CrateShipment | undefined
+  /** Створює керівник; документ народжується у стані 'sent' і не рухає нічого (`I68`) */
+  sendTransfer(input: SendTransferInput): Transfer | undefined
+  /** «Прийняв» — і ТІЛЬКИ тут переказ починає рухати касу й наділ (1172) */
+  acceptTransfer(id: string): Transfer | undefined
+  /** «Не сходиться» — заявка з числом і коментарем; не рухає нічого (`I68`) */
+  disputeTransfer(id: string, input: DisputeTransferInput): Transfer | undefined
+  /** Сторно переказу — ЛИШЕ керівник (`I69`, 1184–1185); порожня причина — no-op */
+  voidTransfer(id: string, reason: string, by: string): Transfer | undefined
+  /** Сторно ящикових документів — лише керівник, із причиною (`21 §7`) */
+  voidCrateIssue(id: string, reason: string): CrateIssue | undefined
+  voidCrateReturn(id: string, reason: string): CrateReturn | undefined
+  voidCrateShipment(id: string, reason: string): CrateShipment | undefined
+  /** Керівник закриває зміну, що чекала пояснення; розбіжність лишається в документі */
+  settleShift(shiftId: string, explanation: string): Shift | undefined
+
+  openShift(input: OpenShiftInput): Shift | undefined
+  /** Перерахунок серед дня; нічого не виправляє, лише фіксує факт (1197, `I70`) */
+  countCash(input: CountCashInput): CashCount | undefined
+  /** При розбіжності зміна йде до керівника, а не закривається сама (06 §6 п. 5) */
+  closeShift(input: CloseShiftInput): Shift | undefined
+
   syncAll(): void
   resetDemo(): void
 }
