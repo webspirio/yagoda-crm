@@ -43,3 +43,6 @@ playwright-report/
 test-results/
 reports/
 .stryker-tmp/
+
+# Робочий каталог subagent-driven-development: чернетки, не код
+.superpowers/
