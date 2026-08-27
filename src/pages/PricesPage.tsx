@@ -23,7 +23,6 @@ import {
 import { Eyebrow, PageHeader } from '@/components/common/bits'
 import { Sparkline } from '@/components/common/Sparkline'
 import { useStore } from '@/lib/store'
-import { ownerName } from '@/lib/calc'
 import { addDays, longDate, num } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -32,10 +31,8 @@ import type { Berry } from '@/lib/types'
 export function PricesPage() {
   const berries = useStore((s) => s.berries)
   const products = useStore((s) => s.products)
-  const users = useStore((s) => s.users)
   const points = useStore((s) => s.points)
   const activePointId = useStore((s) => s.activePointId)
-  const role = useStore((s) => s.role)
   const priceFor = useStore((s) => s.priceFor)
   const priceHistory = useStore((s) => s.priceHistory)
   const prices = useStore((s) => s.prices)
@@ -109,13 +106,25 @@ export function PricesPage() {
       date: workDate,
       berryId: editing.berry.id,
       price: v,
-      // той самий підпис, що й у реєстрі підписів (`ownerName(users)`), інакше журнал
-      // цін показував би одну людину під двома іменами
-      author: role === 'owner' ? ownerName(users) : 'Приймальник',
       reason: reason.trim() || undefined,
     }
-    if (everywhere) setPriceEverywhere(args)
-    else setPrice({ ...args, pointId: editing.pointId })
+    /*
+     * Підпис під записом журналу більше не збирається ТУТ: його ставить стор із сесії
+     * (`author: signOf(st)`). До фази 4 екран підписував запис рядком «Приймальник», коли
+     * роль була не власницька, — тобто журнал цін показував автора, якого не існує, а
+     * саму ціну міняв будь-хто.
+     *
+     * Обидві гілки зводяться в ОДНЕ значення, бо відмова в них одна й та сама: `undefined`
+     * означає «ціну дня виставляє лише керівник», і мовчазна кнопка тут була б гіршою за
+     * відмову, названу вголос.
+     */
+    const doc = everywhere
+      ? setPriceEverywhere(args)
+      : setPrice({ ...args, pointId: editing.pointId })
+    if (!doc) {
+      toast.error('Ціну не змінено', { description: 'Ціну дня виставляє лише керівник.' })
+      return
+    }
     toast.success(`${editing.berry.name} — ${num(v)} ₴/кг`, {
       description: everywhere
         ? 'Стала на всіх пунктах прийому. Склад лишився зі своєю ціною. Попередні квитанції не змінюються.'

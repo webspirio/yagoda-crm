@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Eyebrow, PageHeader, StatTile } from '@/components/common/bits'
 import { ReceiptDialog } from '@/components/reception/ReceiptDialog'
-import { useStore, scopedPayouts, scopedReceptions } from '@/lib/store'
+import { useScope, useStore, scopedPayouts, scopedReceptions } from '@/lib/store'
 import { originDates, reconcileDay, round2, sum } from '@/lib/calc'
 import { kg, longDate, plural, shortDate, tonnage, uah, uahAuto, weekday } from '@/lib/format'
 import { addDays } from '@/lib/format'
@@ -28,7 +28,7 @@ export function DayPage() {
   const activePointId = useStore((s) => s.activePointId)
   const workDate = useStore((s) => s.workDate)
   const setWorkDate = useStore((s) => s.setWorkDate)
-  const role = useStore((s) => s.role)
+  const { role } = useScope()
   const go = useStore((s) => s.go)
   const config = useStore((s) => s.config)
   const [receipt, setReceipt] = React.useState<Reception | null>(null)

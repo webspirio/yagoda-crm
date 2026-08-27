@@ -10,6 +10,16 @@ import {
 import { scopedReceptions, useStore } from './store'
 import { TODAY } from './seed'
 
+/**
+ * Вхід під потрібним акаунтом — та сама форма, що у `store.test.ts`. Скопійована навмисно:
+ * окремий модуль-хелпер дав би в `src/lib` файл, який не є тестом, а пʼять рядків у
+ * чотирьох тестових файлах дешевші за нову сутність.
+ */
+function signInAs(login: string) {
+  const res = useStore.getState().signIn({ login, secret: '1111' })
+  if (!res.ok) throw new Error(`тест не зміг увійти як ${login}: ${res.reason}`)
+}
+
 /** Два візити однієї людини в один день: чек першого не має показувати гроші другого. */
 describe('прив’язка виплати до візиту', () => {
   beforeEach(() => {
@@ -20,13 +30,16 @@ describe('прив’язка виплати до візиту', () => {
     // візит на 1 000 ₴ упирався б у порожню шухляду. Тому спершу проводимо ШТАТНУ дію,
     // якою точка й поповнюється в житті: керівник відправляє переказ, точка приймає.
     // Обходити гейт зміною стану напряму не можна — це вимкнуло б перевірку, а не
-    // підготувало сцену.
-    useStore.setState({ role: 'owner' })
+    // підготувало сцену. З фази 4 «роль» не ставиться взагалі: обидві дії роблять РІЗНІ
+    // люди, і саме тому тут два входи, а не одна кнопка.
+    signInAs('owner')
     const tf = useStore
       .getState()
       .sendTransfer({ pointId: 'p1', crates: 0, cash: 500_000, carrier: 'Перевізник Р.' })!
-    useStore.setState({ role: 'operator' })
+    signInAs('p1')
     useStore.getState().acceptTransfer(tf.id)
+    // Далі всі візити й виплати цього файлу йдуть з-під приймальника Шипинок — тієї самої
+    // людини, чиє імʼя тепер стоїть підписом у кожній створеній тут квитанції.
   })
 
   /** баланс так, як його бачить пункт: книга кожного пункту своя */
@@ -48,7 +61,7 @@ describe('прив’язка виплати до візиту', () => {
 
   const visit = (supplierId: string, amount: number, paid: number) =>
     useStore.getState().addVisit({
-      date: TODAY, pointId: 'p1', supplierId, operator: 'Оксана Г.',
+      date: TODAY, pointId: 'p1', supplierId,
       carriedIn: balanceAt(supplierId),
       paid,
       lines: [{ berryId: 'v_mal_v', gross: amount / 140 + 1.2, pallet: 0, tare: [{ tareId: 'tr_cheshka', count: 1 }], tareWeight: 1.2, net: round2(amount / 140), price: 140, bonus: 0, amount }],
@@ -82,7 +95,7 @@ describe('прив’язка виплати до візиту', () => {
     const a = visit(id, 1000, 1000)
     const st = useStore.getState()
     const open = openDebts(id, st.receptions, st.payouts)
-    st.addPayout({ date: TODAY, pointId: 'p1', supplierId: id, amount: round2(open.reduce((s, o) => s + o.open, 0)), operator: 'Каса' })
+    st.addPayout({ date: TODAY, pointId: 'p1', supplierId: id, amount: round2(open.reduce((s, o) => s + o.open, 0)) })
     const recA = receiptOf(a.receptions[0].visitId!)
     expect(recA.paidCash).toBe(1000)
     expect(recA.payout).toBeUndefined()
@@ -139,7 +152,7 @@ describe('прив’язка виплати до візиту', () => {
     for (const o of owed) {
       useStore
         .getState()
-        .addPayout({ date: TODAY, pointId: 'p1', supplierId: o.id, amount: o.b, operator: 'Каса' })
+        .addPayout({ date: TODAY, pointId: 'p1', supplierId: o.id, amount: o.b })
       const after = supplierBalance(
         o.id,
         useStore.getState().receptions,
@@ -169,7 +182,6 @@ describe('прив’язка виплати до візиту', () => {
       pointId: 'p1',
       supplierId: two.id,
       amount: two.p1,
-      operator: 'Каса',
       scopePointId: 'p1',
     })
     const st2 = useStore.getState()
@@ -342,8 +354,7 @@ describe('прив’язка виплати до візиту', () => {
         pointId: openAll[0].reception.pointId,
         supplierId: target.id,
         amount: total,
-        operator: 'Каса',
-      })
+        })
 
       const after = useStore.getState()
       expect(supplierBalance(target.id, after.receptions, after.payouts)).toBe(0)

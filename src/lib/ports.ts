@@ -17,6 +17,7 @@
  */
 import type {
   AppConfig,
+  AuthResult,
   Berry,
   BerryId,
   CashCount,
@@ -40,8 +41,8 @@ import type {
   Reception,
   Reweigh,
   ReweighId,
-  Role,
   Route,
+  Session,
   Settings,
   Shift,
   Supplier,
@@ -123,7 +124,14 @@ export interface DomainSnapshot {
  * втратою типу. Контракт не має права послаблювати те, що вже перевіряється.
  */
 export interface UiState {
-  role: Role
+  /*
+   * ⚠️ `role` ТУТ БІЛЬШЕ НЕМАЄ (фаза 4). Роль — ПОХІДНА від `AuthState.session` і
+   * `DomainSnapshot.users`: її віддає `auth.ts:roleOf(users, session)`. Окреме поле стану
+   * було другим примірником того самого факту, і другий примірник тут завжди програє —
+   * перейменування чи зміна ролі людини в реєстрі лишила б у сховищі пристрою стару.
+   * Гірше: поле, яке ставили кнопкою, робило роль ВЛАСТИВІСТЮ ПРИСТРОЮ, а не людини, —
+   * тобто рівно тим, чого «вхід під своїм імʼям» і не має бути (`22-tz §18.4`).
+   */
   activePointId: PointId
   route: Route
   online: boolean
@@ -170,20 +178,27 @@ export interface VisitLineInput {
 
 /* 3 · Payload-и команд = майбутні тіла POST-запитів. БЕЗ export — див. коментар вище.
    Правило: усе тут мусить бути серіалізовним у JSON. Жодних Date, Map, Set,
-   функцій і класів — тільки примітиви, масиви й прості об'єкти. */
+   функцій і класів — тільки примітиви, масиви й прості об'єкти.
+
+   ⚠️ ПІДПИСУ В ТІЛІ НЕМАЄ ЖОДНОГО (фаза 4). Девʼять полів — `author` × 2, `operator` × 3,
+   `createdBy`, `operatorId`, плюс два позиційні `by`/`operator` — зникли звідси не заради
+   стрункості. Правило вже було записане в `store.acceptTransfer` («приймати рядок від
+   викликача означало б дозволити документ із підписом, якого ніхто не ставив») — і в тому
+   ж файлі порушувалося: `voidTransfer(id, reason, by)` брала підпис параметром. Це той
+   самий клас дефекту, що вже описаний нижче для `VisitLineInput`: тіло, якому вірять на
+   слово. Підпис тепер виводить АДАПТЕР зі своєї сесії, і сервер робитиме так само — з
+   токена, а не з тіла запиту. */
 interface SetPriceInput {
   date: ISODate
   pointId: PointId
   berryId: BerryId
   price: Uah
-  author: string
   reason?: string
 }
 interface SetPriceEverywhereInput {
   date: ISODate
   berryId: BerryId
   price: Uah
-  author: string
   reason?: string
 }
 interface CreateSupplierInput {
@@ -197,7 +212,6 @@ interface AddVisitInput {
   date: ISODate
   pointId: PointId
   supplierId: SupplierId
-  operator: string
   /** Попередній залишок, згорнутий у «Разом»; 0 коли перемикач вимкнений */
   carriedIn: Uah
   /** Видано готівкою — уже обмежене visitMath() */
@@ -209,7 +223,6 @@ interface AddPayoutInput {
   pointId: PointId
   supplierId: SupplierId
   amount: Uah
-  operator: string
   /** стоїть, коли виплата — це перевищення «Разом» над сьогоднішньою ягодою */
   visitId?: string
   /** гасити лише прийомки цього пункту: книга кожного пункту своя */
@@ -233,7 +246,6 @@ interface AddReweighInput {
   berryDate: ISODate
   fromPointId: PointId
   atPointId: PointId
-  operator: string
   lines: ReweighLineInput[]
 }
 interface AddExpenseInput {
@@ -241,7 +253,6 @@ interface AddExpenseInput {
   pointId: PointId
   label: string
   amount: Uah
-  createdBy: string
   note?: string
   /**
    * Існує РІВНО для того, щоб `I43` («`addExpense({kind:'shortfall'})` відхилено») було
@@ -313,7 +324,6 @@ interface DisputeTransferInput {
 }
 interface OpenShiftInput {
   pointId: PointId
-  operatorId: string
   /** ПЕРЕРАХУНОК приймальника на ранок, а не «скільки має бути» (06 §7.3) */
   openingFloat: Uah
 }
@@ -345,14 +355,15 @@ export interface Commands {
   updateSupplier(id: SupplierId, patch: Partial<Supplier>): void
   updateTareType(id: string, patch: Partial<TareType>): void
   updateSettings(patch: Partial<Settings>): void
-  setPrice(input: SetPriceInput): void
-  setPriceEverywhere(input: SetPriceEverywhereInput): void
+  /** Ціну дня ставить лише керівник (`22-tz`, ряд. 671); відмова — `undefined`, як у сусідів */
+  setPrice(input: SetPriceInput): PriceRecord | undefined
+  setPriceEverywhere(input: SetPriceEverywhereInput): PriceRecord[] | undefined
   addVisit(input: AddVisitInput): { receptions: Reception[]; payout?: Payout } | undefined
   addPayout(input: AddPayoutInput): Payout | undefined
   /** Документ народжується одразу `posted` разом зі знімком прийомки (D-2, D-5) */
-  addReweigh(input: AddReweighInput): Reweigh
-  /** Сторно не видаляє: документ лишається зі слідом (I54). Порожня причина — no-op */
-  voidReweigh(id: ReweighId, reason: string, operator: string): void
+  addReweigh(input: AddReweighInput): Reweigh | undefined
+  /** Сторно не видаляє: документ лишається зі слідом (I54). Порожня причина — відмова */
+  voidReweigh(id: ReweighId, reason: string): Reweigh | undefined
   addExpense(input: AddExpenseInput): DayExpense | undefined
   /**
    * РОЗШИРЕННЯ ПРОТИ `09 §2.3`: у спеці цієї команди немає. Додана свідомо — без неї
@@ -386,7 +397,7 @@ export interface Commands {
   /** «Не сходиться» — заявка з числом і коментарем; не рухає нічого (`I68`) */
   disputeTransfer(id: string, input: DisputeTransferInput): Transfer | undefined
   /** Сторно переказу — ЛИШЕ керівник (`I69`, 1184–1185); порожня причина — no-op */
-  voidTransfer(id: string, reason: string, by: string): Transfer | undefined
+  voidTransfer(id: string, reason: string): Transfer | undefined
   /** Сторно ящикових документів — лише керівник, із причиною (`21 §7`) */
   voidCrateIssue(id: string, reason: string): CrateIssue | undefined
   voidCrateReturn(id: string, reason: string): CrateReturn | undefined
@@ -408,4 +419,38 @@ export interface Commands {
 export interface Queries {
   priceFor(date: ISODate, pointId: PointId, berryId: BerryId): Uah | undefined
   priceHistory(date: ISODate, pointId: PointId, berryId: BerryId): PriceRecord[]
+}
+
+/**
+ * 6 · ХТО ЗА КОМПʼЮТЕРОМ. Третя секція контракту, і вона тут не з симетрії.
+ *
+ * Сесія — ні `DomainSnapshot`, ні `UiState`. Знімок це «дані, якими володіє сервер, усе, що
+ * синхронізується» (секція 1); `UiState` це те, що «НІКОЛИ не їде на сервер і не приїжджає
+ * з нього» (секція 2). Сесія ПРИХОДИТЬ із сервера — видає її він, і тільки він може
+ * сказати, чи вона ще дійсна, — але не синхронізується: два ноутбуки мають різні сесії й не
+ * мусять нічого одне одному переписувати. Третього місця в контракті не було.
+ *
+ * ⚠️ СЕКРЕТУ В КОНТРАКТІ НЕМАЄ НІДЕ — ні тут, ні у знімку. Сервер не віддає паролів і не
+ * приймає їх ніде, крім `signIn`.
+ */
+export interface AuthState {
+  session: Session | null
+}
+
+interface SignInInput {
+  login: string
+  secret: string
+}
+
+/**
+ * Дві команди сесії. Окремим інтерфейсом, а не в `Commands`: `Commands` — це документи
+ * («майбутні тіла POST-запитів»), а вхід документа не створює.
+ *
+ * ⚠️ `signIn` СТАНЕ АСИНХРОННОЮ, коли зʼявиться сервер: пароль перевіряє він, а не браузер.
+ * Сьогодні синхронна — тим самим правилом, що й решта контракту («підписи навмисно готові
+ * стати Promise», секція 4).
+ */
+export interface AuthCommands {
+  signIn(input: SignInInput): AuthResult
+  signOut(): void
 }

@@ -3,8 +3,11 @@ import { Shell } from '@/components/layout/Shell'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Toaster } from '@/components/ui/sonner'
-import { useStore } from '@/lib/store'
+import { useActor, useStore } from '@/lib/store'
 import { ReceptionPage } from '@/pages/ReceptionPage'
+// Екран входу — у ГОЛОВНОМУ чанку, а не за `React.lazy`: без нього застосунок не
+// відкривається взагалі, тому платити за нього окремим мережевим запитом нема за що.
+import { SignInPage } from '@/pages/SignInPage'
 import { DayPage } from '@/pages/DayPage'
 import { PricesPage } from '@/pages/PricesPage'
 import { SuppliersPage } from '@/pages/SuppliersPage'
@@ -119,8 +122,30 @@ function PageFallback() {
   )
 }
 
+/**
+ * ГЕЙТ СТОЇТЬ НА ЛЮДИНІ, А НЕ НА СЕСІЇ, і це не те саме.
+ *
+ * `if (!session)` пропустив би стан «сесія є, а запису під нею немає»: `Р4-6` перевіряється
+ * в `merge`, тобто РАЗ на завантаження, і під час рендеру нічого його не тримає — реєстр
+ * може змінитися (`resetDemo`). Тоді `roleOf` віддає `null`, `NavList` фільтрує всі групи
+ * до нуля, і людина сидить у порожній оболонці замість екрана входу. `if (!user)` робить
+ * «є кому діяти» інваріантом рендеру.
+ *
+ * `Toaster` — СПІЛЬНИЙ, поза тернаром: змонтований рівно один раз, як і до фази 4. Інакше
+ * тост про відмову входу і тост про прийомку жили б у двох різних примірниках.
+ */
 export default function App() {
   const route = useStore((s) => s.route)
+  const { user } = useActor()
+
+  if (!user) {
+    return (
+      <>
+        <SignInPage />
+        <Toaster position="top-right" richColors closeButton />
+      </>
+    )
+  }
 
   return (
     <>

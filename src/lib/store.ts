@@ -15,21 +15,27 @@ import {
   crateShipmentDraft,
   crateStanding,
   openDebts,
-  ownerName,
   productDay,
   round2,
   shiftDiscrepancy,
   shiftStatusFor,
-  signerFor,
   splitPaidAcrossLines,
 } from './calc'
+import {
+  actorName,
+  canActOnPoint,
+  roleOf,
+  scopeAfterSignIn,
+  sessionUser,
+} from './auth'
+import { authenticate } from './auth-mock'
 import {
   buildSeed,
   DEFAULT_SETTINGS,
   nextCode,
   nowTime,
 } from './seed'
-import type { Commands, DomainSnapshot, Queries, UiState } from './ports'
+import type { AuthCommands, AuthState, Commands, DomainSnapshot, Queries, UiState } from './ports'
 import type {
   CashCount,
   CashFloat,
@@ -49,11 +55,13 @@ import type {
   ReweighStatus,
   Role,
   Route,
+  Session,
   Settings,
   Shift,
   Supplier,
   TareType,
   Transfer,
+  User,
 } from './types'
 
 /**
@@ -63,7 +71,6 @@ import type {
  * мертвий експорт.
  */
 interface UiActions {
-  setRole(role: Role): void
   setActivePoint(id: string): void
   go(route: Route): void
   setOnline(v: boolean): void
@@ -75,7 +82,7 @@ interface UiActions {
  * компіляції самим `create<State>()`: якщо хтось додасть екшн у стор і забуде в
  * `ports.ts`, або змінить підпис, `tsc` червоний. Це і є весь захист від дрейфу.
  */
-type State = DomainSnapshot & UiState & UiActions & Commands & Queries
+type State = DomainSnapshot & UiState & AuthState & UiActions & Commands & Queries & AuthCommands
 
 // Старі ключі лишаються в браузері після перейменування — v2 це вже показав: 450 КБ
 // мертвого стану поруч із живими 1,4 МБ, і разом вони підбираються до квоти localStorage
@@ -90,6 +97,8 @@ try {
 
 /** Рядок ISO-дати: parseDate() робить split('-').map(Number) і на будь-чому іншому дає «NaN» у підписах */
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+/** Годинник сесії: `startedTime` друкується в сайдбарі, і «сімнадцята година» дала б там сміття */
+const CLOCK_TIME = /^\d{2}:\d{2}$/
 
 /**
  * Локальний type predicate — саме локальний, і це не стиль. Межа rehydrate зараховує лише
@@ -108,6 +117,26 @@ function isSettings(v: unknown): v is Settings {
     Number.isFinite(s.surchargeMin) &&
     typeof s.surchargeMax === 'number' &&
     Number.isFinite(s.surchargeMax)
+  )
+}
+
+/**
+ * Форма сесії на межі rehydrate. Локальний навмисно — та сама причина, що в `isSettings`:
+ * межа зараховує лише звуження, семантику яких видно з AST у цьому файлі.
+ *
+ * Час перевіряється форматом, а не лише типом: `startedTime` друкується в шапці, і рядок
+ * «сімнадцята година» дав би там сміття замість «07:10».
+ */
+function isSession(v: unknown): v is Session {
+  if (typeof v !== 'object' || v === null) return false
+  const s = v as Record<string, unknown>
+  return (
+    typeof s.userId === 'string' &&
+    s.userId !== '' &&
+    typeof s.startedDate === 'string' &&
+    ISO_DATE.test(s.startedDate) &&
+    typeof s.startedTime === 'string' &&
+    CLOCK_TIME.test(s.startedTime)
   )
 }
 
@@ -194,18 +223,44 @@ const seed = buildSeed()
  * підмішати сюди стан іншого примірника стора.
  */
 const todayOf = (st: DomainSnapshot): ISODate => st.config.businessToday
-/** Штамп сторно: дата й підпис керівника одним обʼєктом — обидва з того самого знімка */
-const stampOf = (st: DomainSnapshot): { date: ISODate; by: string } => ({
-  date: st.config.businessToday,
-  by: ownerName(st.users),
-})
+
+/** Людина, яка діє. ОДИН спосіб дізнатися це в усьому сторі. */
+const actorOf = (st: State) => sessionUser(st.users, st.session)
+/** Підпис. `null` означає «немає кого підписати» — команда мусить відмовити. */
+const signOf = (st: State) => actorName(st.users, st.session)
+/**
+ * Право діяти на цій точці ПЛЮС підпис одним викликом: два окремі виклики дали б два шанси
+ * забути один.
+ *
+ * ⚠️ ЦЕ ПЕРЕВІРКА ТОЧКИ, І ВОНА НІКОЛИ НЕ ЗАМІНЯЄ ПЕРЕВІРКУ РОЛІ. `canActOnPoint(owner, …)`
+ * завжди `true`, тому «замінити гейт ролі на `actorAt`» означало б скасувати правило.
+ */
+const actorAt = (st: State, pointId: PointId): { user: User; by: string } | null => {
+  const user = actorOf(st)
+  if (!user || !canActOnPoint(user, pointId)) return null
+  return { user, by: user.name }
+}
+
+/**
+ * Штамп сторно: дата й підпис одним обʼєктом. Підпис — з СЕСІЇ, а не `ownerName(st.users)`:
+ * той віддавав назву ролі кожному, хто дотягнувся до команди, тобто документ стверджував,
+ * що його сторнував «Керівник», навіть коли жодного входу не було. `null` тут означає
+ * «немає кого підписати», і три виклики зобовʼязані на ньому відмовити.
+ */
+const stampOf = (st: State): { date: ISODate; by: string } | null => {
+  const by = signOf(st)
+  if (!by) return null
+  return { date: st.config.businessToday, by }
+}
 
 /**
  * Спільне тіло трьох сторно ящикових документів: роль, непорожня причина, слід замість
  * видалення. Винесене, бо три однакові команди — це три місця, де можна забути гейт.
  */
 function voidCrateDoc<T extends { id: string; voidedDate?: ISODate }>(
-  role: Role,
+  /* `Role | null` — бо ролі без сесії не існує. Перевірка `!== 'owner'` і так відсіює `null`,
+     тому окремої гілки «немає сесії» тут не треба: найсуворіше і є правильним. */
+  role: Role | null,
   list: T[],
   id: string,
   reason: string,
@@ -226,19 +281,51 @@ export const useStore = create<State>()(
       ...seed,
       settings: { ...DEFAULT_SETTINGS },
 
-      role: 'operator',
+      /*
+       * Стартовий стан — БЕЗ сесії, і це не деталь: `session: null` означає екран входу
+       * (`App.tsx`), а не «приймальник за замовчуванням». Поля `role` тут більше немає —
+       * роль читається з реєстру по сесії (`auth.ts:roleOf`).
+       *
+       * `activePointId: 'p1'` лишається, але вже нікого не пускає: без сесії жодна команда
+       * не проходить, а після входу точку ставить `scopeAfterSignIn(user)` — з облікового
+       * запису людини, а не літералом.
+       */
+      session: null,
       activePointId: 'p1',
       route: { name: 'reception' },
       online: true,
       workDate: seed.config.businessToday,
 
-      setRole: (role) =>
-        set({
-          role,
-          route: role === 'owner' ? { name: 'dashboard' } : { name: 'reception' },
-          activePointId: role === 'owner' ? 'all' : 'p1',
-        }),
-      setActivePoint: (id) => set({ activePointId: id }),
+      signIn: ({ login, secret }) => {
+        const st = get()
+        const res = authenticate(st.users, login, secret, {
+          date: st.config.businessToday,
+          time: nowTime(),
+        })
+        if (!res.ok) return res
+        const user = sessionUser(st.users, res.session)
+        if (!user) return { ok: false, reason: 'no-account' }
+        set({ session: res.session, ...scopeAfterSignIn(user) })
+        return res
+      },
+
+      /**
+       * Вихід НЕ чіпає документів: «змінюється тільки там… хто за компʼютером», решта
+       * роботи точки лишається на місці (дзвінок №4, ряд. 570). Маршрут скидається, бо
+       * маршрут керівника під наступним приймальником був би порожнім екраном.
+       */
+      signOut: () => set({ session: null, route: { name: 'reception' } }),
+
+      /**
+       * Точка приймальника — з облікового запису (`M12`, `C9`, `06 §5.2 G16`). Перевірка
+       * стоїть ТУТ, а не лише в тому, що селектора немає на екрані: «сховати пункт меню
+       * недостатньо» (`03 §UC-29 п.1`).
+       */
+      setActivePoint: (id) => {
+        const user = actorOf(get())
+        if (!user || (user.role === 'operator' && id !== user.pointId)) return
+        set({ activePointId: id })
+      },
       go: (route) => set({ route }),
       setOnline: (v) => set({ online: v }),
       setWorkDate: (d) => set({ workDate: d }),
@@ -262,22 +349,32 @@ export const useStore = create<State>()(
 
       updateSettings: (patch) => set((st) => ({ settings: { ...st.settings, ...patch } })),
 
-      setPrice: ({ date, pointId, berryId, price, author, reason }) =>
-        set((st) => ({
-          prices: [
-            ...st.prices,
-            {
-              id: `pr_${Math.random().toString(36).slice(2, 9)}`,
-              date,
-              pointId,
-              berryId,
-              price,
-              time: nowTime(),
-              author,
-              reason,
-            },
-          ],
-        })),
+      /**
+       * Ціну дня ставить ЛИШЕ керівник (`22-tz`, ряд. 671: «буде виправлено»). До фази 4
+       * гейта не було зовсім, а підпис приходив параметром — тобто екран приймальника
+       * підписував запис журналу рядком «Приймальник» і ціна мінялася.
+       *
+       * Підпис виводиться ТУТ, зі своєї ж сесії: приймати його від викликача означало б
+       * дозволити документ із підписом, якого ніхто не ставив.
+       */
+      setPrice: ({ date, pointId, berryId, price, reason }) => {
+        const st = get()
+        if (roleOf(st.users, st.session) !== 'owner') return undefined
+        const by = signOf(st)
+        if (!by) return undefined
+        const doc: PriceRecord = {
+          id: `pr_${rid()}`,
+          date,
+          pointId,
+          berryId,
+          price,
+          time: nowTime(),
+          author: by,
+          reason,
+        }
+        set({ prices: [...st.prices, doc] })
+        return doc
+      },
 
       /**
        * Ціна дня загальна: одна цифра на всі активні ПУНКТИ ПРИЙОМУ, далі керівник
@@ -291,24 +388,29 @@ export const useStore = create<State>()(
        * стирав би цю надбавку назавжди, а повертати її довелося б поштучно. Ціну складу
        * керівник ставить окремою клітинкою — доки ми не спитаємо в неї правило.
        */
-      setPriceEverywhere: ({ date, berryId, price, author, reason }) =>
-        set((st) => ({
-          prices: [
-            ...st.prices,
-            ...st.points
-              .filter((p) => p.active && p.kind === 'reception')
-              .map((p) => ({
-                id: `pr_${Math.random().toString(36).slice(2, 9)}`,
-                date,
-                pointId: p.id,
-                berryId,
-                price,
-                time: nowTime(),
-                author,
-                reason,
-              })),
-          ],
-        })),
+      setPriceEverywhere: ({ date, berryId, price, reason }) => {
+        const st = get()
+        if (roleOf(st.users, st.session) !== 'owner') return undefined
+        const by = signOf(st)
+        if (!by) return undefined
+        // Переписано з `set((st) => …)` на `get()` + `set({…})` не для стилю: колбек
+        // `set()` не віддає значення викликачеві, а команда тепер мусить повернути самі
+        // записи — інакше форма не відрізнить відмову від успіху.
+        const docs: PriceRecord[] = st.points
+          .filter((p) => p.active && p.kind === 'reception')
+          .map((p) => ({
+            id: `pr_${rid()}`,
+            date,
+            pointId: p.id,
+            berryId,
+            price,
+            time: nowTime(),
+            author: by,
+            reason,
+          }))
+        set({ prices: [...st.prices, ...docs] })
+        return docs
+      },
 
       priceFor: (date, pointId, berryId) => {
         const list = get()
@@ -322,8 +424,12 @@ export const useStore = create<State>()(
           .prices.filter((p) => p.date === date && p.pointId === pointId && p.berryId === berryId)
           .sort((a, b) => a.time.localeCompare(b.time)),
 
-      addVisit: ({ date, pointId, supplierId, operator, carriedIn, paid, lines }) => {
+      addVisit: ({ date, pointId, supplierId, carriedIn, paid, lines }) => {
         const st = get()
+        // Прийомка — робота ТОЧКИ: приймальник пише лише на своїй, керівник на будь-якій
+        // (`M12`, `C9`). Підпис під квитанцією — імʼя цієї людини, а не назва точки.
+        const actor = actorAt(st, pointId)
+        if (!actor) return undefined
         const amounts = lines.map((l) => l.amount)
         const accrued = round2(amounts.reduce((s, a) => s + a, 0))
         const paidToday = round2(Math.min(paid, accrued))
@@ -369,7 +475,7 @@ export const useStore = create<State>()(
             // the carried balance belongs to the visit, so it sits on its first line only
             carriedIn: i === 0 ? round2(carriedIn) : 0,
             visitId,
-            operator,
+            operator: actor.by,
             synced: st.online,
           }
         })
@@ -384,7 +490,6 @@ export const useStore = create<State>()(
                 pointId,
                 supplierId,
                 amount: paidToPast,
-                operator,
                 visitId,
                 scopePointId: pointId,
               })
@@ -393,8 +498,11 @@ export const useStore = create<State>()(
         return { receptions: created, payout }
       },
 
-      addPayout: ({ date, pointId, supplierId, amount, operator, visitId, scopePointId }) => {
+      addPayout: ({ date, pointId, supplierId, amount, visitId, scopePointId }) => {
         const st = get()
+        // Гроші виходять із шухляди ЦІЄЇ точки, тому й право діяти перевіряється на ній.
+        const actor = actorAt(st, pointId)
+        if (!actor) return undefined
         // G12 / I58: «У касі 12 400 ₴, ви видаєте 42 500 ₴. Готівки не вистачає.»
         // Впирається саме в касу ЗА ЯГОДУ, а не в суму шухляди: інакше виплата за ягоду
         // з'їла б чужі завдатки за ящики (21 §3.5). До цієї правки функція `checkBerryPayout`
@@ -417,7 +525,7 @@ export const useStore = create<State>()(
           amount: round2(allocations.reduce((s, a) => s + a.amount, 0)),
           allocations,
           visitId,
-          operator,
+          operator: actor.by,
           synced: st.online,
         }
         set({ payouts: [...st.payouts, payout] })
@@ -426,9 +534,19 @@ export const useStore = create<State>()(
 
       /* ------------------------- собівартість дня (09 §2.2, §2.3) ------------------------- */
 
-      addReweigh: ({ berryDate, fromPointId, atPointId, operator, lines }) => {
+      /**
+       * ⚠️ ГЕЙТ ТУТ — РОЛІ, А НЕ ТОЧКИ, і це навмисно. Переважує керівник на базі
+       * (`13 §4 S-20`, дзвінок №4, ряд. 617–621), а `fromPointId` — це пункт, ЗВІДКИ
+       * приїхала ягода, тобто для керівника він чужий за визначенням. Точкова перевірка
+       * тут відмовляла б у кожному переважуванні; наступний читач, який її «додасть»,
+       * зламає весь екран бази.
+       */
+      addReweigh: ({ berryDate, fromPointId, atPointId, lines }) => {
         const st = get()
-        const id = `rw_${Math.random().toString(36).slice(2, 9)}`
+        if (roleOf(st.users, st.session) !== 'owner') return undefined
+        const by = signOf(st)
+        if (!by) return undefined
+        const id = `rw_${rid()}`
         // Чернетки як ДОКУМЕНТА не існує (D-5): переважування народжується одразу
         // проведеним. Незбережений чернетковий стан живе у формі на екрані, а не в сторі.
         const status: ReweighStatus = 'posted'
@@ -460,7 +578,7 @@ export const useStore = create<State>()(
             kgPoint: r.kgPoint,
             avgPoint: r.avgPoint,
           })),
-          operator,
+          operator: by,
           // Переважування їде в ТУ САМУ чергу, що квитанції: база працює під навісом,
           // інтернет там не кращий, ніж на пункті (09 §2.2)
           synced: st.online,
@@ -469,25 +587,28 @@ export const useStore = create<State>()(
         return reweigh
       },
 
-      voidReweigh: (id, reason, operator) => {
+      voidReweigh: (id, reason) => {
+        const st = get()
         // Порожня причина — нічого не робить: сторно без причини не відрізнити від
         // випадкового кліку, а документ після нього вже не повернути (06 — тільки INSERT)
-        if (!reason.trim()) return
-        set((st) => ({
-          reweighs: st.reweighs.map((r) =>
-            r.id === id
-              ? {
-                  ...r,
-                  // I54: документ НЕ зникає — він лишається зі слідом, просто не рахується
-                  status: 'voided' as ReweighStatus,
-                  voidedDate: todayOf(st),
-                  voidedTime: nowTime(),
-                  voidedBy: operator,
-                  voidReason: reason,
-                }
-              : r,
-          ),
-        }))
+        if (!reason.trim()) return undefined
+        const by = signOf(st)
+        if (!by) return undefined
+        const found = st.reweighs.find((r) => r.id === id)
+        // Раніше `map` по неіснуючому id тихо не робив нічого і команда віддавала `void`:
+        // екран друкував «сторновано» так само, як на справжньому сторно.
+        if (!found) return undefined
+        const doc: Reweigh = {
+          ...found,
+          // I54: документ НЕ зникає — він лишається зі слідом, просто не рахується
+          status: 'voided' as ReweighStatus,
+          voidedDate: todayOf(st),
+          voidedTime: nowTime(),
+          voidedBy: by,
+          voidReason: reason,
+        }
+        set({ reweighs: st.reweighs.map((r) => (r.id === id ? doc : r)) })
+        return doc
       },
 
       /**
@@ -499,7 +620,11 @@ export const useStore = create<State>()(
        *
        * Поля `synced` у `DayExpense` немає свідомо: це керівницька дія, вона вимагає онлайну.
        */
-      addExpense: ({ date, pointId, label, amount, createdBy, note, kind }) => {
+      addExpense: ({ date, pointId, label, amount, note, kind }) => {
+        const st = get()
+        // Витрата належить парі (день, пункт), тому право діяти перевіряється на пункті.
+        const actor = actorAt(st, pointId)
+        if (!actor) return undefined
         // I43: рядок «недостача в ягоді» ПОХІДНИЙ — його синтезує costOfDay() щоразу
         // заново, і в стані такого рядка не буває. Параметр kind існує РІВНО для того,
         // щоб ця відмова була перевіряним твердженням, а не обіцянкою в документі.
@@ -511,12 +636,12 @@ export const useStore = create<State>()(
           kind: 'manual',
           label,
           amount: round2(amount),
-          createdBy,
-          createdDate: todayOf(get()),
+          createdBy: actor.by,
+          createdDate: todayOf(st),
           createdTime: nowTime(),
           note,
         }
-        set((st) => ({ expenses: [...st.expenses, expense] }))
+        set({ expenses: [...st.expenses, expense] })
         return expense
       },
 
@@ -532,6 +657,11 @@ export const useStore = create<State>()(
        * Upsert по парі (date, pointId): правило розподілу належить ДНЮ, а не глобальній
        * настройці (D-3). Якби воно лишалось настройкою, зміна правила сьогодні переписала
        * б собівартість УСІХ минулих днів — той самий клас тихої помилки, що й D-2.
+       *
+       * ⚠️ ЄДИНА КОМАНДА ФАЗИ 4 БЕЗ ГЕЙТА, і це свідомо. Вона віддає `void`, тому відмова
+       * була б НЕВИДИМОЮ: форма показала б «збережено», а правило розподілу тихо лишилося
+       * б попереднім — гірше за відсутність перевірки. Гейт зʼявиться разом із поверненням
+       * значення; це борг `Б2` спеки, а не недогляд цієї фази.
        */
       setExpensePolicy: (input) =>
         set((st) => ({
@@ -564,7 +694,11 @@ export const useStore = create<State>()(
         // ящиків?» (1062). Роль перевіряється тут, а не лише в UI: `setBy` нижче прибитий
         // до підпису керівника, тому без цієї перевірки документ приймальника стверджував би, що його
         // ухвалив керівник — брехня в підписі гірша за відсутність підпису.
-        if (st.role !== 'owner') return undefined
+        if (roleOf(st.users, st.session) !== 'owner') return undefined
+        // Точка перевіряється поверх ролі, а не замість неї: `canActOnPoint(owner, …)`
+        // завжди `true`, тому `actorAt` сам по собі керівницьким гейтом не є.
+        const actor = actorAt(st, pointId)
+        if (!actor) return undefined
         // Зміна ДІЮЧОГО наділу без причини — це і є те переписане число, від якого рятує
         // історія: «нам треба, щоб було 800» (1062) мусить лишитися в документі. Перший
         // наділ точки причини не потребує — попереднього рівня не було, пояснювати нема чого.
@@ -577,7 +711,7 @@ export const useStore = create<State>()(
           pointId,
           units,
           effectiveFrom,
-          setBy: ownerName(st.users),
+          setBy: actor.by,
           setDate: st.config.businessToday,
           setTime: nowTime(),
           reason,
@@ -592,7 +726,9 @@ export const useStore = create<State>()(
         const st = get()
         if (!ISO_DATE.test(effectiveFrom)) return undefined
         // §7: наділ каси теж лише керівник — «фіксована сума на користування» (1146).
-        if (st.role !== 'owner') return undefined
+        if (roleOf(st.users, st.session) !== 'owner') return undefined
+        const actor = actorAt(st, pointId)
+        if (!actor) return undefined
         // «технологія з грошима така сама, як з ящиками» (1144) — і правило про причину теж.
         if (st.cashFloats.some((f) => f.pointId === pointId) && !reason?.trim()) return undefined
         // NaN із порожнього поля вводу `round2()` перетворює на 0 (це його свідома межа —
@@ -605,7 +741,7 @@ export const useStore = create<State>()(
           pointId,
           amount: round2(amount),
           effectiveFrom,
-          setBy: ownerName(st.users),
+          setBy: actor.by,
           setDate: st.config.businessToday,
           setTime: nowTime(),
           reason,
@@ -616,6 +752,9 @@ export const useStore = create<State>()(
 
       issueCrates: ({ pointId, supplierId, units, mode, receiptNo }) => {
         const st = get()
+        // Ящики видає той, хто стоїть на цій точці (`§7`): приймальник — на своїй.
+        const actor = actorAt(st, pointId)
+        if (!actor) return undefined
         // I62: «на точці зараз 341 порожній ящик — 500 видати нема з чого». `onHand === null`
         // (наділу на цю дату ще не було) теж відмова: видані з такої точки ящики не потрапили
         // б у жоден склад наділу і зникли б з обліку тихо.
@@ -645,7 +784,7 @@ export const useStore = create<State>()(
           depositTaken: round2(units * perUnit),
           // Номер паперу існує лише там, де є папір: за кошти розписки не формують.
           receiptNo: chosen === 'receipt' ? receiptNo : undefined,
-          operatorId: signerFor(st.users, pointId) ?? ownerName(st.users),
+          operatorId: actor.by,
         }
         set({ crateIssues: [...st.crateIssues, doc] })
         return doc
@@ -653,6 +792,8 @@ export const useStore = create<State>()(
 
       returnCrates: ({ pointId, supplierId, units }) => {
         const st = get()
+        const actor = actorAt(st, pointId)
+        if (!actor) return undefined
         // Баланс людини НЕ фільтрується по точці: `crateBalance()` і `openCrateIssues()`
         // ведуть його по ЛЮДИНІ, і фільтр тут зробив би стор і рушій двома різними
         // відповідями на питання «скільки ящиків у цієї людини».
@@ -676,7 +817,7 @@ export const useStore = create<State>()(
           units,
           allocations,
           depositRefund: refund,
-          operatorId: signerFor(st.users, pointId) ?? ownerName(st.users),
+          operatorId: actor.by,
         }
         set({ crateReturns: [...st.crateReturns, doc] })
         return doc
@@ -684,6 +825,8 @@ export const useStore = create<State>()(
 
       postShipment: ({ pointId, date, brokenUnits }) => {
         const st = get()
+        const actor = actorAt(st, pointId)
+        if (!actor) return undefined
         // Єдина команда, що приймає дату ззовні. Майбутнє відправлення — не помилка вводу,
         // а документ, який `crateStanding` чесно врахує на ту дату; але дня, якого ще не
         // було, у книзі бути не може.
@@ -708,7 +851,7 @@ export const useStore = create<State>()(
           withBerryUnits: draft.withBerryUnits,
           receptionCount: draft.receptionCount,
           brokenUnits,
-          operatorId: signerFor(st.users, pointId) ?? ownerName(st.users),
+          operatorId: actor.by,
           postedDate: todayOf(st),
           postedTime: nowTime(),
         }
@@ -720,7 +863,9 @@ export const useStore = create<State>()(
         const st = get()
         // §7: переказ створює КЕРІВНИК — «ви клікаєте: я відправляю цій точці» (1172).
         // Точка може лише прийняти або заявити «не сходиться».
-        if (st.role !== 'owner') return undefined
+        if (roleOf(st.users, st.session) !== 'owner') return undefined
+        const actor = actorAt(st, pointId)
+        if (!actor) return undefined
         // Відʼємний переказ — це вилучення каси з точки, документа для якого немає взагалі:
         // прийнятий, він тихо зменшив би `berryCash` і зробив би «не хватає до наділу»
         // більшим, ніж база справді винна.
@@ -738,7 +883,7 @@ export const useStore = create<State>()(
           crates,
           cash: round2(cash),
           carrier,
-          sentBy: ownerName(st.users),
+          sentBy: actor.by,
           sentTime: nowTime(),
           // I68: народжується 'sent' і не рухає НІЧОГО — ні касу, ні наділ, — поки точка не
           // натиснула «Прийняв». «це не півтори години, десь так» (1014): дорога — стан, не аварія.
@@ -753,18 +898,25 @@ export const useStore = create<State>()(
         const st = get()
         // §7: «Прийняв» тисне ТОЧКА (1172). Роль перевіряється тут, а не лише у формі —
         // за тим самим правилом, що й `voidTransfer` трьома командами нижче.
-        if (st.role !== 'operator') return undefined
+        //
+        // ⚠️ ГЕЙТ РОЛІ ЛИШАЄТЬСЯ, `actorAt` додається ПОВЕРХ. `canActOnPoint(owner, …)`
+        // завжди `true`, тому заміна одного на інше дозволила б керівникові тиснути
+        // «Прийняв» за точку — скасувавши `I69` у задачі, яка й робиться заради гейтів.
+        if (roleOf(st.users, st.session) !== 'operator') return undefined
         // ЛИШЕ зі 'sent'. Заявлений «не сходиться» переказ прийняти тихо не можна — його
         // закриває керівник новим документом (UC-36); а повторне «Прийняв» по вже прийнятому
         // додало б ті самі гроші в касу вдруге.
-        // Автор і дата виводяться ТУТ, а не приходять параметром: `operatorId` у всіх
-        // документах цієї фази береться з `signerFor(users, pointId)` (`Р-4`), і приймати рядок
-        // від викликача означало б дозволити документ із підписом, якого ніхто не ставив.
         const target = st.transfers.find((t) => t.id === id)
         if (!target) return undefined
+        // Підпис — імʼя того, хто НАТИСНУВ, і саме тому точку перевіряємо по документу:
+        // раніше тут стояв `signerFor(users, target.pointId)`, тобто підпис ЧУЖОЇ точки —
+        // приймальник Шипинок міг прийняти переказ на Попівці, а в документі стояло імʼя
+        // приймальника Попівців. Тепер такий виклик просто не проходить.
+        const actor = actorAt(st, target.pointId)
+        if (!actor) return undefined
         const next = transferTransition(st.transfers, id, ['sent'], {
           status: 'accepted',
-          acceptedBy: signerFor(st.users, target.pointId) ?? ownerName(st.users),
+          acceptedBy: actor.by,
           acceptedDate: todayOf(st),
           acceptedTime: nowTime(),
         })
@@ -775,7 +927,10 @@ export const useStore = create<State>()(
 
       disputeTransfer: (id, { reportedCrates, reportedCash, note }) => {
         const st = get()
-        if (st.role !== 'operator') return undefined
+        // Гейт ролі лишається, точка додається поверх — та сама причина, що в `acceptTransfer`.
+        if (roleOf(st.users, st.session) !== 'operator') return undefined
+        const target = st.transfers.find((t) => t.id === id)
+        if (!target || !actorAt(st, target.pointId)) return undefined
         // Заявка «не сходиться» зупиняє гроші так само, як сторно, — і заслуговує того
         // самого правила: без причини її не відрізнити від випадкового кліку.
         if (!note.trim()) return undefined
@@ -794,12 +949,18 @@ export const useStore = create<State>()(
         return next.doc
       },
 
-      voidTransfer: (id, reason, by) => {
+      voidTransfer: (id, reason) => {
         const st = get()
         // I69: «щоб керівник просто змінював, щоб не вони, бо то ужас буде» (1185). Роль
         // перевіряється САМЕ тут, а не лише в UI: це block-інваріант, а місце block-ів у
         // цьому проєкті — рушій і стор, форма лише малює текст.
-        if (st.role !== 'owner') return undefined
+        if (roleOf(st.users, st.session) !== 'owner') return undefined
+        // Підпис виводиться тут, а не приходить параметром. Правило вже було записане в
+        // `acceptTransfer` («приймати рядок від викликача означало б дозволити документ із
+        // підписом, якого ніхто не ставив») і в тому ж файлі порушувалося: `voidTransfer`
+        // брала `by` третім аргументом. Той самий клас дефекту, що описаний у `VisitLineInput`.
+        const by = signOf(st)
+        if (!by) return undefined
         // Порожня причина — no-op, як у `voidReweigh`: сторно без причини не відрізнити від
         // випадкового кліку, а документ після нього вже не повернути.
         if (!reason.trim()) return undefined
@@ -825,19 +986,28 @@ export const useStore = create<State>()(
        * Документ не зникає — він лишається зі слідом і просто не рахується (`06 §3`).
        */
       voidCrateIssue: (id, reason) => {
-        const next = voidCrateDoc(get().role, get().crateIssues, id, reason, stampOf(get()))
+        const st = get()
+        const mark = stampOf(st)
+        if (!mark) return undefined
+        const next = voidCrateDoc(roleOf(st.users, st.session), st.crateIssues, id, reason, mark)
         if (!next) return undefined
         set({ crateIssues: next.list })
         return next.doc
       },
       voidCrateReturn: (id, reason) => {
-        const next = voidCrateDoc(get().role, get().crateReturns, id, reason, stampOf(get()))
+        const st = get()
+        const mark = stampOf(st)
+        if (!mark) return undefined
+        const next = voidCrateDoc(roleOf(st.users, st.session), st.crateReturns, id, reason, mark)
         if (!next) return undefined
         set({ crateReturns: next.list })
         return next.doc
       },
       voidCrateShipment: (id, reason) => {
-        const next = voidCrateDoc(get().role, get().crateShipments, id, reason, stampOf(get()))
+        const st = get()
+        const mark = stampOf(st)
+        if (!mark) return undefined
+        const next = voidCrateDoc(roleOf(st.users, st.session), st.crateShipments, id, reason, mark)
         if (!next) return undefined
         set({ crateShipments: next.list })
         return next.doc
@@ -853,17 +1023,30 @@ export const useStore = create<State>()(
        */
       settleShift: (shiftId, explanation) => {
         const st = get()
-        if (st.role !== 'owner') return undefined
+        if (roleOf(st.users, st.session) !== 'owner') return undefined
+        const by = signOf(st)
+        if (!by) return undefined
         if (!explanation.trim()) return undefined
         const shift = st.shifts.find((x) => x.id === shiftId)
         if (!shift || shift.status !== 'awaiting_explanation') return undefined
-        const doc: Shift = { ...shift, status: 'closed', explanation, closedBy: ownerName(st.users) }
+        // Підпис — імʼя керівника, який зміну закрив, а не назва його ролі: саме він
+        // лишається в документі поруч із розбіжністю, якої тут ніхто не підганяє.
+        const doc: Shift = { ...shift, status: 'closed', explanation, closedBy: by }
         set({ shifts: st.shifts.map((x) => (x.id === shiftId ? doc : x)) })
         return doc
       },
 
-      openShift: ({ pointId, operatorId, openingFloat }) => {
+      /**
+       * Зміну відкриває САМЕ приймальник цієї точки (`22-tz`, ряд. 669: «закривається разом
+       * з обліковими записами»). Гейт подвійний навмисно: роль — бо керівник зміни не
+       * відкриває, точка — бо чужу шухляду не рахують. `operatorId` більше не приходить
+       * параметром: раніше екран міг відкрити зміну на будь-яке імʼя з довідника.
+       */
+      openShift: ({ pointId, openingFloat }) => {
         const st = get()
+        if (roleOf(st.users, st.session) !== 'operator') return undefined
+        const actor = actorAt(st, pointId)
+        if (!actor) return undefined
         // Те саме правило, що в `setCashFloat`: `round2()` перетворює NaN на 0, і зміна
         // відкрилася б із хибною основою згортки, якої ніхто не вводив.
         if (!Number.isFinite(openingFloat) || openingFloat < 0) return undefined
@@ -873,7 +1056,7 @@ export const useStore = create<State>()(
         const doc: Shift = {
           id: `sf_${rid()}`,
           pointId,
-          operatorId,
+          operatorId: actor.by,
           date: todayOf(st),
           openedTime: nowTime(),
           // ПЕРЕРАХУНОК приймальника на ранок, а не «скільки має бути»: якби система
@@ -887,11 +1070,16 @@ export const useStore = create<State>()(
 
       countCash: ({ shiftId, countedCash, note }) => {
         const st = get()
+        if (roleOf(st.users, st.session) !== 'operator') return undefined
         if (!Number.isFinite(countedCash) || countedCash < 0) return undefined
         const shift = st.shifts.find((x) => x.id === shiftId)
         // Перерахунок чіпляється до ВІДКРИТОЇ зміни: на закритій він не має чого фіксувати,
         // а розбіжність там уже зафіксована окремим числом.
         if (!shift || shift.status !== 'open') return undefined
+        // Точка береться З ДОКУМЕНТА: шухляда, яку рахують, належить зміні, а не тому, що
+        // зараз вибрано в шапці.
+        const actor = actorAt(st, shift.pointId)
+        if (!actor) return undefined
         // I70: очікувану суму й розбіжність рахує рушій — поля вводу для них немає в жодної
         // ролі. Людина вводить рівно одне число: скільки грошей вона порахувала в шухляді.
         const expected = cashOf(st, shift.pointId, shift.date).expectedCash
@@ -907,7 +1095,9 @@ export const useStore = create<State>()(
           // переписати розбіжність, яку вже показали людині.
           expectedAtCount: expected,
           discrepancy: shiftDiscrepancy(counted, expected),
-          countedBy: shift.operatorId,
+          // Хто РАХУВАВ, а не хто відкрив зміну: на Шипинках касирів двоє, і перерахунок
+          // о 16:00 цілком може робити не той, хто відкривав шухляду о 07:00.
+          countedBy: actor.by,
           note,
         }
         // Перерахунок нічого не ВИПРАВЛЯЄ — він лише фіксує факт (1197, 1222).
@@ -917,9 +1107,12 @@ export const useStore = create<State>()(
 
       closeShift: ({ shiftId, countedCash, explanation }) => {
         const st = get()
+        if (roleOf(st.users, st.session) !== 'operator') return undefined
         if (!Number.isFinite(countedCash) || countedCash < 0) return undefined
         const shift = st.shifts.find((x) => x.id === shiftId)
         if (!shift || shift.status !== 'open') return undefined
+        const actor = actorAt(st, shift.pointId)
+        if (!actor) return undefined
         const expected = cashOf(st, shift.pointId, shift.date).expectedCash
         const counted = round2(countedCash)
         const discrepancy = shiftDiscrepancy(counted, expected)
@@ -934,7 +1127,7 @@ export const useStore = create<State>()(
           discrepancy,
           status,
           explanation,
-          closedBy: status === 'closed' ? shift.operatorId : undefined,
+          closedBy: status === 'closed' ? actor.by : undefined,
         }
         set({ shifts: st.shifts.map((x) => (x.id === shiftId ? doc : x)) })
         return doc
@@ -947,14 +1140,25 @@ export const useStore = create<State>()(
           reweighs: st.reweighs.map((r) => (r.synced ? r : { ...r, synced: true })),
         })),
 
+      /**
+       * ⚠️ СЕСІЮ НЕ ЧІПАЄ — і це рішення, а не недогляд. «Скинути демо-дані» і «Вийти»
+       * мусять лишатися двома різними жестами: кнопку тиснуть ПЕРЕД показом (підпис під
+       * нею в `Shell.tsx` каже саме це), і виводити презентера з системи посеред показу —
+       * не те, про що вона. Тест, якому потрібна відсутність сесії, кличе `signOut()` явно.
+       */
       resetDemo: () => {
         const fresh = buildSeed()
+        // Точка й маршрут беруться З ТОГО, ХТО ЗАЛИШИВСЯ ЗА КОМПʼЮТЕРОМ. Літерал `'p1'`
+        // тут був правильний, поки роль перемикали кнопкою; із сесіями він кидав би
+        // приймальника Конищева на Шипинки — екран показував би чужу точку, а кожна
+        // команда мовчки відмовляла б через `actorAt`. Без сесії лишається як було.
+        const user = actorOf(get())
         set({
           ...fresh,
           settings: { ...DEFAULT_SETTINGS },
-          role: 'operator',
-          activePointId: 'p1',
-          route: { name: 'reception' },
+          ...(user
+            ? scopeAfterSignIn(user)
+            : { activePointId: 'p1', route: { name: 'reception' as const } }),
           online: true,
           workDate: fresh.config.businessToday,
         })
@@ -969,6 +1173,15 @@ export const useStore = create<State>()(
       // прийомок зі старого payload-а: наділ, видачі й перекази з одного світу, квитанції з
       // іншого. `withBerryUnits` відправлень, порахований по чужих квитанціях, — це саме та
       // тиха розбіжність, яку I63 і мусить робити видимою.
+      /*
+       * ⚠️ ФАЗА 4 ВЕРСІЮ НЕ БАМПАЄ, і це рішення, а не забутий рядок. Причина бампа, що
+       * записана вище, тут не виконується: жоден ключ ДОКУМЕНТІВ не змінює форми — зникає
+       * одне поле пристрою (`role`) і додається одне (`session`). Браузер із `v6`-payload
+       * віддасть у `merge` старий обʼєкт: `role` ніхто вже не читає, `session` відсутній →
+       * `null` → екран входу, тобто рівно те, що й має статися. Бамп натомість викинув би
+       * демо-прийомки людини без жодної причини (`migrate: () => undefined` — це повний
+       * пересід), і зробив би це посеред показу.
+       */
       name: 'yagoda-crm-demo-v6',
       version: 6,
       migrate: () => undefined,
@@ -990,7 +1203,7 @@ export const useStore = create<State>()(
         shifts: s.shifts,
         cashCounts: s.cashCounts,
         settings: s.settings,
-        role: s.role,
+        session: s.session,
         activePointId: s.activePointId,
         online: s.online,
         workDate: s.workDate,
@@ -1035,6 +1248,36 @@ export const useStore = create<State>()(
       merge: (persisted = {}, current) => {
         if (persisted === null) return { ...current }
         const p = persisted as Record<string, unknown>
+        // Множина id піднята сюди навмисно: `p.session.userId` усередині колбека `some()`
+        // TS не звужує (перевірено: error TS18046), а винести `p.session` у власну змінну
+        // не можна — храповик атрибутує ключ по ПЕРШІЙ властивості після кореня-параметра,
+        // і `isSession(restored)` не зарахувався б ні до якого ключа.
+        const userIds = new Set(current.users.map((u) => u.id))
+        /*
+         * ДВА звуження на одному ключі, і друге важливіше.
+         * Форма — локальний предикат. Існування — сесія на `userId`, якого немає в реєстрі,
+         * це НЕ сесія (`23 §Р4-6`). Реєстр тут завжди свіжий (`users` не персистяться),
+         * тому перевірка справжня.
+         *
+         * Падає в `null`, а не в `current.session` — на відміну від решти двадцяти ключів,
+         * які падають у свіжий сід: свіжий сід для сесії означав би «увійшов хтось», а
+         * правильна відповідь на зіпсовану сесію одна — екран входу.
+         *
+         * ⚠️ ЧОМУ ЗВУЖЕННЯ СТОЇТЬ ТУТ, А НЕ В САМОМУ КЛЮЧІ. Множина id мусить бути піднята
+         * (`p.session.userId` усередині колбека `some()` TS не звужує — перевірено:
+         * TS18046), а `p.session` МУСИТЬ лишитися всередині виклику `isSession(...)`:
+         * храповик атрибутує ключ по ПЕРШІЙ властивості після кореня-параметра, тому
+         * `const restored = p.session` з наступним `isSession(restored)` не зарахувався б
+         * ні до якого ключа взагалі.
+         */
+        const restoredSession = isSession(p.session) && userIds.has(p.session.userId) ? p.session : null
+        const restoredUser = sessionUser(current.users, restoredSession)
+        /*
+         * Невідомий id тихо перекидає прийомку на першу точку (`ReceptionPage.tsx`:
+         * `?? points[0]`), а книга кожної точки окрема — гроші опиняються в чужому звіті
+         * дня без жодного знаку. Тому спершу тип, а нижче — звірка з сесією.
+         */
+        const rawPoint = typeof p.activePointId === 'string' ? p.activePointId : current.activePointId
         return {
           ...current,
           // довідник для пікера: чужа форма дає битий список вибору, у гроші не входить
@@ -1090,16 +1333,17 @@ export const useStore = create<State>()(
           // і «розбіжності не рахували» на екрані виглядають однаково — а це різні речі
           cashCounts: Array.isArray(p.cashCounts) ? (p.cashCounts as CashCount[]) : current.cashCounts,
           settings: isSettings(p.settings) ? p.settings : current.settings,
-          // не гроші, але невідомий рядок лишає інтерфейс ні в тому, ні в тому режимі:
-          // Shell малює навігацію приймальника, а перевірки власника не застосовуються
-          role:
-            typeof p.role === 'string' && (p.role === 'operator' || p.role === 'owner')
-              ? p.role
-              : current.role,
-          // невідомий id тихо перекидає прийомку на першу точку (ReceptionPage.tsx: ?? points[0]),
-          // а книга кожної точки окрема — гроші опиняються в чужому звіті дня без жодного знаку
+          session: restoredSession,
+          /*
+           * ⚠️ ТОЧКА ЗВІРЯЄТЬСЯ З СЕСІЄЮ, а не лише з типом (`23 §4.2`). Без цього рядка
+           * приймальник, який підправив сховище в devtools, після перезавантаження працював
+           * би на ЧУЖІЙ точці — а `ratchet:persist` лишався б зеленим, бо звуження по типу
+           * написане. Керівника це не стосується: `activePointId: 'all'` для нього законний.
+           */
           activePointId:
-            typeof p.activePointId === 'string' ? p.activePointId : current.activePointId,
+            restoredUser && restoredUser.role === 'operator' && rawPoint !== restoredUser.pointId
+              ? (restoredUser.pointId ?? rawPoint)
+              : rawPoint,
           // впливає лише на прапорець synced нових записів; не-булеве дає truthy/falsy без слідів
           online: typeof p.online === 'boolean' ? p.online : current.online,
           workDate:
@@ -1115,9 +1359,21 @@ export const useStore = create<State>()(
 /* ------------------------- selectors ------------------------- */
 
 export function useScope() {
-  const role = useStore((s) => s.role)
+  const users = useStore((s) => s.users)
+  const session = useStore((s) => s.session)
   const activePointId = useStore((s) => s.activePointId)
+  // Роль ПОХІДНА: окремого поля стану більше немає. `null` (сесії немає) деградує до
+  // найсуворішого — жодне порівняння з `'owner'` його не пропустить.
+  const role = roleOf(users, session)
   return { role, activePointId, allPoints: role === 'owner' && activePointId === 'all' }
+}
+
+/** Хто зараз за компʼютером — для показу. Хук, бо шапці й сайдбару потрібна ПІДПИСКА. */
+export function useActor() {
+  const users = useStore((s) => s.users)
+  const session = useStore((s) => s.session)
+  const user = sessionUser(users, session)
+  return { session, user, name: user?.name ?? null }
 }
 
 export function scopedReceptions(receptions: Reception[], pointId: string) {

@@ -13,7 +13,7 @@ import {
 import { PageHeader } from '@/components/common/bits'
 import { networkAverage } from '@/lib/calc'
 import { addDays, kg, longDate, num, shortDate, uah, uahAuto, weekday } from '@/lib/format'
-import { useStore } from '@/lib/store'
+import { useScope, useStore } from '@/lib/store'
 import type { ISODate } from '@/lib/types'
 
 /**
@@ -75,7 +75,7 @@ export function OwnerSheetPage() {
   const expenses = useStore((s) => s.expenses)
   const policies = useStore((s) => s.policies)
   const workDate = useStore((s) => s.workDate)
-  const role = useStore((s) => s.role)
+  const { role } = useScope()
   const config = useStore((s) => s.config)
 
   const [date, setDate] = React.useState<ISODate>(workDate)

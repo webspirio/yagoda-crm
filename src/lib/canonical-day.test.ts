@@ -130,13 +130,15 @@ describe('канонічний день 04.08.2026 · Шипинки — зві�
     // два джерела однієї цифри — це два різні числа через тиждень
     expect(seed.expenses.some((e) => e.kind === 'shortfall')).toBe(false)
     expect(useStore.getState().expenses.some((e) => e.kind === 'shortfall')).toBe(false)
+    // Вхід ОБОВʼЯЗКОВИЙ саме тут: без сесії `addExpense` відмовила б через `actorAt`, і
+    // `I43` («рядок недостачі відхилено за kind») перестав би перевірятися.
+    useStore.getState().signIn({ login: 'owner', secret: '1111' })
     expect(
       useStore.getState().addExpense({
         date: TODAY,
         pointId: 'p1',
         label: 'Недостача в ягоді',
         amount: 1_660,
-        createdBy: 'Керівник',
         kind: 'shortfall',
       }),
     ).toBeUndefined()

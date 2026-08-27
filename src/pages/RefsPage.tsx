@@ -3,7 +3,7 @@ import { Package, Sliders, Sprout } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Eyebrow, PageHeader } from '@/components/common/bits'
-import { useStore } from '@/lib/store'
+import { useScope, useStore } from '@/lib/store'
 import { longDate, num } from '@/lib/format'
 import { maskDecimalInput, parseNumeric } from '@/lib/calc'
 import { toast } from 'sonner'
@@ -20,7 +20,7 @@ export function RefsPage() {
   const berries = useStore((s) => s.berries)
   const updateTareType = useStore((s) => s.updateTareType)
   const receptions = useStore((s) => s.receptions)
-  const role = useStore((s) => s.role)
+  const { role } = useScope()
   const products = useStore((s) => s.products)
   const config = useStore((s) => s.config)
 

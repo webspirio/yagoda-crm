@@ -11,7 +11,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Eyebrow } from '@/components/common/bits'
-import { maskDecimalInput, ownerName, parseNumeric, signerFor } from '@/lib/calc'
+import { maskDecimalInput, parseNumeric } from '@/lib/calc'
 import { uah } from '@/lib/format'
 import { useScope, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
@@ -71,7 +71,6 @@ export function CashCountPanel({ pointId, date }: { pointId: string; date: ISODa
   const openShift = useStore((s) => s.openShift)
   const closeShift = useStore((s) => s.closeShift)
   const settleShift = useStore((s) => s.settleShift)
-  const users = useStore((s) => s.users)
   const config = useStore((s) => s.config)
   // Роль — через `useScope()`, а не пропом: керівницьких дій приймальникові тут не
   // показують узагалі, і рішення про це має ухвалюватися в тому самому файлі, що їх малює.
@@ -154,14 +153,13 @@ export function CashCountPanel({ pointId, date }: { pointId: string; date: ISODa
       setShiftError('Уведіть суму, яку порахували в шухляді на ранок, — числом, не менше нуля.')
       return
     }
-    const doc = openShift({
-      pointId,
-      operatorId: signerFor(users, pointId) ?? ownerName(users),
-      openingFloat: parseNumeric(morning),
-    })
+    // `operatorId` більше не передається: підпис під зміною — імʼя того, хто ЗАРАЗ за
+    // компʼютером, і ставить його стор. До фази 4 сюди йшов приймальник точки з довідника,
+    // тобто зміну можна було відкрити на чуже імʼя з будь-якого пристрою.
+    const doc = openShift({ pointId, openingFloat: parseNumeric(morning) })
     if (!doc) {
       setShiftError(
-        'Зміну не відкрито: на цій точці вже є відкрита зміна. Двох книг на одну шухляду не буває.',
+        'Зміну не відкрито: або на цій точці вже є відкрита зміна (двох книг на одну шухляду не буває), або ця точка не ваша.',
       )
       return
     }

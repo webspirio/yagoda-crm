@@ -37,7 +37,6 @@ import {
   parseNumeric,
   reconcileDay,
   round2,
-  signerFor,
   sum,
   visitMath,
   weigh,
@@ -72,7 +71,6 @@ export function ReceptionPage() {
     payouts,
     prices,
     settings,
-    users,
     config,
     activePointId,
     points,
@@ -325,7 +323,6 @@ export function ReceptionPage() {
       date: config.businessToday,
       pointId,
       supplierId,
-      operator: signerFor(users, pointId) ?? point.name,
       carriedIn: math.carriedIn,
       paid: math.paid,
       lines: allLines.map(({ berryId: id, gross: g, pallet, tare: t, tareWeight, net, price: p, bonus: b, amount }) => ({
@@ -342,9 +339,11 @@ export function ReceptionPage() {
     })
     // Відмова рушія — `undefined`. Раніше вона поверталася порожнім масивом, тост
     // «Прийнято …» друкувався поверх неї, форма очищалася, і візит зникав без слова.
+    // З фази 4 причин відмови дві, і друга — «ця точка не ваша»: підпис під квитанцією
+    // тепер імʼя людини з сесії, а не назва точки, тому чужу книгу писати нема чим.
     if (!res) {
       toast.error('Прийомку не проведено', {
-        description: `У касі за ягоду ${uah(Math.max(0, berryCash), { decimals: 2 })} — видати ${uahAuto(math.paid)} нема з чого.`,
+        description: `У касі за ягоду ${uah(Math.max(0, berryCash), { decimals: 2 })} — видати ${uahAuto(math.paid)} нема з чого. Якщо каса не порожня, перевірте, чи ця точка ваша.`,
       })
       return
     }

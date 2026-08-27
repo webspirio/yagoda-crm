@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/table'
 import { PageHeader } from '@/components/common/bits'
 import { AddSupplierDialog } from '@/components/reception/SupplierPicker'
-import { useStore } from '@/lib/store'
+import { useScope, useStore } from '@/lib/store'
 import { supplierBalanceAt, sum, topSuppliers } from '@/lib/calc'
 import { KindBadge } from '@/components/common/kind'
 import { kg, shortDate, uah, uahAuto } from '@/lib/format'
@@ -33,7 +33,7 @@ export function SuppliersPage() {
   const berries = useStore((s) => s.berries)
   const activePointId = useStore((s) => s.activePointId)
   const workDate = useStore((s) => s.workDate)
-  const role = useStore((s) => s.role)
+  const { role } = useScope()
   const go = useStore((s) => s.go)
   const config = useStore((s) => s.config)
   const [q, setQ] = React.useState('')

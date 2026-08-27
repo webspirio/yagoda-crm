@@ -18,7 +18,6 @@ import {
   originDates,
   parseNumeric,
   round2,
-  signerFor,
 } from '@/lib/calc'
 import { longDate, shortDate, uah, uahAuto } from '@/lib/format'
 import { toast } from 'sonner'
@@ -37,7 +36,6 @@ export function SettleDialog({
   const payouts = useStore((s) => s.payouts)
   const addPayout = useStore((s) => s.addPayout)
   const activePointId = useStore((s) => s.activePointId)
-  const users = useStore((s) => s.users)
   const config = useStore((s) => s.config)
 
   const supplier = suppliers.find((s) => s.id === supplierId)
@@ -71,13 +69,14 @@ export function SettleDialog({
     // у режимі «Усі точки» гроші не можуть виходити з каси, яка людини не бачила:
     // беремо пункт найстарішого відкритого залишку
     const pointId = scopePointId ?? open_[0]?.reception.pointId ?? 'p1'
-    const operator = signerFor(users, pointId) ?? 'Каса'
+    // Підпис під виплатою більше не збирається тут: запасним значенням було `'Каса'` —
+    // рядок, що виглядає як підпис, але не називає жодної людини. Тепер його ставить стор
+    // із сесії, а «немає кого підписати» — це відмова, видима нижче через `if (payout)`.
     const payout = addPayout({
       date: config.businessToday,
       pointId,
       supplierId,
       amount: value,
-      operator,
       scopePointId,
     })
     onOpenChange(false)

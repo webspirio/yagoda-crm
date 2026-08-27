@@ -23,7 +23,7 @@ import {
   uahAuto,
   weekday,
 } from '@/lib/format'
-import { useStore } from '@/lib/store'
+import { useScope, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Violation } from '@/lib/calc'
 import type { ISODate } from '@/lib/types'
@@ -79,7 +79,7 @@ export function NetworkAveragePage() {
   const expenses = useStore((s) => s.expenses)
   const policies = useStore((s) => s.policies)
   const workDate = useStore((s) => s.workDate)
-  const role = useStore((s) => s.role)
+  const { role } = useScope()
   const config = useStore((s) => s.config)
 
   // Дата ЛОКАЛЬНА: `setWorkDate` на цьому екрані не викликається жодного разу (09 §5)

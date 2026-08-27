@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { useStore } from './store'
-import type { Commands, DomainSnapshot, Queries } from './ports'
+import type { AuthCommands, Commands, DomainSnapshot, Queries } from './ports'
 
 /**
  * Кожна команда з контракту існує в сторі як функція.
@@ -50,6 +50,12 @@ const COMMANDS: Record<keyof Commands, true> = {
   resetDemo: true,
 }
 const QUERIES: Record<keyof Queries, true> = { priceFor: true, priceHistory: true }
+/**
+ * Дві команди сесії — окремим `Record`, бо вони й у контракті окремим інтерфейсом
+ * (`AuthCommands`): `Commands` — це документи, а вхід документа не створює. Форма та сама,
+ * тому дрейф ловиться так само в обидва боки й на КОМПІЛЯЦІЇ.
+ */
+const AUTH: Record<keyof AuthCommands, true> = { signIn: true, signOut: true }
 const DOMAIN = [
   'points',
   'berries',
@@ -81,10 +87,11 @@ describe('контракт store ↔ ports', () => {
     const names = [
       ...(Object.keys(COMMANDS) as (keyof Commands)[]),
       ...(Object.keys(QUERIES) as (keyof Queries)[]),
+      ...(Object.keys(AUTH) as (keyof AuthCommands)[]),
     ]
-    // 31 команда + 2 запити. Число тут навмисно: якщо обидва літерали колись звузять
-    // разом, `tsc` промовчить, а цей рядок — ні.
-    expect(names.length).toBe(33)
+    // 31 команда + 2 запити + 2 команди сесії. Число тут навмисно: якщо літерали колись
+    // звузять разом, `tsc` промовчить, а цей рядок — ні. Було 33 до фази 4.
+    expect(names.length).toBe(35)
     for (const k of names) expect(typeof st[k], k).toBe('function')
   })
 

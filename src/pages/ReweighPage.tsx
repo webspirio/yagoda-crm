@@ -22,10 +22,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Eyebrow, PageHeader } from '@/components/common/bits'
-import { useStore } from '@/lib/store'
+import { useScope, useStore } from '@/lib/store'
 import {
   maskDecimalInput,
-  ownerName,
   parseNumeric,
   productDay,
   reweighLineValid,
@@ -55,7 +54,7 @@ function signedKg(v: number) {
 }
 
 export function ReweighPage() {
-  const role = useStore((s) => s.role)
+  const { role } = useScope()
 
   // Переважування — ВИКЛЮЧНО керівник: «тільки керівник має до цього всього доступ»
   // (дзвінок №4, ряд. 617–621; `13 §4 S-20`). Роль читається в цій обгортці, а сам екран
@@ -78,7 +77,6 @@ function ReweighScreen() {
   const receptions = useStore((s) => s.receptions)
   const reweighs = useStore((s) => s.reweighs)
   const workDate = useStore((s) => s.workDate)
-  const users = useStore((s) => s.users)
   const config = useStore((s) => s.config)
   const addReweigh = useStore((s) => s.addReweigh)
   const voidReweigh = useStore((s) => s.voidReweigh)
@@ -254,11 +252,10 @@ function ReweighScreen() {
 
   function post() {
     if (!lines.length || !atPointId) return
-    addReweigh({
+    const doc = addReweigh({
       berryDate: date,
       fromPointId,
       atPointId,
-      operator: ownerName(users),
       lines: lines.map((l) => ({
         berryId: l.berryId,
         product: l.product,
@@ -270,6 +267,15 @@ function ReweighScreen() {
         netKg: l.netKg,
       })),
     })
+    // Відмова стору тепер можлива (переважує лише керівник, і лише зі своєю сесією), а
+    // до цієї правки результат викидався і зелений тост друкувався безумовно — тобто
+    // «проведено» стояло б і там, де документа не створено.
+    if (!doc) {
+      toast.error('Переважування не проведено', {
+        description: 'Переважує лише керівник — увійдіть під своїм обліковим записом.',
+      })
+      return
+    }
     toast.success(`Переважування проведено · ${kg(totalNet)}`, {
       description:
         shortfallKg > 0.004
@@ -282,7 +288,13 @@ function ReweighScreen() {
 
   function confirmVoid(id: string) {
     if (!voidReason.trim()) return
-    voidReweigh(id, voidReason.trim(), ownerName(users))
+    const doc = voidReweigh(id, voidReason.trim())
+    if (!doc) {
+      toast.error('Сторно не пройшло', {
+        description: 'Сторнує лише керівник, і причина обовʼязкова.',
+      })
+      return
+    }
     setVoidingId(null)
     setVoidReason('')
     toast.success('Переважування сторновано', {

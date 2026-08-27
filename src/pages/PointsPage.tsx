@@ -13,7 +13,7 @@ import {
 import { Eyebrow, PageHeader } from '@/components/common/bits'
 import { Sparkline } from '@/components/common/Sparkline'
 import { useStore } from '@/lib/store'
-import { openDebts, reconcileDay, signerFor, sum } from '@/lib/calc'
+import { openDebts, reconcileDay, sum } from '@/lib/calc'
 import { addDays, kg, num, shortDate, tonnage, uah } from '@/lib/format'
 
 export function PointsPage() {
@@ -50,7 +50,20 @@ export function PointsPage() {
     const pointSuppliers = new Set(items.map((r) => r.supplierId))
     return {
       point: p,
-      operator: signerFor(users, p.id),
+      /*
+       * УСІ приймальники точки через кому, а не перший зі списку. `signerFor()` віддавала
+       * одного — і з 28.08.2026 це стало неправдою: на Шипинках касирів двоє (дзвінок №4,
+       * ряд. 558), тому «приймає Оксана Г.» мовчки ховало б Марію С.
+       *
+       * `|| undefined` наприкінці навмисно: обидва місця показу нижче розрізняють «немає»
+       * саме через falsy — `r.operator ? … : 'приймальника не призначено'` і
+       * `r.operator ?? 'не призначено'`, — а порожній рядок falsy, але не `undefined`.
+       */
+      operator:
+        users
+          .filter((u) => u.role === 'operator' && u.pointId === p.id)
+          .map((u) => u.name)
+          .join(', ') || undefined,
       suppliers: pointSuppliers.size,
       net: sum(items, (r) => r.net),
       amount: sum(items, (r) => r.amount),

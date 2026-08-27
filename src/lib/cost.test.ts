@@ -594,7 +594,13 @@ describe('costOfDay — правило розподілу', () => {
 /* ------------------------- команди стору ------------------------- */
 
 describe('стор: витрати дня і переважування', () => {
-  beforeEach(() => useStore.getState().resetDemo())
+  beforeEach(() => {
+    useStore.getState().resetDemo()
+    // Витрати дня набирає керівник (`09 §7`), переважує теж він (`13 §4 S-20`). Підпис під
+    // обома документами тепер виводить стор із сесії, тому без входу тут не пишеться нічого.
+    const res = useStore.getState().signIn({ login: 'owner', secret: '1111' })
+    if (!res.ok) throw new Error(`тест не зміг увійти керівником: ${res.reason}`)
+  })
 
   it('addExpense відхиляє kind:"shortfall" — рядка недостачі в стані не буває (I43)', () => {
     const before = useStore.getState().expenses.length
@@ -603,7 +609,6 @@ describe('стор: витрати дня і переважування', () => 
       pointId: 'p1',
       label: 'Недостача в ягоді',
       amount: 1_660,
-      createdBy: 'Керівник',
       kind: 'shortfall',
     })
     expect(rejected).toBeUndefined()
@@ -617,7 +622,6 @@ describe('стор: витрати дня і переважування', () => 
       pointId: 'p1',
       label: 'Вантажник ×2',
       amount: 2_600,
-      createdBy: 'Керівник',
     })
     expect(created?.kind).toBe('manual')
     expect(created?.amount).toBe(2_600)
@@ -630,7 +634,6 @@ describe('стор: витрати дня і переважування', () => 
       pointId: 'p1',
       label: 'Пальне',
       amount: 13_000,
-      createdBy: 'Керівник',
     })!
     const before = useStore.getState().expenses.length
     useStore.getState().removeExpense(created.id)
@@ -645,7 +648,6 @@ describe('стор: витрати дня і переважування', () => 
       berryDate: TODAY,
       fromPointId: 'p1',
       atPointId: 'base',
-      operator: 'Керівник',
       lines: [
         {
           berryId: 'v_mal_v',
@@ -659,12 +661,15 @@ describe('стор: витрати дня і переважування', () => 
         },
       ],
     })
-    expect(created.status).toBe('posted')
-    expect(created.snapshot).toEqual(
+    // `addReweigh` тепер може відмовити (переважує лише керівник), тому результат
+    // спершу перевіряється на існування — інакше решта тверджень мовчки не виконалася б.
+    expect(created).toBeDefined()
+    expect(created!.status).toBe('posted')
+    expect(created!.snapshot).toEqual(
       expected.map((r) => ({ product: r.product, kgPoint: r.kgPoint, avgPoint: r.avgPoint })),
     )
-    expect(created.lines[0].order).toBe(1)
-    expect(useStore.getState().reweighs.at(-1)?.id).toBe(created.id)
+    expect(created!.lines[0].order).toBe(1)
+    expect(useStore.getState().reweighs.at(-1)?.id).toBe(created!.id)
   })
 
   it('voidReweigh лишає документ і додає слід, а порожня причина нічого не робить', () => {
@@ -672,12 +677,12 @@ describe('стор: витрати дня і переважування', () => 
     const target = st.reweighs[0]
     const count = st.reweighs.length
 
-    st.voidReweigh(target.id, '   ', 'Керівник')
+    expect(st.voidReweigh(target.id, '   ')).toBeUndefined()
     expect(useStore.getState().reweighs.find((r) => r.id === target.id)?.status).toBe(
       target.status,
     )
 
-    useStore.getState().voidReweigh(target.id, 'помилилися пунктом', 'Керівник')
+    expect(useStore.getState().voidReweigh(target.id, 'помилилися пунктом')).toBeDefined()
     const after = useStore.getState().reweighs
     expect(after).toHaveLength(count)
     const voided = after.find((r) => r.id === target.id)!
@@ -707,7 +712,6 @@ describe('стор: витрати дня і переважування', () => 
       pointId: 'p1',
       label: 'Касир',
       amount: 1_000,
-      createdBy: 'Керівник',
     })
     expect(useStore.getState().payouts).toHaveLength(before)
   })

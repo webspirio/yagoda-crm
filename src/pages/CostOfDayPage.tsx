@@ -27,9 +27,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Eyebrow, PageHeader } from '@/components/common/bits'
-import { costOfDay, maskDecimalInput, ownerName, parseNumeric, sum } from '@/lib/calc'
+import { costOfDay, maskDecimalInput, parseNumeric, sum } from '@/lib/calc'
 import { addDays, kg, longDate, num, shortDate, uah, uahAuto, weekday } from '@/lib/format'
-import { useStore } from '@/lib/store'
+import { useScope, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { CostRow, Violation } from '@/lib/calc'
 import type { ExpensePolicy, ISODate } from '@/lib/types'
@@ -76,8 +76,7 @@ export function CostOfDayPage() {
   const expenses = useStore((s) => s.expenses)
   const policies = useStore((s) => s.policies)
   const workDate = useStore((s) => s.workDate)
-  const role = useStore((s) => s.role)
-  const users = useStore((s) => s.users)
+  const { role } = useScope()
   const config = useStore((s) => s.config)
   const addExpense = useStore((s) => s.addExpense)
   const removeExpense = useStore((s) => s.removeExpense)
@@ -158,7 +157,9 @@ export function CostOfDayPage() {
     const trimmed = label.trim()
     const value = parseNumeric(amount)
     if (!trimmed || value === 0) return
-    addExpense({ date, pointId, label: trimmed, amount: value, createdBy: ownerName(users) })
+    // Підпис під рядком витрат ставить стор із сесії — тут його немає чим передати, і
+    // передавати не треба. Гейт `actorAt` віддає `undefined`, коли підписувати нікому.
+    addExpense({ date, pointId, label: trimmed, amount: value })
     setLabel('')
     setAmount('')
   }

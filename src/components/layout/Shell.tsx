@@ -10,6 +10,7 @@ import {
   CloudOff,
   Cloud,
   History,
+  LogOut,
   MapPin,
   Menu,
   Network,
@@ -33,9 +34,8 @@ import {
 } from '@/components/ui/select'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
-import { signerFor } from '@/lib/calc'
-import { longDate, weekday } from '@/lib/format'
-import { pendingCount, useStore } from '@/lib/store'
+import { initials, longDate, weekday } from '@/lib/format'
+import { pendingCount, useActor, useScope, useStore } from '@/lib/store'
 import type { Route, RouteName } from '@/lib/types'
 import { toast } from 'sonner'
 
@@ -89,14 +89,17 @@ const NAV: { group: string; items: NavItem[] }[] = [
 ]
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
-  const role = useStore((s) => s.role)
+  const { role } = useScope()
   const route = useStore((s) => s.route)
   const go = useStore((s) => s.go)
 
   return (
     <nav className="flex flex-col gap-5">
       {NAV.map((group) => {
-        const items = group.items.filter((i) => i.roles.includes(role))
+        // `role ? … : false`, а не `role!`: без сесії правильна відповідь — ЖОДНОГО пункту,
+        // а не «як у приймальника». Порожній сайдбар тут недосяжний (App показує екран
+        // входу раніше), і саме тому фільтр мусить деградувати в НІЩО, а не вгадувати роль.
+        const items = group.items.filter((i) => (role ? i.roles.includes(role) : false))
         if (!items.length) return null
         return (
           <div key={group.group}>
@@ -143,40 +146,33 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function DemoPanel() {
-  const role = useStore((s) => s.role)
-  const setRole = useStore((s) => s.setRole)
   const resetDemo = useStore((s) => s.resetDemo)
+  const signOut = useStore((s) => s.signOut)
 
   return (
     <div className="rounded-xl bg-sidebar-accent/70 p-3">
       <div className="mb-2 text-[10px] font-medium tracking-[0.18em] text-sidebar-foreground/45 uppercase">
         Демо-режим
       </div>
-      <div className="mb-2 grid grid-cols-2 gap-1 rounded-lg bg-black/30 p-1">
-        {(
-          [
-            ['operator', 'Приймальник'],
-            ['owner', 'Власник'],
-          ] as const
-        ).map(([value, label]) => (
-          <button
-            key={value}
-            onClick={() => setRole(value)}
-            className={cn(
-              'rounded-md px-2 py-1.5 text-xs font-medium transition-colors',
-              role === value
-                ? 'bg-primary text-primary-foreground'
-                : 'text-sidebar-foreground/70 hover:text-sidebar-accent-foreground',
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {/* ДВОХ РЯДКІВ РОЛІ ТУТ БІЛЬШЕ НЕМАЄ. Перемикач ролі стверджував, що роль — це
+          властивість пристрою, яку вибирають кнопкою; з обліковими записами вона властивість
+          ЛЮДИНИ. Показати іншу роль тепер можна рівно одним способом — вийти і зайти під
+          іншим записом (`22-tz §18.4`), і кнопка нижче підписана саме так. */}
+      <Button
+        size="sm"
+        variant="ghost"
+        className="mb-2 w-full justify-start text-sidebar-foreground/80 hover:bg-black/25 hover:text-sidebar-accent-foreground"
+        onClick={() => {
+          signOut()
+          toast('Ви вийшли', { description: 'Робота точки лишилася на місці — змінився лише той, хто за компʼютером.' })
+        }}
+      >
+        <LogOut className="size-3.5" />
+        Вийти
+      </Button>
       <p className="mb-2 text-[11px] leading-snug text-sidebar-foreground/50">
-        {role === 'operator'
-          ? 'Приймальник бачить лише свою точку і не має доступу до зведення.'
-          : 'Власник бачить усі точки, ціни, залишки та аналітику.'}
+        Щоб показати інший вигляд, вийдіть і зайдіть під іншим записом: підміна — це вихід і
+        вхід, а не перемикач.
       </p>
       {/* Збережений стан у браузері перебиває свіжий сід — це найкоротший шлях зіпсувати показ,
           тому кнопка стоїть на видноті й підписана, що саме вона робить */}
@@ -202,9 +198,8 @@ function DemoPanel() {
 
 function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
   const points = useStore((s) => s.points)
-  const activePointId = useStore((s) => s.activePointId)
-  const role = useStore((s) => s.role)
-  const users = useStore((s) => s.users)
+  const { role, activePointId } = useScope()
+  const { session, name } = useActor()
   const point = points.find((p) => p.id === activePointId)
 
   return (
@@ -227,15 +222,22 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
         <NavList onNavigate={onNavigate} />
       </div>
 
-      {role === 'operator' ? (
+      {/*
+        Блок називається «За компʼютером», а НЕ «Зміна», і це не косметика: на одному екрані
+        інакше стояли б два різні «початки зміни» — час входу в систему і `openedTime`
+        документа зміни, — без жодного слова про те, що це різні речі. Зміну відкривають
+        грошима в шухляді, а тут лише сесія.
+        Константа «на точці з 07:00» зникла разом із причиною: тепер час справжній, з сесії.
+      */}
+      {session && name ? (
         <div className="px-3">
           <div className="text-[10px] font-medium tracking-[0.18em] text-sidebar-foreground/40 uppercase">
-            Зміна
+            За компʼютером
           </div>
-          <div className="mt-1 text-sm text-sidebar-accent-foreground">
-            {signerFor(users, activePointId) ?? '—'}
+          <div className="mt-1 text-sm text-sidebar-accent-foreground">{name}</div>
+          <div className="text-[11px] text-sidebar-foreground/45">
+            увійшов о {session.startedTime}
           </div>
-          <div className="text-[11px] text-sidebar-foreground/45">на точці з 07:00</div>
         </div>
       ) : null}
 
@@ -325,12 +327,17 @@ function SyncPill() {
 
 function PointSelect() {
   const points = useStore((s) => s.points)
-  const activePointId = useStore((s) => s.activePointId)
   const setActivePoint = useStore((s) => s.setActivePoint)
-  const role = useStore((s) => s.role)
+  const { role, activePointId } = useScope()
 
-  // a point operator has exactly one point — nothing to choose between
-  if (role === 'operator') {
+  /*
+   * ⚠️ УМОВА ПЕРЕВЕРНУТА: `role !== 'owner'`, а не `role === 'operator'`. З пʼятьох місць,
+   * де читалася роль, це ЄДИНЕ, де `else` віддає БІЛЬШЕ, а не менше: тут він малює селектор
+   * УСІХ точок. На `role === null` вигляд ШИРШАВ БИ — рівно та підміна, від якої застерігає
+   * `canActOnPoint`. У решті чотирьох `else` віддає менше (кнопок немає, блок зникає), тому
+   * їх не чіпали: зміна умови там була б косметикою, яка ховає, що вони й так безпечні.
+   */
+  if (role !== 'owner') {
     const point = points.find((p) => p.id === activePointId)
     return (
       <div className="flex h-8 items-center gap-1.5 rounded-lg bg-card px-2.5 text-xs ring-1 ring-foreground/10">
@@ -372,8 +379,8 @@ function PointSelect() {
 }
 
 export function Shell({ children }: { children: React.ReactNode }) {
-  const role = useStore((s) => s.role)
-  const activePointId = useStore((s) => s.activePointId)
+  const { role, activePointId } = useScope()
+  const { name } = useActor()
   const points = useStore((s) => s.points)
   const config = useStore((s) => s.config)
   const [mobileOpen, setMobileOpen] = React.useState(false)
@@ -408,20 +415,24 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
           <div className="ml-auto flex items-center gap-2.5">
             <SyncPill />
+            {/*
+              ІМʼЯ ЛЮДИНИ, а не назва ролі — «на екрані видно, хто зараз за компʼютером»
+              (`22-tz §18.4`). Роль і точка лишаються, але рядком нижче: вони пояснюють імʼя,
+              а не заміняють його. Бейдж — ініціали цього ж імені замість зашитих «ВЛ»/«ПР»,
+              які під двома касирами Шипинок означали б те саме для двох різних людей.
+            */}
             <div className="hidden items-center gap-2 border-l border-border/70 pl-2.5 sm:flex">
               <div className="text-right leading-tight">
-                <div className="text-xs font-medium">
-                  {role === 'owner' ? 'Власник' : 'Приймальник'}
-                </div>
+                <div className="text-xs font-medium">{name ?? '—'}</div>
                 <div className="text-[11px] text-muted-foreground">
-                  {role === 'owner' ? 'повний доступ' : (point?.name ?? '')}
+                  {role === 'owner' ? 'керівник · усі точки' : `приймальник · ${point?.name ?? ''}`}
                 </div>
               </div>
               <Badge
                 variant="secondary"
                 className="size-7 rounded-full p-0 font-mono text-[11px] font-semibold"
               >
-                {role === 'owner' ? 'ВЛ' : 'ПР'}
+                {name ? initials(name) : '—'}
               </Badge>
             </div>
           </div>
