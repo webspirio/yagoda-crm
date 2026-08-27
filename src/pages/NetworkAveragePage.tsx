@@ -23,7 +23,6 @@ import {
   uahAuto,
   weekday,
 } from '@/lib/format'
-import { SEASON_START, TODAY } from '@/lib/seed'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Violation } from '@/lib/calc'
@@ -81,6 +80,7 @@ export function NetworkAveragePage() {
   const policies = useStore((s) => s.policies)
   const workDate = useStore((s) => s.workDate)
   const role = useStore((s) => s.role)
+  const config = useStore((s) => s.config)
 
   // Дата ЛОКАЛЬНА: `setWorkDate` на цьому екрані не викликається жодного разу (09 §5)
   const [date, setDate] = React.useState<ISODate>(workDate)
@@ -135,7 +135,7 @@ export function NetworkAveragePage() {
                 variant="ghost"
                 size="icon-sm"
                 className="rounded-r-none"
-                disabled={date <= SEASON_START}
+                disabled={date <= config.seasonStart}
                 onClick={() => setDate(addDays(date, -1))}
               >
                 <ChevronLeft className="size-4" />
@@ -145,14 +145,14 @@ export function NetworkAveragePage() {
                 variant="ghost"
                 size="icon-sm"
                 className="rounded-l-none"
-                disabled={date >= TODAY}
+                disabled={date >= config.businessToday}
                 onClick={() => setDate(addDays(date, 1))}
               >
                 <ChevronRight className="size-4" />
               </Button>
             </div>
-            {date !== TODAY ? (
-              <Button variant="outline" size="sm" onClick={() => setDate(TODAY)}>
+            {date !== config.businessToday ? (
+              <Button variant="outline" size="sm" onClick={() => setDate(config.businessToday)}>
                 Сьогодні
               </Button>
             ) : null}

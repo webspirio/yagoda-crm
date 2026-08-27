@@ -17,13 +17,24 @@ import type { CrateAllotment } from '@/lib/types'
  *
  * ЖОДНОГО ПІДРАХУНКУ ТУТ НЕМАЄ. Усі п'ять чисел приходять із `crateStanding()`; навіть
  * ширини смужок беруться з них, а не рахуються заново.
+ *
+ * `compact` — той самий склад наділу в панелі «Стан точки» на прийомці, де приймальник
+ * тримає весь свій день на одному екрані. ВАРІАНТ, А НЕ ДРУГИЙ КОМПОНЕНТ, і це рішення:
+ * тотожність `800 = 341 + 195 + 264` — те єдине, що клієнтка просила бачити ОЧИМА
+ * (1128–1129), і другий її рендерер розійшовся б із першим мовчки, без жодного червоного
+ * тесту. Компактний варіант знімає лише хром сторінки — картку-обгортку, рядок «з якої
+ * дати й хто призначив» і блок «Не хватає до наділу»; смужка, три числа, тотожність і
+ * червоне попередження про пробитий наділ лишаються ті самі.
  */
 export function CrateStandingBar({
   standing,
   record,
+  compact = false,
 }: {
   standing: CrateStanding
-  record: CrateAllotment | null
+  /** Не потрібен у `compact`: рядок походження наділу там не малюється */
+  record?: CrateAllotment | null
+  compact?: boolean
 }) {
   const { allotment, onHand, inField, atBase, shortfall } = standing
   // Наділу немає — «—», і НІКОЛИ 0: нуль стверджував би, що ящиків на точці нема, тоді
@@ -42,13 +53,14 @@ export function CrateStandingBar({
   const barTotal = bars.reduce((s, b) => s + b.value, 0)
 
   return (
-    <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+    <div className={compact ? undefined : 'rounded-xl bg-card p-5 ring-1 ring-foreground/10'}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <div className="flex items-baseline gap-2">
           <Eyebrow>Наділ</Eyebrow>
           <span
             className={cn(
-              'font-mono text-3xl leading-none font-semibold',
+              'font-mono leading-none font-semibold',
+              compact ? 'text-2xl' : 'text-3xl',
               known ? undefined : 'text-muted-foreground',
             )}
           >
@@ -56,14 +68,21 @@ export function CrateStandingBar({
           </span>
           {known ? <span className="text-sm text-muted-foreground">{crateWord(allotment)}</span> : null}
         </div>
-        <div className="text-xs text-muted-foreground">
-          {record
-            ? `з ${longDate(record.effectiveFrom)} · ${record.setBy}`
-            : 'наділу цій точці ще не призначали'}
-        </div>
+        {compact ? null : (
+          <div className="text-xs text-muted-foreground">
+            {record
+              ? `з ${longDate(record.effectiveFrom)} · ${record.setBy}`
+              : 'наділу цій точці ще не призначали'}
+          </div>
+        )}
       </div>
 
-      <div className="mt-4 flex h-2.5 w-full gap-[2px] overflow-hidden rounded-full bg-muted">
+      <div
+        className={cn(
+          'flex w-full gap-[2px] overflow-hidden rounded-full bg-muted',
+          compact ? 'mt-3 h-2' : 'mt-4 h-2.5',
+        )}
+      >
         {barTotal > 0
           ? bars.map((b) => (
               <div
@@ -75,33 +94,41 @@ export function CrateStandingBar({
           : null}
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <div className={cn('grid', compact ? 'mt-3 grid-cols-3 gap-2' : 'mt-4 gap-3 sm:grid-cols-3')}>
         <Figure
           label="Пустих на точці"
           value={known ? num(onHand) : '—'}
           dot="bg-[var(--leaf)]"
           tone={short ? 'text-destructive' : undefined}
+          compact={compact}
         />
-        <Figure label="У людей" value={num(inField)} dot="bg-[var(--amber)]" />
-        <Figure label="У нас з ягодою" value={num(atBase)} dot="bg-primary" />
+        <Figure label="У людей" value={num(inField)} dot="bg-[var(--amber)]" compact={compact} />
+        <Figure label="У нас з ягодою" value={num(atBase)} dot="bg-primary" compact={compact} />
       </div>
 
       {known ? (
-        <p className="mt-3 font-mono text-xs text-muted-foreground">
+        <p className={cn('font-mono text-xs text-muted-foreground', compact ? 'mt-2.5' : 'mt-3')}>
           {num(allotment)} = {num(onHand)} + {num(inField)} + {num(atBase)}
         </p>
       ) : null}
 
-      <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-border pt-3">
-        <span className="text-sm font-medium">Не хватає до наділу:</span>
-        <span className="font-mono text-lg font-semibold">{known ? num(shortfall) : '—'}</span>
-        <span className="text-xs text-muted-foreground">
-          (у людей {num(inField)} + у нас {num(atBase)})
-        </span>
-      </div>
+      {compact ? null : (
+        <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-border pt-3">
+          <span className="text-sm font-medium">Не хватає до наділу:</span>
+          <span className="font-mono text-lg font-semibold">{known ? num(shortfall) : '—'}</span>
+          <span className="text-xs text-muted-foreground">
+            (у людей {num(inField)} + у нас {num(atBase)})
+          </span>
+        </div>
+      )}
 
       {short ? (
-        <p className="mt-2 text-sm font-medium text-destructive">
+        <p
+          className={cn(
+            'mt-2 font-medium text-destructive',
+            compact ? 'text-xs leading-relaxed' : 'text-sm',
+          )}
+        >
           Наділ не покриває цього дня: пустих на точці менше, ніж нуль. Взяти їх нема
           звідки, поки не повернуть люди або не привезе база.
         </p>
@@ -115,12 +142,37 @@ function Figure({
   value,
   dot,
   tone,
+  compact,
 }: {
   label: string
   value: string
   dot: string
   tone?: string
+  compact?: boolean
 }) {
+  /*
+    У ВУЗЬКІЙ КОЛОНЦІ ПРИЙОМКИ ЧИСЛО СТОЇТЬ ПЕРШИМ, А ПІДПИС ПІД НИМ — і це не смак.
+    Підписи мають різну довжину («У людей» — рядок, «Пустих на точці» — два), тому при
+    порядку «підпис зверху» три числа сідають на різні базові лінії й перестають
+    порівнюватися очима — а порівняти їх і є вся робота цієї смужки. Обрізати підписи
+    («ПУСТИХ НА Т…») не можна: різниця між ними саме в останньому слові. Скоротити їх у
+    компактному варіанті — теж ні: тоді те саме число називалося б по-різному на «Ящиках»
+    і на прийомці.
+  */
+  if (compact) {
+    return (
+      <div className="min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className={cn('size-2 shrink-0 rounded-[3px]', dot)} />
+          <span className={cn('font-mono text-lg leading-none font-semibold', tone)}>
+            {value}
+          </span>
+        </div>
+        <Eyebrow className="mt-1 leading-tight">{label}</Eyebrow>
+      </div>
+    )
+  }
+
   return (
     <div className="flex items-center gap-2.5">
       <span className={cn('size-2.5 shrink-0 rounded-[3px]', dot)} />

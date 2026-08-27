@@ -23,7 +23,6 @@ import {
   round2,
 } from '@/lib/calc'
 import { num, uah, uahAuto } from '@/lib/format'
-import { DEFAULT_TARE_ID } from '@/lib/seed'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { crateWord, emptyCrateWord, modeLabel } from './helpers'
@@ -54,6 +53,7 @@ export function IssueCratesDialog({
   const issues = useStore((s) => s.crateIssues)
   const returns = useStore((s) => s.crateReturns)
   const issueCrates = useStore((s) => s.issueCrates)
+  const config = useStore((s) => s.config)
 
   const [supplierId, setSupplierId] = React.useState('')
   const [qty, setQty] = React.useState('')
@@ -79,7 +79,7 @@ export function IssueCratesDialog({
 
   // Ящик — це Чешка (рішення `Р-1`). Її ціна і є завдаток; знімок цієї ціни поїде в
   // документ, тому пізніша зміна ціни не перепише того, що ми вже взяли (`I65`).
-  const cheshka = tareTypes.find((t) => t.id === DEFAULT_TARE_ID)
+  const cheshka = tareTypes.find((t) => t.id === config.crateTareId)
   const perUnit = mode === 'deposit' && cheshka ? cheshka.price : 0
   const depositTotal = round2(units * perUnit)
 

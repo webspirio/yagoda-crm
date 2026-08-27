@@ -14,7 +14,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { maskDecimalInput, parseNumeric, round2 } from '@/lib/calc'
 import { longDate, uah, uahAuto } from '@/lib/format'
-import { SEASON_START, TODAY } from '@/lib/seed'
 import { useStore } from '@/lib/store'
 import type { CashStanding } from '@/lib/calc'
 import type { CashFloat, ISODate } from '@/lib/types'
@@ -59,18 +58,21 @@ export function CashFloatDialog({
 }) {
   const cashFloats = useStore((s) => s.cashFloats)
   const setCashFloat = useStore((s) => s.setCashFloat)
+  const config = useStore((s) => s.config)
 
   const [amountRaw, setAmountRaw] = React.useState('')
-  const [from, setFrom] = React.useState<ISODate>(TODAY)
+  const [from, setFrom] = React.useState<ISODate>(config.businessToday)
   const [reason, setReason] = React.useState('')
 
   React.useEffect(() => {
     if (open) {
       setAmountRaw(standing.float === null ? '' : String(standing.float))
-      setFrom(TODAY)
+      setFrom(config.businessToday)
       setReason('')
     }
-  }, [open, standing.float])
+    // `config.businessToday` у списку відтоді, як бізнес-дата приїжджає зі знімка, а не з
+    // модульної константи: раніше її не могло бути в залежностях у принципі.
+  }, [open, standing.float, config.businessToday])
 
   const amount = parseNumeric(amountRaw)
   const hasAny = cashFloats.some((f) => f.pointId === pointId)
@@ -125,7 +127,7 @@ export function CashFloatDialog({
                 id="float-from"
                 type="date"
                 value={from}
-                min={SEASON_START}
+                min={config.seasonStart}
                 onChange={(e) => {
                   const d = e.target.value
                   if (d) setFrom(d)

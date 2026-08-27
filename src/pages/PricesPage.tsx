@@ -23,14 +23,16 @@ import {
 import { Eyebrow, PageHeader } from '@/components/common/bits'
 import { Sparkline } from '@/components/common/Sparkline'
 import { useStore } from '@/lib/store'
+import { ownerName } from '@/lib/calc'
 import { addDays, longDate, num } from '@/lib/format'
-import { OWNER, PRODUCTS } from '@/lib/seed'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Berry } from '@/lib/types'
 
 export function PricesPage() {
   const berries = useStore((s) => s.berries)
+  const products = useStore((s) => s.products)
+  const users = useStore((s) => s.users)
   const points = useStore((s) => s.points)
   const activePointId = useStore((s) => s.activePointId)
   const role = useStore((s) => s.role)
@@ -61,7 +63,7 @@ export function PricesPage() {
   // спільність не входить: інакше кожен рядок читався б «різні» лише через нього
   const commonPoints = tradingPoints.filter((p) => p.kind === 'reception')
   // Товар → Сорт, 9 → 17 ✓ PART A. Ключем ціни лишається сорт; товар — тільки заголовок
-  const groups = PRODUCTS.map((p) => ({
+  const groups = products.map((p) => ({
     product: p,
     grades: activeBerries.filter((b) => b.product === p.name),
   })).filter((g) => g.grades.length > 0)
@@ -107,9 +109,9 @@ export function PricesPage() {
       date: workDate,
       berryId: editing.berry.id,
       price: v,
-      // той самий підпис, що й у сіді (`OWNER`), інакше журнал цін показував би
-      // одну людину під двома іменами
-      author: role === 'owner' ? OWNER : 'Приймальник',
+      // той самий підпис, що й у реєстрі підписів (`ownerName(users)`), інакше журнал
+      // цін показував би одну людину під двома іменами
+      author: role === 'owner' ? ownerName(users) : 'Приймальник',
       reason: reason.trim() || undefined,
     }
     if (everywhere) setPriceEverywhere(args)

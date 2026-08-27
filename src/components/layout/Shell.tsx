@@ -33,10 +33,10 @@ import {
 } from '@/components/ui/select'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
+import { signerFor } from '@/lib/calc'
 import { longDate, weekday } from '@/lib/format'
 import { pendingCount, useStore } from '@/lib/store'
 import type { Route, RouteName } from '@/lib/types'
-import { OPERATORS, TODAY } from '@/lib/seed'
 import { toast } from 'sonner'
 
 interface NavItem {
@@ -204,6 +204,7 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
   const points = useStore((s) => s.points)
   const activePointId = useStore((s) => s.activePointId)
   const role = useStore((s) => s.role)
+  const users = useStore((s) => s.users)
   const point = points.find((p) => p.id === activePointId)
 
   return (
@@ -232,7 +233,7 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
             Зміна
           </div>
           <div className="mt-1 text-sm text-sidebar-accent-foreground">
-            {OPERATORS[activePointId] ?? '—'}
+            {signerFor(users, activePointId) ?? '—'}
           </div>
           <div className="text-[11px] text-sidebar-foreground/45">на точці з 07:00</div>
         </div>
@@ -374,6 +375,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const role = useStore((s) => s.role)
   const activePointId = useStore((s) => s.activePointId)
   const points = useStore((s) => s.points)
+  const config = useStore((s) => s.config)
   const [mobileOpen, setMobileOpen] = React.useState(false)
   const point = points.find((p) => p.id === activePointId)
 
@@ -400,8 +402,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <PointSelect />
 
           <div className="hidden items-baseline gap-2 md:flex">
-            <span className="text-sm font-medium">{longDate(TODAY)}</span>
-            <span className="text-xs text-muted-foreground">{weekday(TODAY)}</span>
+            <span className="text-sm font-medium">{longDate(config.businessToday)}</span>
+            <span className="text-xs text-muted-foreground">{weekday(config.businessToday)}</span>
           </div>
 
           <div className="ml-auto flex items-center gap-2.5">

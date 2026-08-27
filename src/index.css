@@ -10,9 +10,6 @@
     --font-heading: var(--font-display);
     --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-    --color-terminal: var(--terminal);
-    --color-terminal-2: var(--terminal-2);
-    --color-terminal-line: var(--terminal-line);
     --color-readout: var(--readout);
     --color-leaf: var(--leaf);
     --color-amber: var(--amber);
@@ -83,9 +80,6 @@
     --ring: #c81e4e;
 
     /* instrument surfaces */
-    --terminal: #12140f;
-    --terminal-2: #1c1f18;
-    --terminal-line: #2e332a;
     --readout: #a8e86a;
 
     --leaf: #2e7a3c;
@@ -142,35 +136,6 @@
     text-transform: uppercase;
     letter-spacing: 0.16em;
     color: var(--muted-foreground);
-}
-
-@utility readout-glow {
-    text-shadow:
-        0 0 18px color-mix(in oklab, var(--readout) 45%, transparent),
-        0 0 46px color-mix(in oklab, var(--readout) 18%, transparent);
-}
-
-@utility grain {
-    background-image: radial-gradient(
-        circle at 1px 1px,
-        color-mix(in oklab, #ffffff 7%, transparent) 1px,
-        transparent 0
-    );
-    background-size: 4px 4px;
-}
-
-@keyframes readout-tick {
-    0% {
-        opacity: 0.4;
-        transform: translateY(2px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-.animate-tick {
-    animation: readout-tick 150ms ease-out;
 }
 
 @keyframes sync-sweep {

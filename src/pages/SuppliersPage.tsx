@@ -16,12 +16,11 @@ import { useStore } from '@/lib/store'
 import { supplierBalanceAt, sum, topSuppliers } from '@/lib/calc'
 import { KindBadge } from '@/components/common/kind'
 import { kg, shortDate, uah, uahAuto } from '@/lib/format'
-import { SEASON_START, TODAY } from '@/lib/seed'
 import { cn } from '@/lib/utils'
 import type { TopSupplierRow } from '@/lib/calc'
 import type { SupplierKind } from '@/lib/types'
 
-/** Період Н11: «сезон» — від `SEASON_START` до `TODAY`, «день» — глобальний `workDate`. */
+/** Період Н11: «сезон» — від `config.seasonStart` до `config.businessToday`, «день» — глобальний `workDate`. */
 type Period = 'season' | 'day'
 /** Порядок рядків Н11. Дефолт — вага ↓ («з більшого до меншого», `UC-33`). */
 type SortBy = 'kg' | 'amount'
@@ -36,6 +35,7 @@ export function SuppliersPage() {
   const workDate = useStore((s) => s.workDate)
   const role = useStore((s) => s.role)
   const go = useStore((s) => s.go)
+  const config = useStore((s) => s.config)
   const [q, setQ] = React.useState('')
   const [addOpen, setAddOpen] = React.useState(false)
   const [onlyDebt, setOnlyDebt] = React.useState(false)
@@ -94,8 +94,8 @@ export function SuppliersPage() {
 
   // Н11 «Здавальники за вагою» (`M26`, `UC-33`) — питання керівниці «хто нам взагалі везе».
   // Межі періоду включні з обох боків; «сезон» — уся наявна історія квитанцій.
-  const from = period === 'season' ? SEASON_START : workDate
-  const to = period === 'season' ? TODAY : workDate
+  const from = period === 'season' ? config.seasonStart : workDate
+  const to = period === 'season' ? config.businessToday : workDate
 
   // Маркер ОПТ/Фермер стоїть на людині, а `TopSupplierRow` його не несе — беремо з довідника.
   const kindOf = React.useMemo(
@@ -191,7 +191,7 @@ export function SuppliersPage() {
                 скасувала — мережевим став цей ЗВІТ, а залишок лишається попунктним. */}
             <div className="ml-auto text-sm text-muted-foreground">
               {period === 'season'
-                ? `сезон ${shortDate(SEASON_START)} — ${shortDate(TODAY)}`
+                ? `сезон ${shortDate(config.seasonStart)} — ${shortDate(config.businessToday)}`
                 : `день ${shortDate(workDate)}`}{' '}
               · вага складена по всіх пунктах
             </div>

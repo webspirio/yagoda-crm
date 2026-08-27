@@ -16,7 +16,6 @@ import { useStore, scopedPayouts, scopedReceptions } from '@/lib/store'
 import { originDates, reconcileDay, round2, sum } from '@/lib/calc'
 import { kg, longDate, plural, shortDate, tonnage, uah, uahAuto, weekday } from '@/lib/format'
 import { addDays } from '@/lib/format'
-import { SEASON_START, TODAY } from '@/lib/seed'
 import { cn } from '@/lib/utils'
 import type { Reception } from '@/lib/types'
 
@@ -31,6 +30,7 @@ export function DayPage() {
   const setWorkDate = useStore((s) => s.setWorkDate)
   const role = useStore((s) => s.role)
   const go = useStore((s) => s.go)
+  const config = useStore((s) => s.config)
   const [receipt, setReceipt] = React.useState<Reception | null>(null)
 
   const scopedR = scopedReceptions(receptions, activePointId)
@@ -77,7 +77,7 @@ export function DayPage() {
                 variant="ghost"
                 size="icon-sm"
                 className="rounded-r-none"
-                disabled={workDate <= SEASON_START}
+                disabled={workDate <= config.seasonStart}
                 onClick={() => setWorkDate(addDays(workDate, -1))}
               >
                 <ChevronLeft className="size-4" />
@@ -90,8 +90,8 @@ export function DayPage() {
                 aria-label="Перейти на дату"
                 title="Перейти на конкретну дату сезону"
                 value={workDate}
-                min={SEASON_START}
-                max={TODAY}
+                min={config.seasonStart}
+                max={config.businessToday}
                 onChange={(e) => {
                   const d = e.target.value
                   // Календар межі тримає сам, набрана руками дата — ні. Поле, стерте
@@ -99,8 +99,8 @@ export function DayPage() {
                   // межі, а не ігноруємо — інакше контрольований input показував би
                   // одне, а сторінка рахувала б інше.
                   if (!d) return
-                  if (d < SEASON_START) setWorkDate(SEASON_START)
-                  else if (d > TODAY) setWorkDate(TODAY)
+                  if (d < config.seasonStart) setWorkDate(config.seasonStart)
+                  else if (d > config.businessToday) setWorkDate(config.businessToday)
                   else setWorkDate(d)
                 }}
                 className="h-7 w-[124px] rounded-none border-0 bg-transparent px-1.5 text-center font-mono text-xs shadow-none focus-visible:ring-0"
@@ -109,14 +109,14 @@ export function DayPage() {
                 variant="ghost"
                 size="icon-sm"
                 className="rounded-l-none"
-                disabled={workDate >= TODAY}
+                disabled={workDate >= config.businessToday}
                 onClick={() => setWorkDate(addDays(workDate, 1))}
               >
                 <ChevronRight className="size-4" />
               </Button>
             </div>
-            {workDate !== TODAY ? (
-              <Button variant="outline" size="sm" onClick={() => setWorkDate(TODAY)}>
+            {workDate !== config.businessToday ? (
+              <Button variant="outline" size="sm" onClick={() => setWorkDate(config.businessToday)}>
                 Сьогодні
               </Button>
             ) : null}

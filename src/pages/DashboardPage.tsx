@@ -17,13 +17,13 @@ import { Sparkline } from '@/components/common/Sparkline'
 import { scopedReceptions, useStore } from '@/lib/store'
 import { openDebts, sum } from '@/lib/calc'
 import { addDays, kg, num, shortDate, tonnage, uah } from '@/lib/format'
-import { SEASON_START, TODAY } from '@/lib/seed'
+import type { AppConfig } from '@/lib/types'
 
-const RANGES = [
-  { id: '7', label: '7 днів', from: addDays(TODAY, -6) },
-  { id: '14', label: '14 днів', from: addDays(TODAY, -13) },
-  { id: '30', label: '30 днів', from: addDays(TODAY, -29) },
-  { id: 'season', label: 'Весь сезон', from: SEASON_START },
+const buildRanges = (config: AppConfig) => [
+  { id: '7', label: '7 днів', from: addDays(config.businessToday, -6) },
+  { id: '14', label: '14 днів', from: addDays(config.businessToday, -13) },
+  { id: '30', label: '30 днів', from: addDays(config.businessToday, -29) },
+  { id: 'season', label: 'Весь сезон', from: config.seasonStart },
 ]
 
 const chartConfig = {
@@ -40,7 +40,10 @@ export function DashboardPage() {
   const points = useStore((s) => s.points)
   const activePointId = useStore((s) => s.activePointId)
   const go = useStore((s) => s.go)
+  const config = useStore((s) => s.config)
   const [rangeId, setRangeId] = React.useState('30')
+
+  const RANGES = React.useMemo(() => buildRanges(config), [config])
 
   const from = RANGES.find((r) => r.id === rangeId)!.from
 
@@ -54,9 +57,9 @@ export function DashboardPage() {
 
   const days = React.useMemo(() => {
     const list: string[] = []
-    for (let d = from; d <= TODAY; d = addDays(d, 1)) list.push(d)
+    for (let d = from; d <= config.businessToday; d = addDays(d, 1)) list.push(d)
     return list
-  }, [from])
+  }, [from, config.businessToday])
 
   const daily = React.useMemo(() => {
     const byDay = new Map<string, { net: number; amount: number; paidToday: number; settled: number }>()
@@ -253,7 +256,7 @@ export function DashboardPage() {
                   {daily.map((d) => (
                     <Cell
                       key={d.date}
-                      fill={d.date === TODAY ? 'var(--chart-3)' : 'var(--chart-1)'}
+                      fill={d.date === config.businessToday ? 'var(--chart-3)' : 'var(--chart-1)'}
                     />
                   ))}
                 </Bar>

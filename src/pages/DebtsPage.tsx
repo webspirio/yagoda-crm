@@ -8,7 +8,6 @@ import { SettleDialog } from '@/components/debts/SettleDialog'
 import { scopedReceptions, useStore } from '@/lib/store'
 import { openDebts, sum } from '@/lib/calc'
 import { daysBetween, daysWord, shortDate, uah, uahAuto } from '@/lib/format'
-import { TODAY } from '@/lib/seed'
 import { cn } from '@/lib/utils'
 
 export function DebtsPage() {
@@ -18,6 +17,7 @@ export function DebtsPage() {
   const points = useStore((s) => s.points)
   const activePointId = useStore((s) => s.activePointId)
   const go = useStore((s) => s.go)
+  const config = useStore((s) => s.config)
   const [q, setQ] = React.useState('')
   const [settleFor, setSettleFor] = React.useState<string | null>(null)
   const [expanded, setExpanded] = React.useState<string | null>(null)
@@ -53,7 +53,7 @@ export function DebtsPage() {
 
   const total = sum(rows, (r) => r.balance)
   const oldestAge = rows.reduce((max, r) => {
-    const d = r.open.length ? daysBetween(r.open[0].reception.date, TODAY) : 0
+    const d = r.open.length ? daysBetween(r.open[0].reception.date, config.businessToday) : 0
     return Math.max(max, d)
   }, 0)
   const settledTotal = sum(
@@ -104,7 +104,7 @@ export function DebtsPage() {
       ) : (
         <div className="flex flex-col gap-2">
           {rows.map((r) => {
-            const age = r.open.length ? daysBetween(r.open[0].reception.date, TODAY) : 0
+            const age = r.open.length ? daysBetween(r.open[0].reception.date, config.businessToday) : 0
             const isOpen = expanded === r.supplier.id
             return (
               <div key={r.supplier.id} className="rounded-xl bg-card ring-1 ring-foreground/10">

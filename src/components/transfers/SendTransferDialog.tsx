@@ -13,9 +13,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { maskDecimalInput, parseNumeric, round2 } from '@/lib/calc'
+import { maskDecimalInput, ownerName, parseNumeric, round2 } from '@/lib/calc'
 import { num, uah, uahAuto } from '@/lib/format'
-import { OWNER } from '@/lib/seed'
 import { useCashStanding, useCrateStanding, useStore } from '@/lib/store'
 import type { ISODate, Transfer } from '@/lib/types'
 
@@ -73,6 +72,7 @@ export function SendTransferDialog({
   const crates = useCrateStanding(pointId ?? '', date)
   const sendTransfer = useStore((s) => s.sendTransfer)
   const voidTransfer = useStore((s) => s.voidTransfer)
+  const users = useStore((s) => s.users)
 
   const owed = cash.floatShortfall
   const reportedCash = original?.reportedCash ?? original?.cash ?? 0
@@ -126,7 +126,7 @@ export function SendTransferDialog({
     // Порядок має значення: спершу сторно старого, потім новий документ. Якби новий ішов
     // першим, а сторно відмовило, точка отримала б ДВА живі перекази на ту саму поїздку.
     if (original) {
-      const voided = voidTransfer(original.id, reason.trim(), OWNER)
+      const voided = voidTransfer(original.id, reason.trim(), ownerName(users))
       if (!voided) {
         toast.error('Сторнувати не вдалося', {
           description: 'Причина сторно обовʼязкова, і сторнує лише керівник.',

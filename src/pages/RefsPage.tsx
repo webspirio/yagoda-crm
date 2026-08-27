@@ -6,7 +6,6 @@ import { Eyebrow, PageHeader } from '@/components/common/bits'
 import { useStore } from '@/lib/store'
 import { longDate, num } from '@/lib/format'
 import { maskDecimalInput, parseNumeric } from '@/lib/calc'
-import { PRODUCTS, TODAY } from '@/lib/seed'
 import { toast } from 'sonner'
 
 /**
@@ -22,6 +21,8 @@ export function RefsPage() {
   const updateTareType = useStore((s) => s.updateTareType)
   const receptions = useStore((s) => s.receptions)
   const role = useStore((s) => s.role)
+  const products = useStore((s) => s.products)
+  const config = useStore((s) => s.config)
 
   const usage = React.useMemo(() => {
     const map = new Map<string, number>()
@@ -32,7 +33,7 @@ export function RefsPage() {
 
   // Товар → Сорт, 9 → 17 ✓ PART A. У коді список лишається плоским і ключем ціни
   // є сорт; два рівні існують поки що тільки на екрані (docs/07-roadmap §1.2).
-  const byProduct = PRODUCTS.map((p) => ({
+  const byProduct = products.map((p) => ({
     product: p,
     grades: berries.filter((b) => b.product === p.name),
   }))
@@ -118,7 +119,10 @@ export function RefsPage() {
                   <div className="flex flex-col gap-1">
                     {g.grades.map((b) => {
                       // сорт із retired не «приймаємо» навіть у своєму вікні сезону (D-8)
-                      const active = !b.retired && TODAY >= b.from && TODAY <= b.to
+                      const active =
+                        !b.retired &&
+                        config.businessToday >= b.from &&
+                        config.businessToday <= b.to
                       return (
                         <div
                           key={b.id}
@@ -156,7 +160,7 @@ export function RefsPage() {
                             <span className="w-[74px] shrink-0 text-right text-[10px] text-muted-foreground">
                               {b.retired
                                 ? 'виведено'
-                                : TODAY < b.from
+                                : config.businessToday < b.from
                                   ? 'сезон ще не почався'
                                   : 'сезон закрито'}
                             </span>

@@ -27,13 +27,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Eyebrow, PageHeader } from '@/components/common/bits'
-import { costOfDay, maskDecimalInput, parseNumeric, sum } from '@/lib/calc'
+import { costOfDay, maskDecimalInput, ownerName, parseNumeric, sum } from '@/lib/calc'
 import { addDays, kg, longDate, num, shortDate, uah, uahAuto, weekday } from '@/lib/format'
-import { OWNER, SEASON_START, TODAY } from '@/lib/seed'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { CostRow, Violation } from '@/lib/calc'
-import type { ISODate } from '@/lib/types'
+import type { ExpensePolicy, ISODate } from '@/lib/types'
 
 /** Префікс значення селектора «усе на один товар» — правило `R-09`. */
 const SINGLE = 'single:'
@@ -78,6 +77,8 @@ export function CostOfDayPage() {
   const policies = useStore((s) => s.policies)
   const workDate = useStore((s) => s.workDate)
   const role = useStore((s) => s.role)
+  const users = useStore((s) => s.users)
+  const config = useStore((s) => s.config)
   const addExpense = useStore((s) => s.addExpense)
   const removeExpense = useStore((s) => s.removeExpense)
   const setExpensePolicy = useStore((s) => s.setExpensePolicy)
@@ -157,7 +158,7 @@ export function CostOfDayPage() {
     const trimmed = label.trim()
     const value = parseNumeric(amount)
     if (!trimmed || value === 0) return
-    addExpense({ date, pointId, label: trimmed, amount: value, createdBy: OWNER })
+    addExpense({ date, pointId, label: trimmed, amount: value, createdBy: ownerName(users) })
     setLabel('')
     setAmount('')
   }
@@ -188,7 +189,7 @@ export function CostOfDayPage() {
                 variant="ghost"
                 size="icon-sm"
                 className="rounded-r-none"
-                disabled={date <= SEASON_START}
+                disabled={date <= config.seasonStart}
                 onClick={() => setDate(addDays(date, -1))}
               >
                 <ChevronLeft className="size-4" />
@@ -198,14 +199,14 @@ export function CostOfDayPage() {
                 variant="ghost"
                 size="icon-sm"
                 className="rounded-l-none"
-                disabled={date >= TODAY}
+                disabled={date >= config.businessToday}
                 onClick={() => setDate(addDays(date, 1))}
               >
                 <ChevronRight className="size-4" />
               </Button>
             </div>
-            {date !== TODAY ? (
-              <Button variant="outline" size="sm" onClick={() => setDate(TODAY)}>
+            {date !== config.businessToday ? (
+              <Button variant="outline" size="sm" onClick={() => setDate(config.businessToday)}>
                 Сьогодні
               </Button>
             ) : null}
@@ -553,7 +554,7 @@ export function CostOfDayPage() {
                         setExpensePolicy({
                           date,
                           pointId,
-                          basis: v.startsWith(SINGLE) ? 'byWeight' : (v as 'byWeight' | 'byValue'),
+                          basis: v.startsWith(SINGLE) ? 'byWeight' : (v as ExpensePolicy['basis']),
                           singleProduct: v.startsWith(SINGLE) ? v.slice(SINGLE.length) : null,
                         })
                       }

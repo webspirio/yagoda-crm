@@ -11,18 +11,17 @@ import { ShipmentDialog } from '@/components/crates/ShipmentDialog'
 import { crateWord, inFieldRows } from '@/components/crates/helpers'
 import { effectiveAt, shipmentTotal } from '@/lib/calc'
 import { longDate, num } from '@/lib/format'
-import { TODAY } from '@/lib/seed'
 import { useCashStanding, useCrateStanding, useScope, useStore } from '@/lib/store'
 
 /**
  * Н14 · Ящики на точці (`21 §5`, реалізує `M40`). Це той самий блок, який клієнтка
  * просила поставити поруч із прийомкою: «блок прийомка окремо, блок ящики» (1076).
  *
- * ЧОМУ ДАТА ТУТ `TODAY`, А НЕ `workDate`. Це не звіт, який гортають, а стан точки просто
- * зараз: ящики видають і приймають у момент, коли людина стоїть біля столу. Команди
- * стора (`issueCrates`, `returnCrates`) прибиті до `TODAY` навмисно — і якби екран показав
- * вчорашній склад наділу, видача вписалася б у сьогоднішній день, а число на екрані не
- * ворухнулося б. Гортати дні — робота «Журналу», не цього екрана.
+ * ЧОМУ ДАТА ТУТ `config.businessToday`, А НЕ `workDate`. Це не звіт, який гортають, а стан
+ * точки просто зараз: ящики видають і приймають у момент, коли людина стоїть біля столу.
+ * Команди стора (`issueCrates`, `returnCrates`) прибиті до `config.businessToday` навмисно —
+ * і якби екран показав вчорашній склад наділу, видача вписалася б у сьогоднішній день, а
+ * число на екрані не ворухнулося б. Гортати дні — робота «Журналу», не цього екрана.
  *
  * ЩО РАХУЄ ЦЕЙ ФАЙЛ: нічого. Склад наділу дає `useCrateStanding()`, касу за ящики —
  * `useCashStanding()`, баланс людини — `crateBalance()` всередині `inFieldRows()`.
@@ -35,6 +34,7 @@ export function CratesPage() {
   const returns = useStore((s) => s.crateReturns)
   const allotments = useStore((s) => s.crateAllotments)
   const shipments = useStore((s) => s.crateShipments)
+  const config = useStore((s) => s.config)
   const { role, activePointId } = useScope()
 
   // Керівник у режимі «Усі точки» однаково працює з ОДНІЄЮ точкою: ящики лежать на точці,
@@ -44,9 +44,9 @@ export function CratesPage() {
   const pointId = activePointId === 'all' ? fallbackId : activePointId
   const point = points.find((p) => p.id === pointId)
 
-  const standing = useCrateStanding(pointId, TODAY)
-  const cash = useCashStanding(pointId, TODAY)
-  const record = effectiveAt(allotments, pointId, TODAY)
+  const standing = useCrateStanding(pointId, config.businessToday)
+  const cash = useCashStanding(pointId, config.businessToday)
+  const record = effectiveAt(allotments, pointId, config.businessToday)
   const rows = React.useMemo(
     () => inFieldRows(pointId, suppliers, issues, returns),
     [pointId, suppliers, issues, returns],
@@ -58,7 +58,7 @@ export function CratesPage() {
   const [allotOpen, setAllotOpen] = React.useState(false)
 
   const postedToday = shipments.filter(
-    (s) => s.pointId === pointId && s.date === TODAY && !s.voidedDate,
+    (s) => s.pointId === pointId && s.date === config.businessToday && !s.voidedDate,
   )
   const shippedToday = postedToday.reduce((n, s) => n + shipmentTotal(s), 0)
   const withBerryToday = postedToday.reduce((n, s) => n + s.withBerryUnits, 0)
@@ -79,7 +79,7 @@ export function CratesPage() {
   return (
     <div className="mx-auto max-w-[1000px]">
       <PageHeader
-        eyebrow={`${point.name} · ${point.village} · ${longDate(TODAY)}`}
+        eyebrow={`${point.name} · ${point.village} · ${longDate(config.businessToday)}`}
         title="Ящики"
         actions={
           /* §7: наділ змінює КЕРІВНИК. Приймальникові цієї кнопки не існує — не «є, але
@@ -151,7 +151,7 @@ export function CratesPage() {
         open={shipOpen}
         onOpenChange={setShipOpen}
         pointId={pointId}
-        date={TODAY}
+        date={config.businessToday}
         standing={standing}
       />
       {role === 'owner' ? (

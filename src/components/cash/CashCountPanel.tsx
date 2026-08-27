@@ -11,9 +11,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Eyebrow } from '@/components/common/bits'
-import { maskDecimalInput, parseNumeric } from '@/lib/calc'
+import { maskDecimalInput, ownerName, parseNumeric, signerFor } from '@/lib/calc'
 import { uah } from '@/lib/format'
-import { OPERATORS, OWNER, TODAY } from '@/lib/seed'
 import { useScope, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { CashCount, ISODate, Shift } from '@/lib/types'
@@ -72,6 +71,8 @@ export function CashCountPanel({ pointId, date }: { pointId: string; date: ISODa
   const openShift = useStore((s) => s.openShift)
   const closeShift = useStore((s) => s.closeShift)
   const settleShift = useStore((s) => s.settleShift)
+  const users = useStore((s) => s.users)
+  const config = useStore((s) => s.config)
   // Роль — через `useScope()`, а не пропом: керівницьких дій приймальникові тут не
   // показують узагалі, і рішення про це має ухвалюватися в тому самому файлі, що їх малює.
   const { role } = useScope()
@@ -155,7 +156,7 @@ export function CashCountPanel({ pointId, date }: { pointId: string; date: ISODa
     }
     const doc = openShift({
       pointId,
-      operatorId: OPERATORS[pointId] ?? OWNER,
+      operatorId: signerFor(users, pointId) ?? ownerName(users),
       openingFloat: parseNumeric(morning),
     })
     if (!doc) {
@@ -319,7 +320,7 @@ export function CashCountPanel({ pointId, date }: { pointId: string; date: ISODa
               <Calculator className="size-4" />
               Перерахувати касу
             </Button>
-            {isOperator && date === TODAY ? (
+            {isOperator && date === config.businessToday ? (
               <Button variant="outline" size="sm" onClick={() => setCloseOpen(true)}>
                 Закрити зміну
               </Button>
@@ -332,7 +333,7 @@ export function CashCountPanel({ pointId, date }: { pointId: string; date: ISODa
             Зміну цього дня вже зведено. Другої книги на ту саму шухляду не заводять, і
             перерахунок до закритої зміни не чіпляється.
           </span>
-        ) : isOperator && date === TODAY ? (
+        ) : isOperator && date === config.businessToday ? (
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setShiftOpen(true)}>
               Відкрити зміну

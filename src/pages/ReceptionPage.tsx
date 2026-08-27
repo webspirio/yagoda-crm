@@ -3,7 +3,6 @@ import {
   AlertTriangle,
   Check,
   ChevronRight,
-  Grid2x2,
   HandCoins,
   Minus,
   Package,
@@ -23,14 +22,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { ScaleTerminal } from '@/components/reception/ScaleTerminal'
 import { SupplierPicker } from '@/components/reception/SupplierPicker'
 import { ReceiptDialog } from '@/components/reception/ReceiptDialog'
-import { NumPad } from '@/components/reception/NumPad'
+import { PointStatePanel } from '@/components/reception/PointStatePanel'
 import { Eyebrow, EmptyState } from '@/components/common/bits'
 import { useCashStanding, useStore } from '@/lib/store'
 import {
   allocatePayout,
+  checkBerryPayout,
   checkSurcharge,
   maskDecimalInput,
   openDebts,
@@ -38,12 +37,12 @@ import {
   parseNumeric,
   reconcileDay,
   round2,
+  signerFor,
   sum,
   visitMath,
   weigh,
 } from '@/lib/calc'
 import { kg, longDate, num, plural, shortDate, tonnage, uah, uahAuto } from '@/lib/format'
-import { DEFAULT_TARE_ID, OPERATORS, TODAY } from '@/lib/seed'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { VisitLineInput } from '@/lib/ports'
@@ -73,6 +72,8 @@ export function ReceptionPage() {
     payouts,
     prices,
     settings,
+    users,
+    config,
     activePointId,
     points,
     priceFor,
@@ -88,14 +89,13 @@ export function ReceptionPage() {
   const [gross, setGross] = React.useState('')
   const [palletInput, setPalletInput] = React.useState('')
   const [palletOpen, setPalletOpen] = React.useState(false)
-  const [tare, setTare] = React.useState<TareLine[]>([{ tareId: DEFAULT_TARE_ID, count: 0 }])
+  const [tare, setTare] = React.useState<TareLine[]>([{ tareId: config.crateTareId, count: 0 }])
   const [bonusInput, setBonusInput] = React.useState('0')
   const [lines, setLines] = React.useState<DraftLine[]>([])
   // null = ще не торкались, тоді перемикач стоїть так, як просить M10: увімкнено, якщо є залишок
   const [includeOverride, setIncludeOverride] = React.useState<boolean | null>(null)
   const [paidInput, setPaidInput] = React.useState('')
   const [paidTouched, setPaidTouched] = React.useState(false)
-  const [padOpen, setPadOpen] = React.useState(true)
   const [receipt, setReceipt] = React.useState<Reception | null>(null)
   const [receiptPayout, setReceiptPayout] = React.useState<Payout>()
 
@@ -107,10 +107,10 @@ export function ReceptionPage() {
         // сорт, виведений з обігу, на прийомці не пробивається — але історичні
         // квитанції на нього лишаються валідними (рішення D-8, «Опт забрати просто вже»)
         .filter((b) => !b.retired)
-        .map((b) => ({ berry: b, price: priceFor(TODAY, pointId, b.id) }))
+        .map((b) => ({ berry: b, price: priceFor(config.businessToday, pointId, b.id) }))
         .filter((x) => x.price !== undefined),
     // oxlint-disable-next-line react-hooks/exhaustive-deps -- `prices` не зайва: priceFor — метод стора, який читає get().prices всередині, тож саме цей ключ і перевираховує мемо після зміни ціни дня. Прибрати його — лишити на прийомці вчорашню ціну.
-    [berries, pointId, priceFor, prices],
+    [berries, config.businessToday, pointId, priceFor, prices],
   )
 
   /** Товар → сорти: два рівні на екрані, один плаский `Berry` у коді */
@@ -131,7 +131,7 @@ export function ReceptionPage() {
     }
   }, [availableBerries, berryId, lines.length])
 
-  const price = berryId ? (priceFor(TODAY, pointId, berryId) ?? 0) : 0
+  const price = berryId ? (priceFor(config.businessToday, pointId, berryId) ?? 0) : 0
   const bonusNum = parseNumeric(bonusInput)
   const surcharge = checkSurcharge(bonusNum, settings)
   // понад межу значення НЕ обрізається тихо: позиція йде без надбавки, а різниця — керівнику (M7)
@@ -190,7 +190,7 @@ export function ReceptionPage() {
 
   // G12/I58: у касі за ЯГОДУ лежить стільки, скільки лежить. Це не сума шухляди —
   // завдатки за ящики чужі (21 §3.5), і виплата за ягоду їх не чіпає.
-  const berryCash = useCashStanding(pointId, TODAY).berryCash
+  const berryCash = useCashStanding(pointId, config.businessToday).berryCash
 
   React.useEffect(() => {
     // «Видано готівкою» за замовчуванням — уся сума РАЗОМ, як вона й видається найчастіше.
@@ -233,10 +233,39 @@ export function ReceptionPage() {
       : tareUnits === 0
         ? 'Вкажіть кількість тари — без неї брутто пішло б у чисту вагу цілком.'
         : 'Чиста вага виходить нульова: піддон і тара зʼїдають усе брутто.'
-  const ready = Boolean(supplierId) && allLines.length > 0 && !draftIncomplete
+  /**
+   * G12/I58 на кнопці. Досі гейт про касу не знав нічого: підказка на :951 світилася
+   * бурштином, кнопка лишалася активною, стор відмовляв — і відмову ніхто не показував.
+   * `math.paid` тут ДОРІВНЮЄ `cashLeaving` зі `store.addVisit` за побудовою `visitMath()`:
+   * `paidToday + paidToPast === paid`. Тому кнопка тепер вимикається РІВНО тоді, коли
+   * рушій відмовить, а не приблизно.
+   */
+  /**
+   * Гейт кнопки викликає ТУ САМУ функцію рушія, що й block у сторі, — `checkBerryPayout()`.
+   * Не свою копію умови: `ports.ts` про `check*` каже «правило одне на двох», і саме тут
+   * друга копія вже завелася і вже була НЕПРАВИЛЬНОЮ.
+   *
+   * ⚠️ ЩО БУЛО. Перша версія рахувала `math.paid > berryCash + 0.009` руками. Рушій же
+   * затискає касу нулем (`max = Math.max(0, round2(berryCash))`) і перевіряє лише тоді,
+   * коли з шухляди справді щось виходить. При відʼємній касі — а вона досяжна, керівник
+   * може знизити наділ заднім числом, і `cashStanding()` фіксує зміряні −51 130,18 ₴ —
+   * умова `0 > берykash + 0.009` ставала правдивою, і кнопка блокувала візит із
+   * «Видано = 0», тобто прийомку В БОРГ, яку рушій приймає без питань. Саме її порожня
+   * каса й вимагає: ягоду беруть, гроші лягають у залишок постачальника.
+   *
+   * `math.paid` тут дорівнює `cashLeaving` зі `store.addVisit` за побудовою `visitMath()`:
+   * `paidToday + paidToPast === paid`. Тому гейт і block тепер тотожні за визначенням.
+   */
+  const payCheck = checkBerryPayout(math.paid, berryCash)
+  // `CrateCheck.max` — `number | null`, бо той самий тип обслуговує `checkCrateIssue()`, де
+  // «наділу ще не було» це null. `checkBerryPayout()` завжди віддає число, тому 0 тут — не
+  // здогадка, а недосяжна гілка, яку все одно треба назвати замість `!`.
+  const payCeiling = payCheck.max ?? 0
+  const overBerryCash = math.paid > 0.009 && !payCheck.ok
+  const ready = Boolean(supplierId) && allLines.length > 0 && !draftIncomplete && !overBerryCash
 
   const todayReceptions = receptions
-    .filter((r) => r.date === TODAY && r.pointId === pointId)
+    .filter((r) => r.date === config.businessToday && r.pointId === pointId)
     .sort((a, b) => b.time.localeCompare(a.time))
   /** Візит — це один рядок у журналі дня, скільки б позицій у ньому не було (M5) */
   const todayVisits = (() => {
@@ -250,7 +279,7 @@ export function ReceptionPage() {
   })()
 
   const day = reconcileDay(
-    TODAY,
+    config.businessToday,
     receptions.filter((r) => r.pointId === pointId),
     payouts.filter((p) => p.pointId === pointId),
   )
@@ -259,7 +288,7 @@ export function ReceptionPage() {
     setGross('')
     setPalletInput('')
     setPalletOpen(false)
-    setTare([{ tareId: DEFAULT_TARE_ID, count: 0 }])
+    setTare([{ tareId: config.crateTareId, count: 0 }])
     setBonusInput('0')
   }
 
@@ -292,11 +321,11 @@ export function ReceptionPage() {
       toast.error('Оберіть сорт і введіть брутто більше за тару')
       return
     }
-    const { receptions: created, payout } = addVisit({
-      date: TODAY,
+    const res = addVisit({
+      date: config.businessToday,
       pointId,
       supplierId,
-      operator: OPERATORS[pointId] ?? point.name,
+      operator: signerFor(users, pointId) ?? point.name,
       carriedIn: math.carriedIn,
       paid: math.paid,
       lines: allLines.map(({ berryId: id, gross: g, pallet, tare: t, tareWeight, net, price: p, bonus: b, amount }) => ({
@@ -311,6 +340,15 @@ export function ReceptionPage() {
         amount,
       })),
     })
+    // Відмова рушія — `undefined`. Раніше вона поверталася порожнім масивом, тост
+    // «Прийнято …» друкувався поверх неї, форма очищалася, і візит зникав без слова.
+    if (!res) {
+      toast.error('Прийомку не проведено', {
+        description: `У касі за ягоду ${uah(Math.max(0, berryCash), { decimals: 2 })} — видати ${uahAuto(math.paid)} нема з чого.`,
+      })
+      return
+    }
+    const { receptions: created, payout } = res
     // квитанція візиту: діалог сам збирає всі його позиції за visitId
     setReceipt(created[0])
     setReceiptPayout(payout)
@@ -325,7 +363,6 @@ export function ReceptionPage() {
     reset()
   }
 
-  const tareTypeName = tareTypes.find((t) => t.id === tare[0]?.tareId)?.name ?? ''
   const positionsWord = plural(allLines.length, 'позиція', 'позиції', 'позицій')
 
   return (
@@ -333,7 +370,7 @@ export function ReceptionPage() {
       <div className="flex flex-wrap items-end justify-between gap-4 pb-5">
         <div>
           <Eyebrow className="mb-1.5">
-            {point.name} · {point.village} · {longDate(TODAY)}
+            {point.name} · {point.village} · {longDate(config.businessToday)}
           </Eyebrow>
           <h1 className="font-display text-2xl leading-tight font-medium">Прийомка ягоди</h1>
         </div>
@@ -366,22 +403,8 @@ export function ReceptionPage() {
         />
       ) : (
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,1fr)]">
-          {/* ------------- left: terminal + form ------------- */}
+          {/* ------------- left: form ------------- */}
           <div className="flex flex-col gap-5">
-            <ScaleTerminal
-              berryName={berries.find((b) => b.id === berryId)?.name}
-              gross={result.gross}
-              pallet={result.pallet}
-              tareWeight={result.tareWeight}
-              tareUnits={result.tareUnits}
-              tareLabel={tareTypeName}
-              net={result.net}
-              price={price}
-              bonus={bonus}
-              amount={result.amount}
-              ready={Boolean(draft)}
-            />
-
             <div className="rounded-xl bg-card ring-1 ring-foreground/10">
               {/* supplier */}
               <div className="border-b border-border/70 p-4">
@@ -436,192 +459,163 @@ export function ReceptionPage() {
               {/* weight — M9 диктує: спочатку вага, і тільки потім сорт */}
               <div className="border-b border-border/70 p-4">
                 <Eyebrow className="mb-2">2 · Вага з тарою</Eyebrow>
-                <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
-                  <div className="flex flex-col gap-3">
-                    <div className="grid gap-1.5">
-                      <Label htmlFor="gross" className="text-xs text-muted-foreground">
-                        Брутто — ягода разом із тарою
-                      </Label>
-                      <div className="flex flex-wrap items-start gap-2">
-                        <div className="relative min-w-[180px] flex-1">
-                          <Input
-                            id="gross"
-                            value={gross.replace('.', ',')}
-                            onChange={(e) => setGross(maskDecimalInput(e.target.value))}
-                            inputMode="decimal"
-                            placeholder="0,00"
-                            className="h-14 pr-12 font-mono text-2xl font-semibold"
-                          />
-                          <span className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 font-mono text-sm text-muted-foreground">
-                            кг
-                          </span>
-                        </div>
-                        {showPallet ? (
-                          <div className="grid gap-1">
-                            <Label htmlFor="pallet" className="text-xs text-muted-foreground">
-                              Піддон
-                            </Label>
-                            <div className="relative w-[124px]">
-                              <Input
-                                id="pallet"
-                                value={palletInput.replace('.', ',')}
-                                onChange={(e) => setPalletInput(maskDecimalInput(e.target.value))}
-                                inputMode="decimal"
-                                placeholder="0,0"
-                                className="h-10 pr-9 font-mono text-base font-semibold"
-                              />
-                              <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 font-mono text-xs text-muted-foreground">
-                                кг
-                              </span>
-                            </div>
-                          </div>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="mt-6 text-muted-foreground"
-                            onClick={() => setPalletOpen(true)}
-                          >
-                            <Plus className="size-3.5" />
-                            Піддон
-                          </Button>
-                        )}
+                <div className="flex flex-col gap-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="gross" className="text-xs text-muted-foreground">
+                      Брутто — ягода разом із тарою
+                    </Label>
+                    <div className="flex flex-wrap items-start gap-2">
+                      <div className="relative min-w-[180px] flex-1">
+                        <Input
+                          id="gross"
+                          value={gross.replace('.', ',')}
+                          onChange={(e) => setGross(maskDecimalInput(e.target.value))}
+                          inputMode="decimal"
+                          placeholder="0,00"
+                          className="h-14 pr-12 font-mono text-2xl font-semibold"
+                        />
+                        <span className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 font-mono text-sm text-muted-foreground">
+                          кг
+                        </span>
                       </div>
-                      {grossHint || draftHint ? (
-                        <div className="flex items-start gap-2 text-xs text-[var(--amber)]">
-                          <AlertTriangle className="mt-px size-3.5 shrink-0" />
-                          <span>{grossHint || draftHint}</span>
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <div className="grid gap-1.5">
-                      <Label className="text-xs text-muted-foreground">
-                        Тара — знімається автоматично
-                      </Label>
-                      {tare.map((line, idx) => {
-                        const t = tareTypes.find((x) => x.id === line.tareId)
-                        return (
-                          <div key={line.tareId} className="flex items-center gap-2">
-                            <Select
-                              value={line.tareId}
-                              onValueChange={(v) =>
-                                setTare((prev) =>
-                                  prev.map((l, i) => (i === idx ? { ...l, tareId: v } : l)),
-                                )
-                              }
-                            >
-                              <SelectTrigger className="h-10 flex-1">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {tareTypes.map((t) => (
-                                  <SelectItem key={t.id} value={t.id}>
-                                    {t.name}
-                                    <span className="ml-1.5 font-mono text-muted-foreground">
-                                      {num(t.weight, 2)} кг
-                                    </span>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-1">
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                onClick={() =>
-                                  setTare((prev) =>
-                                    prev.map((l, i) =>
-                                      i === idx ? { ...l, count: Math.max(0, l.count - 1) } : l,
-                                    ),
-                                  )
-                                }
-                              >
-                                <Minus className="size-3.5" />
-                              </Button>
-                              <input
-                                value={line.count}
-                                onChange={(e) => {
-                                  const v = Math.max(0, Number(e.target.value) || 0)
-                                  setTare((prev) =>
-                                    prev.map((l, i) => (i === idx ? { ...l, count: v } : l)),
-                                  )
-                                }}
-                                inputMode="numeric"
-                                className="w-11 bg-transparent text-center font-mono text-base font-semibold outline-none"
-                              />
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                onClick={() =>
-                                  setTare((prev) =>
-                                    prev.map((l, i) =>
-                                      i === idx ? { ...l, count: l.count + 1 } : l,
-                                    ),
-                                  )
-                                }
-                              >
-                                <Plus className="size-3.5" />
-                              </Button>
-                            </div>
-                            <span className="w-20 text-right font-mono text-xs text-muted-foreground">
-                              {num((t?.weight ?? 0) * line.count, 2)} кг
+                      {showPallet ? (
+                        <div className="grid gap-1">
+                          <Label htmlFor="pallet" className="text-xs text-muted-foreground">
+                            Піддон
+                          </Label>
+                          <div className="relative w-[124px]">
+                            <Input
+                              id="pallet"
+                              value={palletInput.replace('.', ',')}
+                              onChange={(e) => setPalletInput(maskDecimalInput(e.target.value))}
+                              inputMode="decimal"
+                              placeholder="0,0"
+                              className="h-10 pr-9 font-mono text-base font-semibold"
+                            />
+                            <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 font-mono text-xs text-muted-foreground">
+                              кг
                             </span>
-                            {tare.length > 1 ? (
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                onClick={() => setTare((prev) => prev.filter((_, i) => i !== idx))}
-                              >
-                                <Trash2 className="size-3.5" />
-                              </Button>
-                            ) : null}
                           </div>
-                        )
-                      })}
-                      <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                        {[5, 10, 20].map((n) => (
-                          <Button
-                            key={n}
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              setTare((prev) =>
-                                prev.map((l, i) => (i === 0 ? { ...l, count: l.count + n } : l)),
-                              )
-                            }
-                          >
-                            +{n} ящ.
-                          </Button>
-                        ))}
+                        </div>
+                      ) : (
                         <Button
                           variant="ghost"
                           size="sm"
-                          // всі чотири види вже в кошику — інакше додався б другий рядок Чешки
-                          disabled={tare.length >= tareTypes.length}
-                          onClick={() => {
-                            const free = tareTypes.find((t) => !tare.some((l) => l.tareId === t.id))
-                            if (free) setTare((prev) => [...prev, { tareId: free.id, count: 0 }])
-                          }}
+                          className="mt-6 text-muted-foreground"
+                          onClick={() => setPalletOpen(true)}
                         >
-                          <Package className="size-3.5" />
-                          Інша тара
+                          <Plus className="size-3.5" />
+                          Піддон
                         </Button>
-                      </div>
+                      )}
                     </div>
+                    {grossHint || draftHint ? (
+                      <div className="flex items-start gap-2 text-xs text-[var(--amber)]">
+                        <AlertTriangle className="mt-px size-3.5 shrink-0" />
+                        <span>{grossHint || draftHint}</span>
+                      </div>
+                    ) : null}
                   </div>
 
-                  <div className="w-full sm:w-[172px]">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="mb-1.5 w-full justify-start text-muted-foreground"
-                      onClick={() => setPadOpen((v) => !v)}
-                    >
-                      <Grid2x2 className="size-3.5" />
-                      {padOpen ? 'Сховати клавіатуру' : 'Клавіатура'}
-                    </Button>
-                    {padOpen ? <NumPad value={gross} onChange={setGross} /> : null}
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      Тара — знімається автоматично
+                    </Label>
+                    {tare.map((line, idx) => {
+                      const t = tareTypes.find((x) => x.id === line.tareId)
+                      return (
+                        <div key={line.tareId} className="flex items-center gap-2">
+                          <Select
+                            value={line.tareId}
+                            onValueChange={(v) =>
+                              setTare((prev) =>
+                                prev.map((l, i) => (i === idx ? { ...l, tareId: v } : l)),
+                              )
+                            }
+                          >
+                            <SelectTrigger className="h-10 flex-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {tareTypes.map((t) => (
+                                <SelectItem key={t.id} value={t.id}>
+                                  {t.name}
+                                  <span className="ml-1.5 font-mono text-muted-foreground">
+                                    {num(t.weight, 2)} кг
+                                  </span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-1">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() =>
+                                setTare((prev) =>
+                                  prev.map((l, i) =>
+                                    i === idx ? { ...l, count: Math.max(0, l.count - 1) } : l,
+                                  ),
+                                )
+                              }
+                            >
+                              <Minus className="size-3.5" />
+                            </Button>
+                            <input
+                              value={line.count}
+                              onChange={(e) => {
+                                const v = Math.max(0, Number(e.target.value) || 0)
+                                setTare((prev) =>
+                                  prev.map((l, i) => (i === idx ? { ...l, count: v } : l)),
+                                )
+                              }}
+                              inputMode="numeric"
+                              className="w-11 bg-transparent text-center font-mono text-base font-semibold outline-none"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() =>
+                                setTare((prev) =>
+                                  prev.map((l, i) =>
+                                    i === idx ? { ...l, count: l.count + 1 } : l,
+                                  ),
+                                )
+                              }
+                            >
+                              <Plus className="size-3.5" />
+                            </Button>
+                          </div>
+                          <span className="w-20 text-right font-mono text-xs text-muted-foreground">
+                            {num((t?.weight ?? 0) * line.count, 2)} кг
+                          </span>
+                          {tare.length > 1 ? (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => setTare((prev) => prev.filter((_, i) => i !== idx))}
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          ) : null}
+                        </div>
+                      )
+                    })}
+                    <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        // всі чотири види вже в кошику — інакше додався б другий рядок Чешки
+                        disabled={tare.length >= tareTypes.length}
+                        onClick={() => {
+                          const free = tareTypes.find((t) => !tare.some((l) => l.tareId === t.id))
+                          if (free) setTare((prev) => [...prev, { tareId: free.id, count: 0 }])
+                        }}
+                      >
+                        <Package className="size-3.5" />
+                        Інша тара
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -948,9 +942,9 @@ export function ReceptionPage() {
                   той самий, що в `06 §2`: у касі стільки, видати треба стільки, різниця йде
                   в залишок, і відновлює касу переказ від керівника.
                 */}
-                {math.paid > berryCash + 0.009 || (math.total > berryCash + 0.009 && !paidTouched) ? (
+                {overBerryCash || (math.total > payCeiling + 0.009 && !paidTouched) ? (
                   <p className="mt-3 rounded-lg bg-[var(--amber)]/10 px-3 py-2 text-xs leading-relaxed text-[var(--amber)]">
-                    У касі за ягоду {uah(Math.max(0, berryCash), { decimals: 2 })} — більше зараз
+                    У касі за ягоду {uah(payCeiling, { decimals: 2 })} — більше зараз
                     видати нема з чого. Різниця лягає в залишок постачальника; касу відновлює
                     переказ від керівника.
                   </p>
@@ -966,25 +960,32 @@ export function ReceptionPage() {
             </div>
           </div>
 
-          {/* ------------- right: day log ------------- */}
+          {/* ------------- right: стан точки + журнал дня ------------- */}
           <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-3">
-              <MiniStat label="Прийнято сьогодні" value={tonnage(day.netKg)} />
-              <MiniStat label="Квитанцій" value={String(todayVisits.length)} />
-              <MiniStat label="Видано з каси" value={uah(day.cashOut)} />
-              <MiniStat
-                label="Залишків створено"
-                value={uah(day.newDebt)}
-                tone={day.newDebt > 0 ? 'amber' : 'default'}
-              />
-            </div>
+            {/*
+              Тонаж і лічильник квитанцій переїхали в шапку списку, під яким вони й так
+              стоять: інакше праворуч вишикувалося б одинадцять чисел поспіль, і жодне з
+              них не читалося б з першого погляду. Каса й ящики — окремим блоком, бо це
+              стан ТОЧКИ, а не підсумок дня.
+            */}
+            <PointStatePanel
+              pointId={pointId}
+              date={config.businessToday}
+              cashOut={day.cashOut}
+              newDebt={day.newDebt}
+            />
 
             <div className="flex min-h-0 flex-1 flex-col rounded-xl bg-card ring-1 ring-foreground/10">
-              <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
-                <Eyebrow>Сьогоднішні квитанції</Eyebrow>
-                <Badge variant="secondary" className="font-mono">
-                  {todayVisits.length}
-                </Badge>
+              <div className="flex items-center justify-between gap-2 border-b border-border/70 px-4 py-3">
+                <Eyebrow className="truncate">Сьогоднішні квитанції</Eyebrow>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {tonnage(day.netKg)}
+                  </span>
+                  <Badge variant="secondary" className="font-mono">
+                    {todayVisits.length}
+                  </Badge>
+                </div>
               </div>
               <div className="max-h-[560px] overflow-y-auto">
                 {todayVisits.length === 0 ? (
@@ -1058,30 +1059,6 @@ export function ReceptionPage() {
         open={Boolean(receipt)}
         onOpenChange={(v) => !v && setReceipt(null)}
       />
-    </div>
-  )
-}
-
-function MiniStat({
-  label,
-  value,
-  tone = 'default',
-}: {
-  label: string
-  value: string
-  tone?: 'default' | 'amber'
-}) {
-  return (
-    <div className="rounded-xl bg-card px-3.5 py-3 ring-1 ring-foreground/10">
-      <Eyebrow className="truncate">{label}</Eyebrow>
-      <div
-        className={cn(
-          'mt-1.5 font-mono text-xl font-semibold',
-          tone === 'amber' ? 'text-[var(--amber)]' : '',
-        )}
-      >
-        {value}
-      </div>
     </div>
   )
 }

@@ -15,7 +15,6 @@ import { SendTransferDialog } from '@/components/transfers/SendTransferDialog'
 import { TransferStateBadge } from '@/components/transfers/TransferStateBadge'
 import { cashStanding, crateStanding, owedToPoints, sum } from '@/lib/calc'
 import { addDays, num, shortDate, uah, uahAuto, weekday } from '@/lib/format'
-import { CASH_BOOK_FROM, SEASON_START, TODAY } from '@/lib/seed'
 import { useScope, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { ISODate, Transfer } from '@/lib/types'
@@ -55,7 +54,7 @@ const latest = (list: Transfer[]) =>
  * 4. **Таблиця читає рушій напряму, а не через `useCashStanding`.** Не з примхи:
  *    `points.map(useCashStanding)` — це виклик хука в колбеку, тобто `react/rules-of-hooks`
  *    червоним. Тому багатоточковий список кличе ті самі `cashStanding()`/`crateStanding()` з
- *    тією самою `CASH_BOOK_FROM`, що й хуки, а односторінкові однокрапкові місця (форма
+ *    тією самою `config.cashBookFrom`, що й хуки, а односторінкові однокрапкові місця (форма
  *    надсилання й розгорнута історія) користуються саме хуками. Дві дороги, один рушій і
  *    одна дата відкриття книги — розійтися їм нема на чому.
  */
@@ -97,7 +96,7 @@ export function TransfersPage() {
     cash: cashStanding({
       pointId,
       date,
-      openedOn: CASH_BOOK_FROM,
+      openedOn: st.config.cashBookFrom,
       floats: st.cashFloats,
       receptions: st.receptions,
       payouts: st.payouts,
@@ -139,10 +138,10 @@ export function TransfersPage() {
     .filter((t) => t.status === 'disputed' && t.date <= date && active.some((p) => p.id === t.pointId))
     .sort((a, b) => b.date.localeCompare(a.date))
 
-  // Документ народжується сьогоднішнім числом (`sendTransfer` ставить `TODAY`), тому з
-  // минулого дня надіслати не можна: кнопка, яка створює запис іншою датою, ніж показує
-  // екран, — це тиха помилка, а не зручність.
-  const canSend = date === TODAY
+  // Документ народжується сьогоднішнім числом (`sendTransfer` ставить `config.businessToday`),
+  // тому з минулого дня надіслати не можна: кнопка, яка створює запис іншою датою, ніж
+  // показує екран, — це тиха помилка, а не зручність.
+  const canSend = date === st.config.businessToday
   const original = form?.originalId
     ? (st.transfers.find((t) => t.id === form.originalId) ?? null)
     : null
@@ -161,7 +160,7 @@ export function TransfersPage() {
                 variant="ghost"
                 size="icon-sm"
                 className="rounded-r-none"
-                disabled={date <= SEASON_START}
+                disabled={date <= st.config.seasonStart}
                 onClick={() => setDate(addDays(date, -1))}
               >
                 <ChevronLeft className="size-4" />
@@ -171,14 +170,14 @@ export function TransfersPage() {
                 variant="ghost"
                 size="icon-sm"
                 className="rounded-l-none"
-                disabled={date >= TODAY}
+                disabled={date >= st.config.businessToday}
                 onClick={() => setDate(addDays(date, 1))}
               >
                 <ChevronRight className="size-4" />
               </Button>
             </div>
             {canSend ? null : (
-              <Button variant="outline" size="sm" onClick={() => setDate(TODAY)}>
+              <Button variant="outline" size="sm" onClick={() => setDate(st.config.businessToday)}>
                 Сьогодні
               </Button>
             )}

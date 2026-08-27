@@ -15,22 +15,19 @@ import {
   crateShipmentDraft,
   crateStanding,
   openDebts,
+  ownerName,
   productDay,
   round2,
   shiftDiscrepancy,
   shiftStatusFor,
+  signerFor,
   splitPaidAcrossLines,
 } from './calc'
 import {
   buildSeed,
-  CASH_BOOK_FROM,
   DEFAULT_SETTINGS,
-  DEFAULT_TARE_ID,
   nextCode,
   nowTime,
-  OPERATORS,
-  OWNER,
-  TODAY,
 } from './seed'
 import type { Commands, DomainSnapshot, Queries, UiState } from './ports'
 import type {
@@ -115,8 +112,8 @@ function isSettings(v: unknown): v is Settings {
 }
 
 /*
- * День, з якого ведеться касова книга, приходить ОДНИМ примірником із `seed.ts`
- * (`CASH_BOOK_FROM`). Це ПАРАМЕТР рушія, а не константа всередині нього (`21 §3.5`):
+ * День, з якого ведеться касова книга, приходить ОДНИМ примірником — зі знімка,
+ * `config.cashBookFrom`. Це ПАРАМЕТР рушія, а не константа всередині нього (`21 §3.5`):
  * `cashStanding()` про демо-дані не знає нічого, рівно як `crateShipmentDraft()` не знає,
  * який `tareId` вважається ящиком. Другий примірник тут був би тихою розбіжністю: інша
  * дата — інший залишок на екрані, ніж той, з якого сід зробив `CashCount`.
@@ -146,7 +143,7 @@ function cashOf(st: DomainSnapshot, pointId: PointId, date: ISODate) {
   return cashStanding({
     pointId,
     date,
-    openedOn: CASH_BOOK_FROM,
+    openedOn: st.config.cashBookFrom,
     floats: st.cashFloats,
     receptions: st.receptions,
     payouts: st.payouts,
@@ -178,6 +175,31 @@ function transferTransition(
 
 const seed = buildSeed()
 
+/*
+ * Бізнес-дата й підпис керівника читаються ЗІ ЗНІМКА, переданого параметром, а не з
+ * `seed.ts` і не з модульного синглтона. Раніше адаптер брав `TODAY` і `OWNER` прямо з
+ * фікстури демо-даних; коли ті самі факти переїхали у `config` і `users`, два джерела
+ * одного факту розійшлися б тихо — а розходяться тут дата документа й підпис під ним,
+ * тобто рівно те, чого ніхто не перечитує.
+ *
+ * ЧОМУ ПАРАМЕТР, А НЕ `useStore.getState()`. Перша версія цих двох читала синглтон і
+ * працювала — але працювала ВИПАДКОВО. `create(persist(…))` виконує і початковий
+ * обʼєкт стану, і `merge` ДО того, як `useStore` присвоєний, тому будь-яке майбутнє
+ * звуження в `merge`, якому знадобиться бізнес-дата, кидало б `ReferenceException` на
+ * ПЕРШОМУ відкритті у свіжому браузері — на шляху, який smoke не проходить ніколи (він
+ * щоразу починає з порожнім localStorage). Друга, менш екзотична шкода була видна одразу:
+ * `issueCrates` в одному рядку читав дату через синглтон, а `crateTareId` — через `st`,
+ * тобто той самий факт двома способами в одній функції. Тепер форма та сама, що вже мають
+ * `standingOf(st, …)` і `cashOf(st, …)`: знімок приходить явно, і команда не має чим
+ * підмішати сюди стан іншого примірника стора.
+ */
+const todayOf = (st: DomainSnapshot): ISODate => st.config.businessToday
+/** Штамп сторно: дата й підпис керівника одним обʼєктом — обидва з того самого знімка */
+const stampOf = (st: DomainSnapshot): { date: ISODate; by: string } => ({
+  date: st.config.businessToday,
+  by: ownerName(st.users),
+})
+
 /**
  * Спільне тіло трьох сторно ящикових документів: роль, непорожня причина, слід замість
  * видалення. Винесене, бо три однакові команди — це три місця, де можна забути гейт.
@@ -187,12 +209,14 @@ function voidCrateDoc<T extends { id: string; voidedDate?: ISODate }>(
   list: T[],
   id: string,
   reason: string,
+  /** Штамп і підпис — ПАРАМЕТРИ: у знімку вони одні, і братися мусять звідти, а не з фікстури */
+  mark: { date: ISODate; by: string },
 ): { list: T[]; doc: T } | undefined {
   if (role !== 'owner') return undefined
   if (!reason.trim()) return undefined
   const found = list.find((d) => d.id === id)
   if (!found || found.voidedDate) return undefined
-  const doc: T = { ...found, voidedDate: TODAY, voidedBy: OWNER, voidReason: reason }
+  const doc: T = { ...found, voidedDate: mark.date, voidedBy: mark.by, voidReason: reason }
   return { list: list.map((d) => (d === found ? doc : d)), doc }
 }
 
@@ -206,7 +230,7 @@ export const useStore = create<State>()(
       activePointId: 'p1',
       route: { name: 'reception' },
       online: true,
-      workDate: TODAY,
+      workDate: seed.config.businessToday,
 
       setRole: (role) =>
         set({
@@ -221,7 +245,7 @@ export const useStore = create<State>()(
 
       addSupplier: (s) => {
         const id = `s${get().suppliers.length + 1}_${Math.random().toString(36).slice(2, 6)}`
-        const supplier: Supplier = { ...s, id, createdAt: TODAY }
+        const supplier: Supplier = { ...s, id, createdAt: todayOf(get()) }
         set((st) => ({ suppliers: [...st.suppliers, supplier] }))
         return supplier
       },
@@ -317,8 +341,11 @@ export const useStore = create<State>()(
         // готівка за ягоду. Перевіряємо СУМУ, а не доданки: людині байдуже, яка її частина
         // закриває сьогоднішню ягоду, а яка давній залишок — шухляда одна.
         const cashLeaving = round2(paidToday + paidToPast)
+        // Відмова — `undefined`, як у 18 сусідніх команд. Порожній масив тут був ПРАВДИВИМ
+        // обʼєктом, тому `if (!res)` на нього не спрацьовував — і єдиний виклик цим і
+        // скористався: тост «Прийнято …» друкувався на відмові.
         if (cashLeaving > 0 && !checkBerryPayout(cashLeaving, cashOf(st, pointId, date).berryCash).ok) {
-          return { receptions: [], payout: undefined }
+          return undefined
         }
         const perLine = splitPaidAcrossLines(amounts, paidToday)
 
@@ -416,9 +443,9 @@ export const useStore = create<State>()(
           fromPointId,
           atPointId,
           // День ЯГОДИ обирає людина (`berryDate`), момент зважування ставить годинник.
-          // У демо «сьогодні» — це TODAY: справжня дата пристрою поставила б на квитанцію
+          // У демо «сьогодні» — це `config.businessToday`: справжня дата пристрою поставила б на квитанцію
           // штамп поза сезоном, і день зведення перестав би сходитись із рештою екранів.
-          weighedDate: TODAY,
+          weighedDate: todayOf(st),
           weighedTime: nowTime(),
           status,
           lines: built,
@@ -453,7 +480,7 @@ export const useStore = create<State>()(
                   ...r,
                   // I54: документ НЕ зникає — він лишається зі слідом, просто не рахується
                   status: 'voided' as ReweighStatus,
-                  voidedDate: TODAY,
+                  voidedDate: todayOf(st),
                   voidedTime: nowTime(),
                   voidedBy: operator,
                   voidReason: reason,
@@ -485,7 +512,7 @@ export const useStore = create<State>()(
           label,
           amount: round2(amount),
           createdBy,
-          createdDate: TODAY,
+          createdDate: todayOf(get()),
           createdTime: nowTime(),
           note,
         }
@@ -535,7 +562,7 @@ export const useStore = create<State>()(
         if (!ISO_DATE.test(effectiveFrom)) return undefined
         // §7: наділ змінює КЕРІВНИК — «чи може керівник збільшувати доступну кількість
         // ящиків?» (1062). Роль перевіряється тут, а не лише в UI: `setBy` нижче прибитий
-        // до OWNER, тому без цієї перевірки документ приймальника стверджував би, що його
+        // до підпису керівника, тому без цієї перевірки документ приймальника стверджував би, що його
         // ухвалив керівник — брехня в підписі гірша за відсутність підпису.
         if (st.role !== 'owner') return undefined
         // Зміна ДІЮЧОГО наділу без причини — це і є те переписане число, від якого рятує
@@ -550,8 +577,8 @@ export const useStore = create<State>()(
           pointId,
           units,
           effectiveFrom,
-          setBy: OWNER,
-          setDate: TODAY,
+          setBy: ownerName(st.users),
+          setDate: st.config.businessToday,
           setTime: nowTime(),
           reason,
         }
@@ -578,8 +605,8 @@ export const useStore = create<State>()(
           pointId,
           amount: round2(amount),
           effectiveFrom,
-          setBy: OWNER,
-          setDate: TODAY,
+          setBy: ownerName(st.users),
+          setDate: st.config.businessToday,
           setTime: nowTime(),
           reason,
         }
@@ -592,11 +619,11 @@ export const useStore = create<State>()(
         // I62: «на точці зараз 341 порожній ящик — 500 видати нема з чого». `onHand === null`
         // (наділу на цю дату ще не було) теж відмова: видані з такої точки ящики не потрапили
         // б у жоден склад наділу і зникли б з обліку тихо.
-        if (!checkCrateIssue(units, standingOf(st, pointId, TODAY).onHand).ok) return undefined
+        if (!checkCrateIssue(units, standingOf(st, pointId, todayOf(st)).onHand).ok) return undefined
         // Поріг 50 — ПІДСТАВЛЕННЯ, а не заборона (21 §2.3): «ми обираємо, якщо за кошти, ми
         // натискаємо в себе за кошти» (1083). Передане руками перемагає підставлене.
         const chosen = mode ?? crateIssueMode(units)
-        const cheshka = st.tareTypes.find((t) => t.id === DEFAULT_TARE_ID)
+        const cheshka = st.tareTypes.find((t) => t.id === st.config.crateTareId)
         // Ящик — це ЧЕШКА (рішення Р-1). Якщо її в довіднику немає (а довідник приїжджає з
         // localStorage і його там правлять руками), видача за кошти НЕ мовчить нулем:
         // `depositTaken = 0` при `mode:'deposit'` зробив би нас винними нуль за ящики, за які
@@ -608,7 +635,7 @@ export const useStore = create<State>()(
         const perUnit = chosen === 'deposit' && cheshka ? round2(cheshka.price) : 0
         const doc: CrateIssue = {
           id: `ci_${rid()}`,
-          date: TODAY,
+          date: todayOf(st),
           time: nowTime(),
           pointId,
           supplierId,
@@ -618,7 +645,7 @@ export const useStore = create<State>()(
           depositTaken: round2(units * perUnit),
           // Номер паперу існує лише там, де є папір: за кошти розписки не формують.
           receiptNo: chosen === 'receipt' ? receiptNo : undefined,
-          operatorId: OPERATORS[pointId] ?? OWNER,
+          operatorId: signerFor(st.users, pointId) ?? ownerName(st.users),
         }
         set({ crateIssues: [...st.crateIssues, doc] })
         return doc
@@ -639,17 +666,17 @@ export const useStore = create<State>()(
         // I59: впирається В КАСУ ЗА ЯЩИКИ і НІКОЛИ в касу за ягоду — «не може бути такого,
         // що зараз коштів немає в касі, ну, ми маємо віддати» (1102). Порожня каса за ягоду
         // цю операцію не блокує: вона сюди навіть не передається.
-        if (!checkCrateRefund(refund, cashOf(st, pointId, TODAY).crateCash).ok) return undefined
+        if (!checkCrateRefund(refund, cashOf(st, pointId, todayOf(st)).crateCash).ok) return undefined
         const doc: CrateReturn = {
           id: `cr_${rid()}`,
-          date: TODAY,
+          date: todayOf(st),
           time: nowTime(),
           pointId,
           supplierId,
           units,
           allocations,
           depositRefund: refund,
-          operatorId: OPERATORS[pointId] ?? OWNER,
+          operatorId: signerFor(st.users, pointId) ?? ownerName(st.users),
         }
         set({ crateReturns: [...st.crateReturns, doc] })
         return doc
@@ -660,7 +687,7 @@ export const useStore = create<State>()(
         // Єдина команда, що приймає дату ззовні. Майбутнє відправлення — не помилка вводу,
         // а документ, який `crateStanding` чесно врахує на ту дату; але дня, якого ще не
         // було, у книзі бути не може.
-        if (!ISO_DATE.test(date) || date > TODAY) return undefined
+        if (!ISO_DATE.test(date) || date > todayOf(st)) return undefined
         // Бій — ЄДИНЕ число цієї команди, яке вводить людина: «іменно заламані ящики… треба
         // їм якось виділити строчку» (1117). Нуль валідний — «ламані не кожен день» (993).
         if (!Number.isInteger(brokenUnits) || brokenUnits < 0) return undefined
@@ -672,7 +699,7 @@ export const useStore = create<State>()(
           date,
           pointId,
           receptions: st.receptions,
-          crateTareId: DEFAULT_TARE_ID,
+          crateTareId: st.config.crateTareId,
         })
         const doc: CrateShipment = {
           id: `cs_${rid()}`,
@@ -681,8 +708,8 @@ export const useStore = create<State>()(
           withBerryUnits: draft.withBerryUnits,
           receptionCount: draft.receptionCount,
           brokenUnits,
-          operatorId: OPERATORS[pointId] ?? OWNER,
-          postedDate: TODAY,
+          operatorId: signerFor(st.users, pointId) ?? ownerName(st.users),
+          postedDate: todayOf(st),
           postedTime: nowTime(),
         }
         set({ crateShipments: [...st.crateShipments, doc] })
@@ -703,15 +730,15 @@ export const useStore = create<State>()(
         // 264 проти 459 — 195 ящиків лежать у ЛЮДЕЙ і базі не належать. Переказ на 459
         // зробив би `atBase = −195`, `onHand = 800` при 195 у полі, і `checkCrateIssue`
         // дозволив би видати ящики, яких на точці немає.
-        if (!checkCrateTransfer(crates, standingOf(st, pointId, TODAY).atBase).ok) return undefined
+        if (!checkCrateTransfer(crates, standingOf(st, pointId, todayOf(st)).atBase).ok) return undefined
         const doc: Transfer = {
           id: `tf_${rid()}`,
-          date: TODAY,
+          date: todayOf(st),
           pointId,
           crates,
           cash: round2(cash),
           carrier,
-          sentBy: OWNER,
+          sentBy: ownerName(st.users),
           sentTime: nowTime(),
           // I68: народжується 'sent' і не рухає НІЧОГО — ні касу, ні наділ, — поки точка не
           // натиснула «Прийняв». «це не півтори години, десь так» (1014): дорога — стан, не аварія.
@@ -731,14 +758,14 @@ export const useStore = create<State>()(
         // закриває керівник новим документом (UC-36); а повторне «Прийняв» по вже прийнятому
         // додало б ті самі гроші в касу вдруге.
         // Автор і дата виводяться ТУТ, а не приходять параметром: `operatorId` у всіх
-        // документах цієї фази береться з `OPERATORS[pointId]` (`Р-4`), і приймати рядок
+        // документах цієї фази береться з `signerFor(users, pointId)` (`Р-4`), і приймати рядок
         // від викликача означало б дозволити документ із підписом, якого ніхто не ставив.
         const target = st.transfers.find((t) => t.id === id)
         if (!target) return undefined
         const next = transferTransition(st.transfers, id, ['sent'], {
           status: 'accepted',
-          acceptedBy: OPERATORS[target.pointId] ?? OWNER,
-          acceptedDate: TODAY,
+          acceptedBy: signerFor(st.users, target.pointId) ?? ownerName(st.users),
+          acceptedDate: todayOf(st),
           acceptedTime: nowTime(),
         })
         if (!next) return undefined
@@ -779,7 +806,7 @@ export const useStore = create<State>()(
         const next = transferTransition(st.transfers, id, ['sent', 'accepted', 'disputed'], {
           // Документ НЕ зникає — він лишається зі слідом і просто не рахується (06 §3)
           status: 'void',
-          voidedDate: TODAY,
+          voidedDate: todayOf(st),
           voidedBy: by,
           voidReason: reason,
         })
@@ -798,19 +825,19 @@ export const useStore = create<State>()(
        * Документ не зникає — він лишається зі слідом і просто не рахується (`06 §3`).
        */
       voidCrateIssue: (id, reason) => {
-        const next = voidCrateDoc(get().role, get().crateIssues, id, reason)
+        const next = voidCrateDoc(get().role, get().crateIssues, id, reason, stampOf(get()))
         if (!next) return undefined
         set({ crateIssues: next.list })
         return next.doc
       },
       voidCrateReturn: (id, reason) => {
-        const next = voidCrateDoc(get().role, get().crateReturns, id, reason)
+        const next = voidCrateDoc(get().role, get().crateReturns, id, reason, stampOf(get()))
         if (!next) return undefined
         set({ crateReturns: next.list })
         return next.doc
       },
       voidCrateShipment: (id, reason) => {
-        const next = voidCrateDoc(get().role, get().crateShipments, id, reason)
+        const next = voidCrateDoc(get().role, get().crateShipments, id, reason, stampOf(get()))
         if (!next) return undefined
         set({ crateShipments: next.list })
         return next.doc
@@ -830,7 +857,7 @@ export const useStore = create<State>()(
         if (!explanation.trim()) return undefined
         const shift = st.shifts.find((x) => x.id === shiftId)
         if (!shift || shift.status !== 'awaiting_explanation') return undefined
-        const doc: Shift = { ...shift, status: 'closed', explanation, closedBy: OWNER }
+        const doc: Shift = { ...shift, status: 'closed', explanation, closedBy: ownerName(st.users) }
         set({ shifts: st.shifts.map((x) => (x.id === shiftId ? doc : x)) })
         return doc
       },
@@ -847,7 +874,7 @@ export const useStore = create<State>()(
           id: `sf_${rid()}`,
           pointId,
           operatorId,
-          date: TODAY,
+          date: todayOf(st),
           openedTime: nowTime(),
           // ПЕРЕРАХУНОК приймальника на ранок, а не «скільки має бути»: якби система
           // показувала очікуване до вводу, перерахунок став би переписуванням (06 §7.3).
@@ -929,7 +956,7 @@ export const useStore = create<State>()(
           activePointId: 'p1',
           route: { name: 'reception' },
           online: true,
-          workDate: TODAY,
+          workDate: fresh.config.businessToday,
         })
       },
     }),
@@ -1102,6 +1129,15 @@ export function scopedPayouts(payouts: Payout[], pointId: string) {
 }
 
 /**
+ * ⚠️ РІШЕННЯ ВЛАСНИКА (27.08.2026): ОФЛАЙН-РЕЖИМУ НЕ БУДЕ ВЗАГАЛІ. Отже цей лічильник,
+ * прапорці `synced` на трьох типах документів, `syncAll()` і плашка звʼязку у `Shell.tsx` —
+ * це ДЕМОНСТРАЦІЙНА імітація, а не інфраструктура, і `docs/22-tz.md` (ДН-33) саме так її
+ * і називає: «за нею немає ні черги, ні відновлення». Обґрунтування нижче — «база працює
+ * під навісом» — описує світ, якого не буде; воно лишене як історія рішення, а не як
+ * причина щось тут будувати. Той самий запис стоїть у `ports.ts`; він продубльований ТУТ
+ * навмисно, бо саме тут лежить машинерія, і читач, який відкриє лише цей файл, інакше
+ * повірив би обґрунтуванню, що вже не діє.
+ *
  * Черга на відправку. Переважування рахуються поряд із квитанціями й виплатами (09 §2.2):
  * база працює під навісом, і документ, зроблений там без зв'язку, мусить бути видно в
  * лічильнику так само, як квитанцію з пункту. У `DayExpense` поля `synced` немає свідомо —
@@ -1129,7 +1165,7 @@ export function useCashStanding(pointId: string, date: ISODate) {
   return cashStanding({
     pointId,
     date,
-    openedOn: CASH_BOOK_FROM,
+    openedOn: st.config.cashBookFrom,
     floats: st.cashFloats,
     receptions: st.receptions,
     payouts: st.payouts,

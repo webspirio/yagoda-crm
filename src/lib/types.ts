@@ -12,6 +12,20 @@ export type SupplierId = string
 export type BerryId = string
 export type ReweighId = string
 export type DayExpenseId = string
+/*
+ * Ці сім НЕ експортуються, і це не недогляд. `deadcode` (knip) вважає експорт мертвим,
+ * поки його не імпортує ІНШИЙ файл, а дописувати такий експорт у baseline заборонено
+ * (`CLAUDE.md`, правило 3). Усередині цього файлу вони працюють однаково — це ті самі
+ * `string`. Експортувати поштучно можна буде тоді, коли з'явиться справжній імпортер;
+ * та сама дисципліна вже записана вище для ящикових id і в `ports.ts`.
+ */
+type ReceptionId = string
+type PayoutId = string
+type TareTypeId = string
+type PriceRecordId = string
+type BerryProduct = string
+type UserId = string
+type ProductId = string
 /** Гривні. Округлення — round2 на кожній операції, ніколи в проміжних ставках. */
 export type Uah = number
 /** Кілограми, дві десяті. */
@@ -28,7 +42,7 @@ export type ClockTime = string
 export type PointKind = 'reception' | 'base'
 
 export interface Point {
-  id: string
+  id: PointId
   name: string
   village: string
   kind: PointKind
@@ -42,17 +56,23 @@ export interface Point {
  * `product` is the level above it: 9 товарів → 17 сортів.
  */
 export interface Berry {
-  id: string
+  id: BerryId
   name: string
   short: string
-  /** Товар this сорт belongs to — Малина, Ожина, Шипшина… */
-  product: string
+  /**
+   * Товар this сорт belongs to — Малина, Ожина, Шипшина…
+   *
+   * НАЗВА, а не id — свідома відкладена розбіжність зі спекою, розписана нижче
+   * (розбіжність 2). Ціна цього рішення теж названа там: назви товарів мусять лишатися
+   * унікальними, інакше зведення дня почне зливати два товари в один рядок.
+   */
+  product: BerryProduct
   /** ОПТ is a separate сорт with its own price, not a multiplier: Ожина 60 / Ожина ОПТ 65 */
   wholesale: boolean
   /** inclusive season window inside the demo period */
   from: ISODate
   to: ISODate
-  basePrice: number
+  basePrice: Uah
   /**
    * Сорт виведений з обігу: не показується в довіднику, на аркуші цін і в селекторі
    * прийомки, але історичні квитанції на нього лишаються валідними.
@@ -63,11 +83,15 @@ export interface Berry {
 
 /** Container type — tare deducted from gross weight */
 export interface TareType {
-  id: string
+  id: TareTypeId
   name: string
-  weight: number // kg per unit
-  /** ₴ per unit — the crate's value, and the base for a Залог */
-  price: number
+  /**
+   * kg per unit. ⚠️ РЕДАГОВАНЕ керівником у рантаймі (`RefsPage.tsx`), і саме тому
+   * `Reception.tareWeight` мусить бути знімком, а не перерахунком.
+   */
+  weight: Kg
+  /** ₴ per unit — the crate's value, and the base for a Залог. Так само редаговане */
+  price: Uah
 }
 
 /**
@@ -78,83 +102,132 @@ export interface TareType {
 export type SupplierKind = 'none' | 'wholesale' | 'farmer'
 
 export interface Supplier {
-  id: string
+  id: SupplierId
   name: string
   /** Empty in 209 of 209 rows of their Довідник — undefined here, not invented */
   phone?: string
+  /**
+   * НЕ довідникове посилання, а транскрипція так, як її написали в файлі клієнта — 14
+   * різних написань на ту саму місцевість. Дублікати засіяні НАВМИСНО (`seed-suppliers.ts`),
+   * щоб майбутньому екрану злиття було що знаходити. Не нормалізувати без рішення власника.
+   */
   village: string
-  homePointId: string
+  homePointId: PointId
   kind: SupplierKind
   note?: string
   createdAt: ISODate
 }
 
+/** Append-only: ціна дня версіонована всередині дня, остання-за-`time` перемагає */
 export interface PriceRecord {
-  id: string
+  id: PriceRecordId
   date: ISODate
-  pointId: string
-  berryId: string
-  price: number
+  pointId: PointId
+  berryId: BerryId
+  price: Uah
   /** HH:MM the price started to apply */
-  time: string
+  time: ClockTime
   author: string
   reason?: string
 }
 
 export interface TareLine {
-  tareId: string
+  tareId: TareTypeId
   count: number
 }
 
+/**
+ * Квитанція — рядок прийомки.
+ *
+ * ⚠️ ПОХІДНІ ПОЛЯ ТУТ МАЮТЬ ТРИ РІЗНІ ПРИРОДИ, і з форми `number` цього не видно.
+ * Різниця не косметична: два з них ПЕРЕРАХУВАТИ НЕЛЬЗЯ, решту — можна. Нормалізація, що
+ * читає лише типи, зітре саме те, чого чіпати не можна. Тому кожне підписане нижче.
+ *
+ * `tareWeight` і `price` — ЗНІМКИ. `net`, `amount`, `debt` — КЕШІ, з яких лише `debt` має
+ * детектор розбіжності. `carriedIn` — не похідне взагалі, а візитна презентація.
+ */
 export interface Reception {
-  id: string
+  id: ReceptionId
+  /** Номер на папері, який людина забрала з собою; мінтиться `nextCode()` локально */
   code: string
   date: ISODate
-  time: string
-  pointId: string
-  supplierId: string
-  berryId: string
-  gross: number
+  time: ClockTime
+  pointId: PointId
+  supplierId: SupplierId
+  berryId: BerryId
+  gross: Kg
   /** Піддон — pallet mass, subtracted BEFORE tare (their column G) */
-  pallet: number
+  pallet: Kg
   tare: TareLine[]
-  tareWeight: number
-  net: number
-  price: number
+  /**
+   * ЗНІМОК, а НЕ кеш — і це єдине поле ваги, яке не можна перерахувати.
+   * Вагу тари керівник змінює руками (`RefsPage.tsx` → `updateTareType(id, { weight })`),
+   * тому перерахунок `tare[] × TareType.weight` заднім числом переписав би чисту вагу Й
+   * СУМУ кожної історичної квитанції. Це той самий аргумент, що повністю розписаний
+   * нижче для `CrateIssue.depositPerUnit`. Зберігати обовʼязково.
+   */
+  tareWeight: Kg
+  /**
+   * КЕШ: `gross − pallet − tareWeight` — з КЕШОВАНОГО `tareWeight`, що лежить рядком вище.
+   * ⚠️ НЕ через `weigh()`: він рахує тару заново з ПОТОЧНОГО довідника, тобто робить рівно
+   * те, що знімок вище й забороняє. Відтворювати можна лише формулою по збережених полях.
+   */
+  net: Kg
+  /**
+   * ЗНІМОК ціни дня на момент проведення, а НЕ посилання на `PriceRecord`. Ціна дня
+   * версіонована всередині дня (`PriceRecord.time`, остання-за-часом), тому читання
+   * «поточної» переоцінило б уже надруковану квитанцію.
+   */
+  price: Uah
   /** Дод. ціна — per-line surcharge in ₴/kg, their column J */
-  bonus: number
-  amount: number
-  paid: number
-  /** amount - paid, left on the supplier's balance */
-  debt: number
+  bonus: Uah
+  /** КЕШ: `round2(net × (price + bonus))` */
+  amount: Uah
+  paid: Uah
+  /**
+   * КЕШ: `amount − paid`. Єдиний похідний кеш квитанції з детектором розбіжності —
+   * `DayReconciliation.drift` зводить `Σ(amount − paid − debt)` і показує його на «Касі за
+   * день». Саме це робить його безпечнішим за `net`/`amount`, а не якась інша природа.
+   */
+  debt: Uah
   /**
    * Попередній залишок folded into this visit's «Разом» (their column L).
    * Non-zero only on the first line of a visit, and only when the operator kept
    * «Враховувати залишок» on. Presentation only — the balance itself still lives
    * in the ledger, never in an input field.
    */
-  carriedIn: number
-  /** Lines of one visit share this: one supplier, N lines, one «Разом», one payout */
+  carriedIn: Uah
+  /**
+   * Lines of one visit share this: one supplier, N lines, one «Разом», one payout.
+   *
+   * ⚠️ НЕОБОВʼЯЗКОВЕ, хоча візит — це транзакційна межа (`docs/01-model.md §2.7` називає
+   * `Visit` aggregate root: «або все, або нічого»). Окремого запису `Visit` у стані немає,
+   * тому «Разом», надруковане на папері, ніде не збережене — воно щоразу перераховується
+   * `visitMath()`. Поки чек друкують одразу, це видно лише як `?`; сервер зробить це
+   * питанням атомарності одного POST-а. Рішення не ухвалене — див. відкриті питання.
+   */
   visitId?: string
   operator: string
   synced: boolean
 }
 
 export interface Allocation {
-  receptionId: string
+  receptionId: ReceptionId
   originDate: ISODate
-  amount: number
+  amount: Uah
 }
 
 /** Settling an old balance — money leaves the till today for berries of another day */
 export interface Payout {
-  id: string
+  id: PayoutId
   code: string
   date: ISODate
-  time: string
-  pointId: string
-  supplierId: string
-  amount: number
+  time: ClockTime
+  pointId: PointId
+  supplierId: SupplierId
+  /** КЕШ: `round2(Σ allocations.amount)`. Детектора розбіжності НЕ має — на відміну від
+   *  `Reception.debt`, який зводиться через `DayReconciliation.drift` */
+  amount: Uah
   allocations: Allocation[]
   /**
    * Set when the payout was the excess of a visit's «Разом» over today's berry.
@@ -169,7 +242,7 @@ export interface Payout {
 /* ------------------------- собівартість дня (09 §2.2, §2.3) ------------------------- */
 
 /*
- * ТРИ СВІДОМІ РОЗБІЖНОСТІ ЗІ СПЕКОЮ `docs/09 §2.2/§2.3`. Записані тут, бо документ, з якого
+ * ЧОТИРИ СВІДОМІ РОЗБІЖНОСТІ. Перші три — зі спекою `docs/09 §2.2/§2.3`. Записані тут, бо документ, з якого
  * розбіжність тихо зникла, гірший за документ із поміченою.
  *
  * 1. `ISOStamp` у цьому коді НЕМАЄ і не вводиться. Бізнес-дата й час пристрою — завжди два
@@ -189,6 +262,24 @@ export interface Payout {
  *
  * 3. `ExpensePolicy.singleProductId` зі спеки — тут `singleProduct: string | null` із тієї
  *    самої причини, що й у п. 2.
+ *
+ * 4. ПОЛЯ `…Id` ДЛЯ ЛЮДЕЙ ТРИМАЮТЬ ІМʼЯ, А НЕ ID — і це стало розбіжністю саме
+ *    27.08.2026, коли в знімку зʼявився `User` зі справжніми id (`u_owner`, `u_p1`…).
+ *    Доти імені просто не було з чим порівнювати: підпис приходив рядком із
+ *    `OPERATORS[pointId]`, і жодного реєстру не існувало. Тепер реєстр є, а
+ *    `CrateIssue.operatorId`, `CrateReturn.operatorId`, `CrateShipment.operatorId`,
+ *    `Shift.operatorId`, `CrateAllotment.setBy`, `Transfer.sentBy`/`acceptedBy`,
+ *    `PriceRecord.author`, `DayExpense.createdBy` і кожен `voidedBy` далі зберігають
+ *    ІМʼЯ, яке віддає `signerFor()`.
+ *    ЧОМУ НЕ ВИПРАВЛЕНО ЗАРАЗ: перехід на `UserId` — це не перейменування типу, а зміна
+ *    ЗНАЧЕНЬ у ~61 літералі підпису в 12 тестових файлах плюс усі документи сіду, і при
+ *    цьому чотири різні запасні підписи (`point.name`, `'Каса'`, `'Приймальник'`, роль
+ *    керівника) взагалі не мають id, бо не позначають людину з реєстру.
+ *    ⚠️ ЦІНА ЦЬОГО РІШЕННЯ: перейменування людини перепише підпис під усіма її минулими
+ *    документами, а двоє людей з однаковим імʼям стануть одним підписом. Поки підпис
+ *    прибитий до ТОЧКИ, а не до особи (`docs/22-tz.md §17.2` — іменних входів немає й не
+ *    буде до сервера), ця ціна не реалізується. Вона реалізується РАЗОМ з обліковими
+ *    записами, тому виправляти це треба тим самим кроком, що й їх, а не раніше.
  */
 
 export type ReweighStatus = 'draft' | 'posted' | 'voided'
@@ -203,7 +294,7 @@ export interface ReweighLine {
   order: number
   berryId: BerryId
   /** денормалізована назва товару — рівень звітності, див. розбіжність 2 вище */
-  product: string
+  product: BerryProduct
   grossKg: Kg
   palletKg: Kg
   tare: TareLine[]
@@ -235,7 +326,7 @@ export interface Reweigh {
    * «попередній». Розбіжність зі сьогоднішньою прийомкою показується окремо (`I55`).
    * `avgPoint` тут — ставка БЕЗ округлення.
    */
-  snapshot: { product: string; kgPoint: Kg; avgPoint: number }[]
+  snapshot: { product: BerryProduct; kgPoint: Kg; avgPoint: number }[]
   operator: string
   /** Заповнюються при сторно; сам документ не зникає (`I54`, `06` — тільки INSERT). */
   voidedDate?: ISODate
@@ -282,8 +373,8 @@ export interface ExpensePolicy {
 
 /** Owner-level guards. Дод. ціна bounds are what M7 asked for: «не більше 20… чи не більше 30» */
 export interface Settings {
-  surchargeMin: number
-  surchargeMax: number
+  surchargeMin: Uah
+  surchargeMax: Uah
 }
 
 export type Role = 'operator' | 'owner'
@@ -548,8 +639,61 @@ export interface Route {
   id?: string
 }
 
-export interface Session {
+/**
+ * Товар — рівень над сортом. Досі існував ЛИШЕ як `PRODUCTS` у `seed.ts`, тобто екрани
+ * читали довідник із фікстури демо-даних. Запис у знімку робить його тим, чим він і є:
+ * серверною сутністю. `Berry.product` поки лишається НАЗВОЮ, а не `ProductId` — ця
+ * розбіжність описана вище (розбіжність 2) і знімається окремо.
+ */
+export interface Product {
+  id: ProductId
+  name: BerryProduct
+}
+
+/**
+ * Людина, яка працює в системі. Замінює мертвий `Session` (він лежав у
+ * `baselines/dead-exports.json` як «справжня сирота»).
+ *
+ * ⚠️ ЦЕ НЕ ОБЛІКОВИЙ ЗАПИС. Ні пароля, ні входу тут немає й не буде до сервера:
+ * «облікових записів без спільної бази не буває» (`docs/22-tz.md §17.2`). Сьогодні це
+ * РЕЄСТР ПІДПИСІВ — те, чим досі були `OPERATORS` і `OWNER` у `seed.ts`. Сенс переїзду
+ * лише в тому, що підпис під документом більше не приходить із фікстури.
+ *
+ * Чотири підписи, які система реально ставить, різні НАВМИСНО, і збирати їх в один
+ * не можна: підпис у журналі цін мусить дорівнювати сідовому, «інакше журнал цін
+ * показував би одну людину під двома іменами» (`PricesPage.tsx`).
+ */
+export interface User {
+  id: UserId
+  name: string
   role: Role
-  pointId: string
-  operatorName: string
+  /** Приймальник прив'язаний до своєї точки; у керівника точки немає (M12) */
+  pointId?: PointId
+}
+
+/**
+ * Параметри застосунку, які СЬОГОДНІ приходять із `seed.ts`, а завтра — з сервера.
+ *
+ * Досі кожен із них екрани імпортували прямо з фікстури демо-даних: 24 файли з 33 брали
+ * `TODAY`, `SEASON_START`, `CASH_BOOK_FROM` або `DEFAULT_TARE_ID` із `seed.ts`. Тобто
+ * обіцянка `ports.ts` («сторінки викликають лише `Commands`, читають лише
+ * `DomainSnapshot` і `Queries`») була неправдою у трьох чвертях екранів, і жодна
+ * перевірка цього не бачила: імпорт із сусіднього модуля не порушує жодного правила.
+ *
+ * `businessToday` — це «сьогодні НА ТОЧЦІ», бізнес-дата, а не `new Date()`. Вона свідомо
+ * лишається параметром, а не годинником: демо-сід прив'язаний до неї цілком, і smoke
+ * звіряє на ній конкретне число (склад наділу 800 = 341 + 195 + 264, Шипинки 04.08).
+ * Сервер підставить сюди свою дату — і жоден екран від цього не змінюється.
+ *
+ * НЕ плутати з `UiState.workDate`: `businessToday` — це день, який точка проживає зараз,
+ * а `workDate` — день, який керівник ГОРТАЄ у звітах. Кожен екран уже вибрав одне з двох
+ * свідомо й записав причину; переїзд на `config` цього вибору НЕ змінює.
+ */
+export interface AppConfig {
+  businessToday: ISODate
+  seasonStart: ISODate
+  /** День, з якого ведеться касова книга — параметр рушія, не константа в ньому (21 §3.5) */
+  cashBookFrom: ISODate
+  /** Яка саме тара вважається «ящиком» для наділу й відправлень */
+  crateTareId: TareTypeId
 }

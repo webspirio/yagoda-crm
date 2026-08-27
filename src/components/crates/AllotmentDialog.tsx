@@ -14,7 +14,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { maskDecimalInput, parseNumeric } from '@/lib/calc'
 import { longDate, num } from '@/lib/format'
-import { SEASON_START, TODAY } from '@/lib/seed'
 import { useStore } from '@/lib/store'
 import { crateWord } from './helpers'
 import type { CrateStanding } from '@/lib/calc'
@@ -49,18 +48,19 @@ export function AllotmentDialog({
 }) {
   const allotments = useStore((s) => s.crateAllotments)
   const setCrateAllotment = useStore((s) => s.setCrateAllotment)
+  const config = useStore((s) => s.config)
 
   const [unitsRaw, setUnitsRaw] = React.useState('')
-  const [from, setFrom] = React.useState<ISODate>(TODAY)
+  const [from, setFrom] = React.useState<ISODate>(config.businessToday)
   const [reason, setReason] = React.useState('')
 
   React.useEffect(() => {
     if (open) {
       setUnitsRaw(standing.allotment === null ? '' : String(standing.allotment))
-      setFrom(TODAY)
+      setFrom(config.businessToday)
       setReason('')
     }
-  }, [open, standing.allotment])
+  }, [open, standing.allotment, config.businessToday])
 
   const units = Math.trunc(parseNumeric(unitsRaw))
   // Причина обовʼязкова рівно тоді, коли є що змінювати: перший наділ точки пояснювати
@@ -114,7 +114,7 @@ export function AllotmentDialog({
                 id="allot-from"
                 type="date"
                 value={from}
-                min={SEASON_START}
+                min={config.seasonStart}
                 onChange={(e) => {
                   const d = e.target.value
                   if (d) setFrom(d)

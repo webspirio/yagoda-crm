@@ -25,15 +25,14 @@ import { ReceiptDialog } from '@/components/reception/ReceiptDialog'
 import { useStore } from '@/lib/store'
 import { sum } from '@/lib/calc'
 import { addDays, kg, num, shortDate, tonnage, uah } from '@/lib/format'
-import { PRODUCTS, SEASON_START, TODAY } from '@/lib/seed'
 import { toast } from 'sonner'
-import type { Reception } from '@/lib/types'
+import type { AppConfig, Reception } from '@/lib/types'
 
-const PRESETS = [
-  { id: 'today', label: 'Сьогодні', from: TODAY, to: TODAY },
-  { id: 'w', label: '7 днів', from: addDays(TODAY, -6), to: TODAY },
+const buildPresets = (config: AppConfig) => [
+  { id: 'today', label: 'Сьогодні', from: config.businessToday, to: config.businessToday },
+  { id: 'w', label: '7 днів', from: addDays(config.businessToday, -6), to: config.businessToday },
   { id: 'm', label: 'Липень', from: '2026-07-01', to: '2026-07-31' },
-  { id: 'all', label: 'Весь сезон', from: SEASON_START, to: TODAY },
+  { id: 'all', label: 'Весь сезон', from: config.seasonStart, to: config.businessToday },
 ]
 
 export function JournalPage() {
@@ -42,6 +41,10 @@ export function JournalPage() {
   const berries = useStore((s) => s.berries)
   const points = useStore((s) => s.points)
   const activePointId = useStore((s) => s.activePointId)
+  const products = useStore((s) => s.products)
+  const config = useStore((s) => s.config)
+
+  const PRESETS = React.useMemo(() => buildPresets(config), [config])
 
   const [from, setFrom] = React.useState(PRESETS[3].from)
   const [to, setTo] = React.useState(PRESETS[3].to)
@@ -52,11 +55,11 @@ export function JournalPage() {
 
   const berryGroups = React.useMemo(
     () =>
-      PRODUCTS.map((p) => ({
+      products.map((p) => ({
         product: p,
         grades: berries.filter((b) => b.product === p.name),
       })).filter((g) => g.grades.length > 0),
-    [berries],
+    [products, berries],
   )
 
   const { rows, ms } = React.useMemo(() => {
@@ -150,7 +153,7 @@ export function JournalPage() {
           <Input
             type="date"
             value={from}
-            min={SEASON_START}
+            min={config.seasonStart}
             max={to}
             onChange={(e) => setFrom(e.target.value)}
             className="h-8 w-[140px] text-xs"
@@ -160,7 +163,7 @@ export function JournalPage() {
             type="date"
             value={to}
             min={from}
-            max={TODAY}
+            max={config.businessToday}
             onChange={(e) => setTo(e.target.value)}
             className="h-8 w-[140px] text-xs"
           />

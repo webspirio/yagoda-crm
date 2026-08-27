@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { openDebts, round2, sum, weigh } from './calc'
+import { openDebts, ownerName, round2, signerFor, sum, weigh } from './calc'
 import {
   BERRIES,
   buildSeed,
@@ -7,6 +7,9 @@ import {
   DEFAULT_TARE_ID,
   POINTS,
   PRODUCTS,
+  CASH_BOOK_FROM,
+  OPERATORS,
+  OWNER,
   SEASON_START,
   TARE_TYPES,
   TODAY,
@@ -622,5 +625,76 @@ describe('ціна дня', () => {
     expect(prices).toContain(1)
     expect(prices).toContain(450)
     expect(prices).toContain(550)
+  })
+})
+
+/*
+ * Довідники, що переїхали зі статусу «модульна константа `seed.ts`» у знімок (27.08.2026).
+ * Тести тут доводять РІВНО одне: переїзд не змінив ані значень, ані семантики. Це і є та
+ * перевірка, якої не було, коли екрани читали підпис і дату прямо з фікстури.
+ */
+describe('довідники у знімку: config, users, products', () => {
+  it('config повторює константи сіду один в один', () => {
+    expect(seed.config).toEqual({
+      businessToday: TODAY,
+      seasonStart: SEASON_START,
+      cashBookFrom: CASH_BOOK_FROM,
+      crateTareId: DEFAULT_TARE_ID,
+    })
+  })
+
+  it('products — той самий довідник товарів, що PRODUCTS', () => {
+    expect(seed.products).toEqual(PRODUCTS)
+  })
+
+  /**
+   * `ownerName()` повертає `string`, а не `string | undefined`, і його запасне значення —
+   * назва ролі. Це безпечно РІВНО доти, доки в реєстрі є один керівник. Стверджує це
+   * саме цей тест, а не коментар у `calc.ts`.
+   */
+  /**
+   * ⚠️ `expect(ownerName(seed.users)).toBe(OWNER)` ОДНЕ БУЛО Б ТАВТОЛОГІЄЮ, і це не
+   * дрібниця: `OWNER` дорівнює `'Керівник'`, і запасне значення в `ownerName()` — той
+   * самий рядок. Тобто той assert проходив однаково і коли пошук ПРАЦЮЄ, і коли він
+   * провалюється у fallback; він лишився б зеленим навіть із `users: []`. Тому нижче
+   * перевіряються ОБИДВІ гілки окремо, на реєстрі, де ім'я НЕ дорівнює назві ролі.
+   */
+  it('у реєстрі рівно один керівник', () => {
+    expect(seed.users.filter((u) => u.role === 'owner').length).toBe(1)
+    expect(ownerName(seed.users)).toBe(OWNER)
+  })
+
+  it('ownerName() читає саме реєстр, а не свій fallback', () => {
+    expect(ownerName([{ id: 'u_x', name: 'Інша Людина', role: 'owner' }])).toBe('Інша Людина')
+    // порожній реєстр — зламані дані; підпис не має права стати порожнім, тому роль
+    expect(ownerName([])).toBe('Керівник')
+    // приймальник керівником не вважається, скільки б їх не було
+    expect(ownerName([{ id: 'u_p1', name: 'Оксана Г.', role: 'operator', pointId: 'p1' }])).toBe(
+      'Керівник',
+    )
+  })
+
+  it('приймальник кожного активного пункту прийому має підпис', () => {
+    for (const p of seed.points.filter((x) => x.active && x.kind === 'reception')) {
+      expect(signerFor(seed.users, p.id), p.id).toBeTruthy()
+    }
+  })
+
+  /**
+   * НАЙВАЖЛИВІШИЙ тут. `signerFor()` замінив читання `OPERATORS[pointId]` у восьми
+   * екранах, і замінив мовчки: підпис під документом — не те поле, розбіжність у якому
+   * хтось побачить. Тому звіряємо ПОКЛЮЧОВО, включно з `base` і `all`, які віддають
+   * керівника («тільки керівник має до цього всього доступ»).
+   */
+  it('signerFor() відтворює OPERATORS для КОЖНОГО ключа, включно з base і all', () => {
+    for (const [pointId, expected] of Object.entries(OPERATORS)) {
+      expect(signerFor(seed.users, pointId), pointId).toBe(expected)
+    }
+  })
+
+  it('пункт без приймальника віддає undefined, а не чужий підпис', () => {
+    const idle = seed.points.find((p) => !OPERATORS[p.id])
+    expect(idle, 'у сіді мусить бути хоч один пункт без приймальника').toBeTruthy()
+    expect(signerFor(seed.users, idle!.id)).toBeUndefined()
   })
 })

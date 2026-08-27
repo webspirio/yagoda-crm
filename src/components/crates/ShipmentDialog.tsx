@@ -15,7 +15,6 @@ import { Label } from '@/components/ui/label'
 import { Eyebrow } from '@/components/common/bits'
 import { crateShipmentDraft, maskDecimalInput, parseNumeric, shipmentTotal } from '@/lib/calc'
 import { longDate, num } from '@/lib/format'
-import { DEFAULT_TARE_ID } from '@/lib/seed'
 import { useScope, useStore } from '@/lib/store'
 import { VoidCrateDialog } from './VoidCrateDialog'
 import { crateWord, receiptWord } from './helpers'
@@ -61,6 +60,7 @@ export function ShipmentDialog({
   const shipments = useStore((s) => s.crateShipments)
   const postShipment = useStore((s) => s.postShipment)
   const voidCrateShipment = useStore((s) => s.voidCrateShipment)
+  const config = useStore((s) => s.config)
   const { role } = useScope()
 
   const [brokenRaw, setBrokenRaw] = React.useState('0')
@@ -80,7 +80,7 @@ export function ShipmentDialog({
     date,
     pointId,
     receptions,
-    crateTareId: DEFAULT_TARE_ID,
+    crateTareId: config.crateTareId,
   })
   const brokenUnits = Math.trunc(parseNumeric(brokenRaw))
   const total = shipmentTotal({ withBerryUnits: draft.withBerryUnits, brokenUnits })

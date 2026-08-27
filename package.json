@@ -21,6 +21,7 @@
     "verify:ci": "node scripts/verify/run.mjs --tier full --no-skip",
     "lint:exempt": "node scripts/verify/checks/lint-exempt-ratchet.mjs",
     "pii": "node scripts/verify/checks/pii-boundary.mjs",
+    "seed:port": "node scripts/verify/checks/seed-port-boundary.mjs",
     "audit:check": "node scripts/verify/checks/audit.mjs",
     "bundle": "node scripts/verify/checks/bundle-size.mjs"
   },

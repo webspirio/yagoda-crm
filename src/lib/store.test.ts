@@ -1081,7 +1081,7 @@ describe('G12: виплата впирається в касу за ягоду',
         },
       ],
     })
-    expect(res.receptions).toEqual([])
+    expect(res).toBeUndefined()
     expect(useStore.getState().receptions.length).toBe(before)
   })
 

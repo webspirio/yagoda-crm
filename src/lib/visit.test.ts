@@ -52,7 +52,7 @@ describe('прив’язка виплати до візиту', () => {
       carriedIn: balanceAt(supplierId),
       paid,
       lines: [{ berryId: 'v_mal_v', gross: amount / 140 + 1.2, pallet: 0, tare: [{ tareId: 'tr_cheshka', count: 1 }], tareWeight: 1.2, net: round2(amount / 140), price: 140, bonus: 0, amount }],
-    })
+    })!
 
   const receiptOf = (visitId: string) => {
     const st = useStore.getState()

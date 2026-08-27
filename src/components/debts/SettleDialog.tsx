@@ -18,9 +18,9 @@ import {
   originDates,
   parseNumeric,
   round2,
+  signerFor,
 } from '@/lib/calc'
 import { longDate, shortDate, uah, uahAuto } from '@/lib/format'
-import { OPERATORS, TODAY } from '@/lib/seed'
 import { toast } from 'sonner'
 
 export function SettleDialog({
@@ -37,6 +37,8 @@ export function SettleDialog({
   const payouts = useStore((s) => s.payouts)
   const addPayout = useStore((s) => s.addPayout)
   const activePointId = useStore((s) => s.activePointId)
+  const users = useStore((s) => s.users)
+  const config = useStore((s) => s.config)
 
   const supplier = suppliers.find((s) => s.id === supplierId)
   // книга кожного пункту своя: видача тут закриває ягоду, прийняту САМЕ тут, і рівно ту
@@ -69,9 +71,9 @@ export function SettleDialog({
     // у режимі «Усі точки» гроші не можуть виходити з каси, яка людини не бачила:
     // беремо пункт найстарішого відкритого залишку
     const pointId = scopePointId ?? open_[0]?.reception.pointId ?? 'p1'
-    const operator = OPERATORS[pointId] ?? 'Каса'
+    const operator = signerFor(users, pointId) ?? 'Каса'
     const payout = addPayout({
-      date: TODAY,
+      date: config.businessToday,
       pointId,
       supplierId,
       amount: value,
@@ -130,7 +132,7 @@ export function SettleDialog({
                     <span className="h-px flex-1 bg-border" />
                     <ArrowRight className="size-3 text-muted-foreground" />
                     <span className="font-mono text-xs text-muted-foreground">
-                      {longDate(TODAY)}
+                      {longDate(config.businessToday)}
                     </span>
                     <span className="w-24 text-right font-mono font-medium">{uahAuto(a.amount)}</span>
                   </div>

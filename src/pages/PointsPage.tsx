@@ -13,23 +13,25 @@ import {
 import { Eyebrow, PageHeader } from '@/components/common/bits'
 import { Sparkline } from '@/components/common/Sparkline'
 import { useStore } from '@/lib/store'
-import { openDebts, reconcileDay, sum } from '@/lib/calc'
+import { openDebts, reconcileDay, signerFor, sum } from '@/lib/calc'
 import { addDays, kg, num, shortDate, tonnage, uah } from '@/lib/format'
-import { OPERATORS, TODAY } from '@/lib/seed'
 
 export function PointsPage() {
   const points = useStore((s) => s.points)
   const receptions = useStore((s) => s.receptions)
   const payouts = useStore((s) => s.payouts)
   const suppliers = useStore((s) => s.suppliers)
+  const users = useStore((s) => s.users)
+  const config = useStore((s) => s.config)
   const setActivePoint = useStore((s) => s.setActivePoint)
   const go = useStore((s) => s.go)
 
   const days = React.useMemo(() => {
     const list: string[] = []
-    for (let d = addDays(TODAY, -13); d <= TODAY; d = addDays(d, 1)) list.push(d)
+    for (let d = addDays(config.businessToday, -13); d <= config.businessToday; d = addDays(d, 1))
+      list.push(d)
     return list
-  }, [])
+  }, [config.businessToday])
 
   // Десять точок — із їхнього ж випадаючого списку `Data_Import!E` ✓ PART A.
   // Працюють п'ять; решта стоїть у реєстрі, бо план — «від 5 до 10» ✓ PART A.
@@ -40,7 +42,7 @@ export function PointsPage() {
     const items = receptions.filter((r) => r.pointId === p.id)
     const recent = items.filter((r) => r.date >= days[0])
     const today = reconcileDay(
-      TODAY,
+      config.businessToday,
       items,
       payouts.filter((x) => x.pointId === p.id),
     )
@@ -48,7 +50,7 @@ export function PointsPage() {
     const pointSuppliers = new Set(items.map((r) => r.supplierId))
     return {
       point: p,
-      operator: OPERATORS[p.id],
+      operator: signerFor(users, p.id),
       suppliers: pointSuppliers.size,
       net: sum(items, (r) => r.net),
       amount: sum(items, (r) => r.amount),
@@ -137,7 +139,7 @@ export function PointsPage() {
                 останні 14 днів ·{' '}
                 {r.operator ? `приймає ${r.operator}` : 'приймальника не призначено'}
               </span>
-              <span>{shortDate(TODAY)}</span>
+              <span>{shortDate(config.businessToday)}</span>
             </div>
           </div>
         ))}

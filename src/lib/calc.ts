@@ -20,12 +20,14 @@ import type {
   Reception,
   Reweigh,
   Settings,
+  Shift,
   Supplier,
   SupplierId,
   TareLine,
   TareType,
   Transfer,
   Uah,
+  User,
 } from './types'
 
 /**
@@ -637,7 +639,7 @@ export interface CostOfDay {
   rate: number
   upliftShortRate: number
   upliftExpenseRate: number
-  basis: 'byWeight' | 'byValue'
+  basis: ExpensePolicy['basis']
   singleProduct: string | null
   /** true коли `kgPoint`/`avgPoint` узяті зі знімка проведеного переважування (`D-2`, `I41`) */
   fromSnapshot: boolean
@@ -817,7 +819,7 @@ export function costOfDay(input: {
   // над таблицею, розкиданою по вазі, брехав би тихіше за будь-яку помилку. Тому при
   // відкоті і `basis`, і `singleProduct` показують те, що справді відпрацювало.
   const fellBack = askedSingle !== null && !singleOk
-  const basis: 'byWeight' | 'byValue' = fellBack ? 'byWeight' : askedBasis
+  const basis: ExpensePolicy['basis'] = fellBack ? 'byWeight' : askedBasis
   const singleProduct = singleOk ? askedSingle : null
 
   const weightOf = (d: Draft) => {
@@ -1280,6 +1282,43 @@ export const CRATE_RECEIPT_THRESHOLD = 50
  */
 export function crateIssueMode(units: number, threshold = CRATE_RECEIPT_THRESHOLD): CrateIssueMode {
   return units > threshold ? 'receipt' : 'deposit'
+}
+
+/**
+ * Хто підписує документ на цій точці. Замінює читання `OPERATORS[pointId]` прямо з
+ * `seed.ts` — тобто підпис під документом більше не приходить із фікстури демо-даних.
+ *
+ * Повертає `string | undefined` НАВМИСНО, а не якийсь дефолт: у чотирьох місцях системи
+ * запасний підпис різний і різним мусить лишитися — `point.name` на прийомці, `'Каса'` у
+ * погашенні, `OWNER` у перерахунку каси, `'—'` у шапці. Один спільний дефолт злив би їх
+ * і зробив би журнал брехливим («інакше журнал цін показував би одну людину під двома
+ * іменами», `PricesPage.tsx`). Тому вибір запасного лишається за місцем виклику.
+ *
+ * `'base'` і `'all'` віддають керівника: склад і зведений вигляд — його («тільки керівник
+ * має до цього всього доступ», дзвінок №4, ряд. 617–621). Раніше це правило було мовчазним
+ * рядком у мапі `OPERATORS`; тут його видно.
+ */
+export function signerFor(users: User[], pointId: PointId): string | undefined {
+  const operator = users.find((u) => u.role === 'operator' && u.pointId === pointId)
+  if (operator) return operator.name
+  if (pointId === 'base' || pointId === 'all') {
+    return users.find((u) => u.role === 'owner')?.name
+  }
+  return undefined
+}
+
+/**
+ * Підпис керівника з реєстру — те, чим був `OWNER`, імпортований із `seed.ts`.
+ *
+ * Повертає `string`, а не `string | undefined`, бо підпис під документом не має права
+ * стати порожнім: `createdBy`, `setBy`, `voidedBy` — це поля, у яких «нічого» означало б
+ * документ без автора. Реєстр без керівника — це зламані дані, а не робочий стан, тому
+ * тут стоїть назва РОЛІ: документ, підписаний роллю, гірший за підписаний іменем, але
+ * незрівнянно кращий за непідписаний. Що реєстр завжди має рівно одного керівника —
+ * стверджує `seed.test.ts`, а не цей рядок.
+ */
+export function ownerName(users: User[]): string {
+  return users.find((u) => u.role === 'owner')?.name ?? 'Керівник'
 }
 
 /**
@@ -1766,7 +1805,7 @@ export function shiftDiscrepancy(countedCash: Uah, expectedCash: Uah): Uah {
  * (`Q-23`), тому будь-яка розбіжність ≠ 0 йде до керівника. Це свідомо суворіше за
  * `06 §7.5`, де були два пороги: вигадувати їх означало б вигадати, яка недостача «буває».
  */
-export function shiftStatusFor(discrepancy: Uah): 'closed' | 'awaiting_explanation' {
+export function shiftStatusFor(discrepancy: Uah): Exclude<Shift['status'], 'open'> {
   return round2(discrepancy) === 0 ? 'closed' : 'awaiting_explanation'
 }
 

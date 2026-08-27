@@ -25,6 +25,7 @@ import { Eyebrow, PageHeader } from '@/components/common/bits'
 import { useStore } from '@/lib/store'
 import {
   maskDecimalInput,
+  ownerName,
   parseNumeric,
   productDay,
   reweighLineValid,
@@ -33,7 +34,6 @@ import {
   tareWeight,
 } from '@/lib/calc'
 import { addDays, kg, num, shortDate, uahAuto } from '@/lib/format'
-import { DEFAULT_TARE_ID, OWNER, SEASON_START, TODAY } from '@/lib/seed'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { ReweighLine, TareLine } from '@/lib/types'
@@ -78,6 +78,8 @@ function ReweighScreen() {
   const receptions = useStore((s) => s.receptions)
   const reweighs = useStore((s) => s.reweighs)
   const workDate = useStore((s) => s.workDate)
+  const users = useStore((s) => s.users)
+  const config = useStore((s) => s.config)
   const addReweigh = useStore((s) => s.addReweigh)
   const voidReweigh = useStore((s) => s.voidReweigh)
 
@@ -96,7 +98,7 @@ function ReweighScreen() {
   const [atPointId, setAtPointId] = React.useState(basePoints[0]?.id ?? '')
   const [gross, setGross] = React.useState('')
   const [palletInput, setPalletInput] = React.useState('')
-  const [tareId, setTareId] = React.useState(DEFAULT_TARE_ID)
+  const [tareId, setTareId] = React.useState(config.crateTareId)
   const [tareCount, setTareCount] = React.useState(0)
   const [berryId, setBerryId] = React.useState<string>()
   const [lines, setLines] = React.useState<Draft[]>([])
@@ -256,7 +258,7 @@ function ReweighScreen() {
       berryDate: date,
       fromPointId,
       atPointId,
-      operator: OWNER,
+      operator: ownerName(users),
       lines: lines.map((l) => ({
         berryId: l.berryId,
         product: l.product,
@@ -280,7 +282,7 @@ function ReweighScreen() {
 
   function confirmVoid(id: string) {
     if (!voidReason.trim()) return
-    voidReweigh(id, voidReason.trim(), OWNER)
+    voidReweigh(id, voidReason.trim(), ownerName(users))
     setVoidingId(null)
     setVoidReason('')
     toast.success('Переважування сторновано', {
@@ -316,7 +318,7 @@ function ReweighScreen() {
                 variant="ghost"
                 size="icon-sm"
                 className="rounded-r-none"
-                disabled={date <= SEASON_START}
+                disabled={date <= config.seasonStart}
                 onClick={() => {
                   setDate(addDays(date, -1))
                   clearForContext()
@@ -329,13 +331,13 @@ function ReweighScreen() {
                 aria-label="День ягоди"
                 title="День ЯГОДИ, не день заїзду машини"
                 value={date}
-                min={SEASON_START}
-                max={TODAY}
+                min={config.seasonStart}
+                max={config.businessToday}
                 onChange={(e) => {
                   const d = e.target.value
                   // порожнє поле і дата поза сезоном не приймаються: календар межі тримає,
                   // а набрана руками дата — ні
-                  if (d >= SEASON_START && d <= TODAY) {
+                  if (d >= config.seasonStart && d <= config.businessToday) {
                     setDate(d)
                     clearForContext()
                   }
@@ -346,7 +348,7 @@ function ReweighScreen() {
                 variant="ghost"
                 size="icon-sm"
                 className="rounded-l-none"
-                disabled={date >= TODAY}
+                disabled={date >= config.businessToday}
                 onClick={() => {
                   setDate(addDays(date, 1))
                   clearForContext()
@@ -355,12 +357,12 @@ function ReweighScreen() {
                 <ChevronRight className="size-4" />
               </Button>
             </div>
-            {date !== TODAY ? (
+            {date !== config.businessToday ? (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  setDate(TODAY)
+                  setDate(config.businessToday)
                   clearForContext()
                 }}
               >

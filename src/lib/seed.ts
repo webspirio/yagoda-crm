@@ -19,6 +19,7 @@ import {
 import { addDays, toISO } from './format'
 import { SUPPLIER_SEED } from './seed-suppliers'
 import type {
+  AppConfig,
   Berry,
   CashCount,
   CashFloat,
@@ -33,6 +34,7 @@ import type {
   Payout,
   Point,
   PriceRecord,
+  Product,
   Reception,
   Reweigh,
   ReweighLine,
@@ -42,6 +44,7 @@ import type {
   TareLine,
   TareType,
   Transfer,
+  User,
 } from './types'
 
 /** Deterministic PRNG so the demo looks the same on every laptop. */
@@ -217,6 +220,25 @@ export const OPERATORS: Record<string, string> = {
   base: OWNER,
   all: OWNER,
 }
+
+/**
+ * Той самий реєстр підписів, що й `OPERATORS`/`OWNER`, але як СУТНІСТЬ, а не як мапа
+ * рядків: тепер він їде у знімку, і екрани більше не читають підпис із фікстури.
+ *
+ * `OPERATORS` лишається — сід годує ним себе сам, і саме він джерело цих рядків. Два
+ * примірники одного факту тут неприпустимі, тому `USERS` будується З `OPERATORS`, а не
+ * поруч із ним: розійтися вони не можуть за побудовою.
+ *
+ * `base` і `all` у `OPERATORS` — не люди, а маршрутизація на керівника («тільки керівник
+ * має до цього всього доступ», дзвінок №4, ряд. 617–621). Тому вони НЕ стають рядками
+ * реєстру; це правило живе у `signerFor()` у `calc.ts`, де його видно й можна перевірити.
+ */
+const USERS: User[] = [
+  { id: 'u_owner', name: OWNER, role: 'owner' },
+  ...Object.entries(OPERATORS)
+    .filter(([pointId]) => pointId !== 'base' && pointId !== 'all')
+    .map(([pointId, name]) => ({ id: `u_${pointId}`, name, role: 'operator' as const, pointId })),
+]
 
 /* ------------------------- обсяги: демо важить стільки, скільки їхній сезон ------------------------- */
 
@@ -424,6 +446,10 @@ export interface SeedData {
   transfers: Transfer[]
   shifts: Shift[]
   cashCounts: CashCount[]
+  /* ---- довідники й параметри, які раніше екрани імпортували з цього файлу напряму ---- */
+  products: Product[]
+  users: User[]
+  config: AppConfig
 }
 
 /** Рядок у роботі — до нього ще не приклеєні id, code і час сортування */
@@ -1817,6 +1843,19 @@ export function buildSeed(): SeedData {
     transfers,
     shifts,
     cashCounts,
+    /*
+     * Три довідники, що переїхали зі статусу «модульна константа цього файлу» у знімок.
+     * Значення ТІ САМІ — переїхало лише те, ЗВІДКИ їх читають екрани. Сід і далі
+     * прив'язаний до `TODAY`, тому жодне демо-число не зсунулося.
+     */
+    products: PRODUCTS,
+    users: USERS,
+    config: {
+      businessToday: TODAY,
+      seasonStart: SEASON_START,
+      cashBookFrom: CASH_BOOK_FROM,
+      crateTareId: DEFAULT_TARE_ID,
+    },
   }
 }
 

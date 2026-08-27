@@ -10,7 +10,6 @@ import { effectivePrice, openDebts, originDates, supplierBalanceAt, sum } from '
 import { daysBetween, daysWord, kg, longDate, num, shortDate, uah, uahAuto } from '@/lib/format'
 import { KindBadge, KindChoice } from '@/components/common/kind'
 import { KIND_LABEL } from '@/lib/kind'
-import { TODAY } from '@/lib/seed'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Reception, SupplierKind } from '@/lib/types'
@@ -70,6 +69,7 @@ export function SupplierPage({ id }: { id: string }) {
   const activePointId = useStore((s) => s.activePointId)
   const go = useStore((s) => s.go)
   const updateSupplier = useStore((s) => s.updateSupplier)
+  const config = useStore((s) => s.config)
   const [receipt, setReceipt] = React.useState<Reception | null>(null)
   const [settle, setSettle] = React.useState(false)
   const [phoneDraft, setPhoneDraft] = React.useState('')
@@ -174,7 +174,7 @@ export function SupplierPage({ id }: { id: string }) {
           tone={balance > 0.009 ? 'amber' : 'leaf'}
           hint={
             oldest
-              ? `найстаріший з ${shortDate(oldest)} — ${daysWord(daysBetween(oldest, TODAY))}`
+              ? `найстаріший з ${shortDate(oldest)} — ${daysWord(daysBetween(oldest, config.businessToday))}`
               : 'усе розраховано'
           }
         />
