@@ -30,6 +30,19 @@ npm run verify:full   # + build, smoke у Chromium, coverage
 npm run verify:ci     # форма CI: пропуск теж вважається падінням
 ```
 
+**Не запускати два vitest із покриттям одночасно — це дає ЧЕРВОНЕ, схоже на флак.**
+Зміряно 28.08.2026 з збереженим виводом: `npm run coverage`, запущений поруч із
+`npm run verify:full`, валить рядок `coverage` повідомленням «Something removed the coverage
+directory "coverage/.tmp" Vitest created earlier. Make sure you are not running multiple
+Vitests with the same coverage.reportsDirectory at the same time». Це НЕ поріг і НЕ впалий
+тест; `run.mjs` строго послідовний, тож другий vitest завжди приходить ЗЗОВНІ прогону.
+
+Чому це варто рядка тут: така помилка виглядає як нестабільність, і найдешевша реакція —
+списати її на флак і перезапустити. За цю фазу так сталося тричі (двічі `coverage`, раз
+`smoke` на порту 4173, який `strictPort` + `retries: 0` теж валять за задумом), і двічі
+вивід був втрачений раніше, ніж його прочитали. Правило просте: **червоне спершу зберігають,
+потім перезапускають** — і жодного `verify:full` паралельно з чимось іще.
+
 Кожна перевірка — окрема команда, яку можна запустити сама (`npm run lint`,
 `npm run typecheck`, `npm test`, `npm run deadcode`, …). Нічого не існує лише всередині
 оркестратора і нічого — лише всередині CI.
