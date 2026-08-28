@@ -314,10 +314,20 @@ export function CashCountPanel({ pointId, date }: { pointId: string; date: ISODa
       <div className="mt-4">
         {openOne ? (
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setCountOpen(true)}>
-              <Calculator className="size-4" />
-              Перерахувати касу
-            </Button>
+            {/*
+              Кнопка загорнута в `isOperator` тими самими дужками, що й дві сусідні. До
+              28.08.2026 вона їх НЕ мала, а стор із фази 4 гейтить `countCash` роллю — тобто
+              керівник бачив кнопку, вводив суму й отримував відмову, яка називала дві хибні
+              причини («уведіть суму числом більшим за нуль… і лише поки зміна відкрита»),
+              бо про роль там не сказано нічого. `06 §5.3`: UI лише ПОВТОРЮЄ рішення рушія.
+              Кнопки немає, а не «є, але сіра» — те саме правило, що на «Касі точки».
+            */}
+            {isOperator ? (
+              <Button variant="outline" size="sm" onClick={() => setCountOpen(true)}>
+                <Calculator className="size-4" />
+                Перерахувати касу
+              </Button>
+            ) : null}
             {isOperator && date === config.businessToday ? (
               <Button variant="outline" size="sm" onClick={() => setCloseOpen(true)}>
                 Закрити зміну

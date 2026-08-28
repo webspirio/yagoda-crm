@@ -1113,6 +1113,74 @@ describe('права: керівницькі команди з пристрою 
 })
 
 /**
+ * ГЕЙТ ТОЧКИ — те, чого не перевіряв ЖОДЕН із 574 тестів до 28.08.2026, і саме це знайшла
+ * фінальна рецензія гілки (знахідка 4). Сусідній `describe` вище перевіряє РОЛЬ, а
+ * `canActOnPoint()` покрито лише як чисту функцію (`auth.test.ts`) — тобто заміна
+ * `actorAt(st, pointId)` на `actorOf(st)` у девʼятьох командах лишала дерево ЗЕЛЕНИМ, і
+ * центральна обіцянка `23 §6` («чужа окрема точка» — розрахунок, а не домовленість) не
+ * мала механічного захисту від зникнення.
+ *
+ * ⚠️ ОБИДВА ТЕСТИ ПОЧИНАЮТЬСЯ З КОНТРОЛЬНОГО ВИКЛИКУ ПІД КЕРІВНИКОМ, і це не надмірність.
+ * Без нього `toBeUndefined()` доводив би лише «команда відмовила», а причин відмови в
+ * кожній із них щонайменше три (наділу немає, каса не тягне, порожні рядки). Контроль
+ * показує, що РІВНО ТОЙ САМИЙ виклик проходить, коли право діяти є, — отже друга відмова
+ * може бути тільки про точку.
+ *
+ * Дві форми гейта, а не одна: `issueCrates` бере `pointId` параметром, `addVisit` пише
+ * документ на точку з того ж параметра — обидві ходять через `actorAt`, і обидві мусять
+ * упасти, якщо його послабити.
+ */
+describe('права: приймальник на ЧУЖІЙ точці (23 §6)', () => {
+  beforeEach(() => {
+    vi.setSystemTime(new Date(`${TODAY}T12:30:00`))
+    useStore.getState().resetDemo()
+  })
+
+  it('видача ящиків на Гайовому з пристрою Шипинок не проходить — а керівникові та сама проходить', () => {
+    // Контроль: керівник `canActOnPoint` проходить будь-де, тому ця видача створює документ.
+    signInAs('owner')
+    expect(useStore.getState().issueCrates({ pointId: 'p3', supplierId: 's7', units: 5 })).toBeDefined()
+    // А Оксана Г. стоїть на Шипинках (`p1`): Гайове — не її точка.
+    signInAs('p1')
+    const before = useStore.getState().crateIssues.length
+    expect(useStore.getState().issueCrates({ pointId: 'p3', supplierId: 's7', units: 5 })).toBeUndefined()
+    expect(useStore.getState().crateIssues.length).toBe(before)
+  })
+
+  it('квитанція на Гайовому з пристрою Шипинок не пишеться — а керівникові пишеться', () => {
+    const berryId = useStore.getState().berries[0].id
+    const visit = {
+      date: TODAY,
+      pointId: 'p3',
+      supplierId: 's7',
+      carriedIn: 0,
+      // `paid: 0` навмисно: інакше відмову могла б дати каса за ягоду (`checkBerryPayout`),
+      // і тест зеленів би не з тієї причини.
+      paid: 0,
+      lines: [
+        {
+          berryId,
+          gross: 61.2,
+          pallet: 0,
+          tare: [{ tareId: 'tr_cheshka', count: 10 }],
+          tareWeight: 12,
+          net: 49.2,
+          price: 100,
+          bonus: 0,
+          amount: 4_920,
+        },
+      ],
+    }
+    signInAs('owner')
+    expect(useStore.getState().addVisit(visit)).toBeDefined()
+    signInAs('p1')
+    const before = useStore.getState().receptions.length
+    expect(useStore.getState().addVisit(visit)).toBeUndefined()
+    expect(useStore.getState().receptions.length).toBe(before)
+  })
+})
+
+/**
  * `G12` / `I58` — єдиний block на готівку в цих фазах. Три з пʼятьох рецензентів знайшли
  * незалежно, що `checkBerryPayout()` існувала, була протестована і НЕ ВИКЛИКАЛАСЯ ЗВІДКИ:
  * приймальник міг вивести касу за ягоду скільки завгодно в мінус, а екран лише фарбував

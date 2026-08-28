@@ -31,6 +31,7 @@ import { costOfDay, maskDecimalInput, parseNumeric, sum } from '@/lib/calc'
 import { addDays, kg, longDate, num, shortDate, uah, uahAuto, weekday } from '@/lib/format'
 import { useScope, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 import type { CostRow, Violation } from '@/lib/calc'
 import type { ExpensePolicy, ISODate } from '@/lib/types'
 
@@ -159,7 +160,22 @@ export function CostOfDayPage() {
     if (!trimmed || value === 0) return
     // Підпис під рядком витрат ставить стор із сесії — тут його немає чим передати, і
     // передавати не треба. Гейт `actorAt` віддає `undefined`, коли підписувати нікому.
-    addExpense({ date, pointId, label: trimmed, amount: value })
+    const doc = addExpense({ date, pointId, label: trimmed, amount: value })
+    /*
+     * ВІДМОВУ ВИДНО, І ФОРМА НЕ ЧИСТИТЬСЯ. До 28.08.2026 результат тут не зберігався
+     * взагалі — єдине таке місце в усьому UI: поля очищалися однаково і після успіху, і
+     * після відмови, тобто рядок витрат зникав без сліду й без слова, а собівартість дня
+     * рахувалася без нього. Шлях сьогодні недосяжний (сторінка керівницька, а `actorAt`
+     * для керівника завжди істинний), але саме на такий стан і розраховане `06 §5.3`:
+     * екран повторює рішення рушія, а не вгадує його. Форма відмови — та сама, що в
+     * `CashFloatDialog` і `SettleDialog`.
+     */
+    if (!doc) {
+      toast.error('Рядок не додано', {
+        description: 'Витрату пише той, хто стоїть на цій точці, і лише поки він у системі.',
+      })
+      return
+    }
     setLabel('')
     setAmount('')
   }
