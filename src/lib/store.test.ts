@@ -1008,6 +1008,35 @@ describe('персист: прогалини рецензії', () => {
     expect(owner.activePointId).toBe('all')
   })
 
+  /**
+   * ЗАПАСНЕ ЗНАЧЕННЯ ЗВУЖЕННЯ — окреме твердження, бо воно перевіряє протилежний бік того
+   * самого рядка. `?? rawPoint` (як було до 28.08.2026) лишав приймальникові БЕЗ точки в
+   * реєстрі рівно те, що він дописав у сховище: єдина гілка, де звуження лише здавалося.
+   * Мутація назад у `?? rawPoint` лишала дерево зеленим — тест дописано за знахідкою 8
+   * другої рецензії гілки.
+   *
+   * Реєстр підмінюється ЛОКАЛЬНО, бо в сіді такого запису немає (кожен приймальник має
+   * точку) — це про майбутні дані, а не про сьогоднішні.
+   */
+  it('приймальник без точки в реєстрі не лишає собі точку зі сховища: `` замість p3', async () => {
+    const store = await persistedStore()
+    const merge = store.persist.getOptions().merge!
+    const current = store.getState()
+    const brokenRegistry = {
+      ...current,
+      users: current.users.map((u) => (u.id === 'u_p1' ? { ...u, pointId: undefined } : u)),
+    }
+    const homeless = merge(
+      {
+        session: { userId: 'u_p1', startedDate: TODAY, startedTime: '07:10' },
+        activePointId: 'p3',
+      },
+      brokenRegistry,
+    ) as typeof current
+    // Те саме, що віддає `scopeAfterSignIn` на тому самому зламаному записі (`auth.ts`).
+    expect(homeless.activePointId).toBe('')
+  })
+
   it('налаштування з битою верхньою межею дод. ціни не приймаються', async () => {
     const store = await persistedStore()
     const merge = store.persist.getOptions().merge!
@@ -1110,6 +1139,135 @@ describe('права: керівницькі команди з пристрою 
     expect(useStore.getState().acceptTransfer(doc.id)).toBeDefined()
     expect(useStore.getState().issueCrates({ pointId: 'p1', supplierId: 's7', units: 5 })).toBeDefined()
   })
+
+  /*
+   * ЩІЛИНА `23 §6` №2 — І ЦЕ ГОЛОВНА ОБІЦЯНКА ФАЗИ КЛІЄНТОВІ. `22-tz` ряд. 671: сторінка
+   * «Ціни дня» була відкрита приймальникові НА ЗАПИС, «і буде виправлено». Гейт у сторі
+   * зʼявився з фазою 4 — а тримало його рівно ніщо: друга рецензія гілки закоментувала
+   * рядок `roleOf(…) !== 'owner'` у `setPrice` і в `setPriceEverywhere` поодинці, і дерево
+   * лишилося зеленим обидва рази (577 passed).
+   *
+   * Обидві команди в одному `it` навмисно: правило одне («ціну дня виставляє керівник»),
+   * і розводити його на два твердження означало б, що половину можна прибрати окремо.
+   *
+   * Контрольні виклики під керівником обовʼязкові з тієї самої причини, що в сусідньому
+   * `describe` про чужу точку: без них `toBeUndefined()` доводив би лише «команда
+   * відмовила», а `setPrice` уміє відмовити ще й без сесії (`signOf`).
+   */
+  it('приймальник не ставить ціну дня — ні точкову, ні загальну: журнал цін не росте', () => {
+    const before = useStore.getState().prices.length
+    const args = { date: TODAY, berryId: 'v_mal_1', price: 300, reason: 'спроба' }
+    expect(useStore.getState().setPrice({ ...args, pointId: 'p1' })).toBeUndefined()
+    expect(useStore.getState().setPriceEverywhere(args)).toBeUndefined()
+    expect(useStore.getState().prices.length).toBe(before)
+
+    signInAs('owner')
+    expect(useStore.getState().setPrice({ ...args, pointId: 'p1' })).toBeDefined()
+    // «Загальна» пише стільки записів, скільки активних ПУНКТІВ ПРИЙОМУ (склад окремо, M37).
+    expect(useStore.getState().setPriceEverywhere(args)).toHaveLength(5)
+    expect(useStore.getState().prices.length).toBe(before + 6)
+  })
+
+  /*
+   * Переважує керівник на базі (`13 §4 S-20`, дзвінок №4, ряд. 617–621) — і сторнує теж
+   * він. Гейт сторно дописала хвиля виправлень за фінальною рецензією, і його мутація так
+   * само лишала дерево зеленим: єдиний тест `voidReweigh` (`cost.test.ts`) працює під
+   * керівником, тобто відмови не бачив ніхто.
+   */
+  it('приймальник не переважує і не сторнує переважування: обидва — робота бази', () => {
+    const target = useStore.getState().reweighs[0]
+    const before = useStore.getState().reweighs.length
+    const draft = {
+      berryDate: TODAY,
+      fromPointId: 'p1',
+      atPointId: 'base',
+      lines: [
+        {
+          berryId: 'v_mal_v',
+          product: 'Малина',
+          grossKg: 790,
+          palletKg: 0,
+          tare: [],
+          tareWeightKg: 0,
+          tareUnits: 0,
+          netKg: 790,
+        },
+      ],
+    }
+    expect(useStore.getState().addReweigh(draft)).toBeUndefined()
+    expect(useStore.getState().voidReweigh(target.id, 'спроба')).toBeUndefined()
+    expect(useStore.getState().reweighs.length).toBe(before)
+    expect(useStore.getState().reweighs.find((r) => r.id === target.id)!.status).toBe(target.status)
+
+    signInAs('owner')
+    expect(useStore.getState().addReweigh(draft)).toBeDefined()
+    expect(useStore.getState().voidReweigh(target.id, 'помилилися пунктом')).toBeDefined()
+  })
+})
+
+/**
+ * ДЗЕРКАЛЬНИЙ БІК `23 §6`, і без нього половина обіцянки не перевірена. `§7` розводить дві
+ * ролі в обидва боки: керівник не тисне «Прийняв» за точку (`I69`) і не веде її шухляду —
+ * зміну відкриває, рахує й закриває САМЕ приймальник (`22-tz`, ряд. 669: «закривається
+ * воно разом з обліковими записами»).
+ *
+ * Усі пʼять гейтів нижче — `!== 'operator'`, і всі пʼять до цього моменту переживали
+ * мутацію без жодного червоного: у сусідніх тестах керівник просто ніколи не пробував
+ * зробити приймальникову дію, тому відмови не бачив ніхто.
+ *
+ * Контрольний виклик під приймальником у кожному `it` — з тієї самої причини, що й скрізь
+ * у цьому файлі: `openShift` уміє відмовити ще й через другу відкриту зміну, `countCash` —
+ * через закриту, `acceptTransfer` — через статус документа.
+ */
+describe('права: приймальницькі команди з пристрою керівника (23 §6)', () => {
+  beforeEach(() => {
+    vi.setSystemTime(new Date(`${TODAY}T12:30:00`))
+    useStore.getState().resetDemo()
+    signInAs('owner')
+  })
+
+  it('керівник не відкриває зміну: на Конищеві змін як не було', () => {
+    const before = useStore.getState().shifts.length
+    expect(useStore.getState().openShift({ pointId: 'p2', openingFloat: 10_000 })).toBeUndefined()
+    expect(useStore.getState().shifts.length).toBe(before)
+
+    signInAs('p2')
+    expect(useStore.getState().openShift({ pointId: 'p2', openingFloat: 10_000 })).toBeDefined()
+    expect(useStore.getState().shifts.length).toBe(before + 1)
+  })
+
+  it('керівник не рахує чужу шухляду і не закриває зміну: перерахунків як був 1', () => {
+    const before = useStore.getState().cashCounts.length
+    // `sf2` — відкрита зміна Шипинок у сіді; сума та сама, що в канонічному дні (21 §8.4).
+    expect(useStore.getState().countCash({ shiftId: 'sf2', countedCash: 15_416.1 })).toBeUndefined()
+    expect(useStore.getState().closeShift({ shiftId: 'sf2', countedCash: 15_416.1 })).toBeUndefined()
+    expect(useStore.getState().cashCounts.length).toBe(before)
+    expect(useStore.getState().shifts.find((s) => s.id === 'sf2')!.status).toBe('open')
+
+    signInAs('p1')
+    expect(useStore.getState().countCash({ shiftId: 'sf2', countedCash: 15_416.1 })).toBeDefined()
+    expect(useStore.getState().closeShift({ shiftId: 'sf2', countedCash: 15_416.1 })).toBeDefined()
+  })
+
+  it('керівник не тисне «Прийняв» і не заявляє «не сходиться» за точку (I69)', () => {
+    const accepted = useStore
+      .getState()
+      .sendTransfer({ pointId: 'p1', crates: 40, cash: 150_000, carrier: 'Перевізник Р.' })!
+    const disputed = useStore
+      .getState()
+      .sendTransfer({ pointId: 'p1', crates: 10, cash: 1_000, carrier: 'Перевізник Р.' })!
+    const claim = { reportedCrates: 8, reportedCash: 1_000, note: 'двох ящиків немає' }
+
+    expect(useStore.getState().acceptTransfer(accepted.id)).toBeUndefined()
+    expect(useStore.getState().disputeTransfer(disputed.id, claim)).toBeUndefined()
+    const still = useStore.getState().transfers
+    expect(still.find((t) => t.id === accepted.id)!.status).toBe('sent')
+    expect(still.find((t) => t.id === disputed.id)!.status).toBe('sent')
+
+    signInAs('p1')
+    expect(useStore.getState().acceptTransfer(accepted.id)).toBeDefined()
+    expect(useStore.getState().disputeTransfer(disputed.id, claim)).toBeDefined()
+  })
 })
 
 /**
@@ -1177,6 +1335,29 @@ describe('права: приймальник на ЧУЖІЙ точці (23 §6)
     const before = useStore.getState().receptions.length
     expect(useStore.getState().addVisit(visit)).toBeUndefined()
     expect(useStore.getState().receptions.length).toBe(before)
+  })
+
+  /*
+   * ДРУГА ПОЛОВИНА `23 §4.2`, і вона не про документи: `setActivePoint` нічого не пише,
+   * вона лише перемикає ОБЛАСТЬ у шапці. Тому мутація `if (!user || (user.role ===
+   * 'operator' && id !== user.pointId))` до самого `if (!user)` не валила жодного тесту —
+   * а наслідок у неї той самий, що в чужої точки: приймальник Шипинок дивився б книгу
+   * Гайового. `03 §UC-29 п.1`: «сховати пункт меню недостатньо».
+   *
+   * Керівник у кінці — не окрема примха, а контроль: без нього `toBe('p1')` доводив би й
+   * те, що команда взагалі нічого не робить.
+   */
+  it('приймальник не перемикає шапку на чужу точку, а керівник перемикає (23 §4.2)', () => {
+    signInAs('p1')
+    useStore.getState().setActivePoint('p3')
+    expect(useStore.getState().activePointId).toBe('p1')
+    // Своя точка проходить: гейт про ЧУЖУ, а не про заборону перемикати взагалі.
+    useStore.getState().setActivePoint('p1')
+    expect(useStore.getState().activePointId).toBe('p1')
+
+    signInAs('owner')
+    useStore.getState().setActivePoint('p3')
+    expect(useStore.getState().activePointId).toBe('p3')
   })
 })
 
@@ -1407,6 +1588,24 @@ describe('сторно ящикових документів і закриття
     expect(useStore.getState().voidCrateShipment(doc.id, 'причина')).toBeDefined()
     // вдруге той самий документ не сторнується
     expect(useStore.getState().voidCrateShipment(doc.id, 'ще раз')).toBeUndefined()
+  })
+
+  /*
+   * ТЕ САМЕ ПРАВИЛО ДЛЯ ПЕРЕВАЖУВАННЯ, і його теж дописала хвиля виправлень за фінальною
+   * рецензією (`store.ts`: `if (found.status === 'voided') return undefined`). Мутація цього
+   * рядка лишала дерево зеленим: `cost.test.ts` сторнує документ рівно один раз.
+   *
+   * Перевіряється не лише відмова, а СЛІД: без гейта друге сторно переписало б `voidReason`
+   * і `voidedBy`, тобто документ указував би не на ту людину й не на ту причину — рівно те,
+   * проти чого `voidCrateDoc` тримає свою відмову на `found.voidedDate`.
+   */
+  it('друге сторно переважування не проходить і не переписує слід першого', () => {
+    const target = useStore.getState().reweighs[0]
+    expect(useStore.getState().voidReweigh(target.id, 'помилилися пунктом')!.status).toBe('voided')
+    expect(useStore.getState().voidReweigh(target.id, 'ще раз')).toBeUndefined()
+    const kept = useStore.getState().reweighs.find((r) => r.id === target.id)!
+    expect(kept.voidReason).toBe('помилилися пунктом')
+    expect(kept.voidedBy).toBe('Керівник')
   })
 
   it('зміна з розбіжністю −10 000,00 виходить із глухого кута лише через керівника', () => {

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { ArrowDownRight, ArrowUpRight, Clock, Pencil } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Clock, Lock, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -22,13 +22,28 @@ import {
 } from '@/components/ui/table'
 import { Eyebrow, PageHeader } from '@/components/common/bits'
 import { Sparkline } from '@/components/common/Sparkline'
-import { useStore } from '@/lib/store'
+import { useScope, useStore } from '@/lib/store'
 import { addDays, longDate, num } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Berry } from '@/lib/types'
 
 export function PricesPage() {
+  /*
+   * ЦІНА ДЛЯ ПРИЙМАЛЬНИКА — ПОКАЗАНА, А НЕ СХОВАНА, і це не те саме, що зроблено з
+   * кнопками. `06 §5.4` розводить два випадки, і саме поле ціни називає поіменно:
+   * read-only ЧЕРЕЗ РОЛЬ мусить лишитися на екрані «значення + іконка замка + підпис»,
+   * бо «приховане поле породжує підозру й дзвінки; заблоковане з підписом вчить правилу».
+   * Ціле ДІЙСТВО (кнопка «Перерахувати касу», `CashCountPanel`) навпаки прибирається
+   * зовсім — «заблокована кнопка вчить шукати обхід, відсутня не вчить нічого».
+   *
+   * До 28.08.2026 тут не читалася роль ВЗАГАЛІ: приймальник відкривав вікно, набирав ціну,
+   * тиснув «Зберегти ціну» — і щоразу отримував відмову стору. `23 §6` це навіть
+   * санкціонувала («відмова видима»), і виправлено саме спеку, а не лише код
+   * (`23 §6`, датована поправка).
+   */
+  const { role } = useScope()
+  const canSetPrice = role === 'owner'
   const berries = useStore((s) => s.berries)
   const products = useStore((s) => s.products)
   const points = useStore((s) => s.points)
@@ -117,6 +132,12 @@ export function PricesPage() {
      * Обидві гілки зводяться в ОДНЕ значення, бо відмова в них одна й та сама: `undefined`
      * означає «ціну дня виставляє лише керівник», і мовчазна кнопка тут була б гіршою за
      * відмову, названу вголос.
+     *
+     * ⚠️ З 28.08.2026 ЦЯ ВІДМОВА НЕДОСЯЖНА З ЕКРАНА і лишається запобіжною сіткою — та
+     * сама форма, що в `CashCountPanel`. Дійти сюди приймальник більше не може: комірки
+     * ціни для нього нередаговані, вікна він не відкриває. Тост лишено навмисно: `06 §5.3`
+     * («UI лише ПОВТОРЮЄ рішення рушія») працює в обидва боки — рушій мусить відмовляти й
+     * тоді, коли екран уже не пропонує, бо екран колись перепишуть, а стор лишиться.
      */
     const doc = everywhere
       ? setPriceEverywhere(args)
@@ -138,8 +159,33 @@ export function PricesPage() {
       <PageHeader
         eyebrow={longDate(workDate)}
         title="Ціни дня"
-        description="Ціна на кожну точку своя: «чим дальше воно знаходиться, тим більше розтрат», де конкуренція — дорожче. Виставте загальну і підправте окремі. Змінювати можна кілька разів на день — кожна зміна лишає слід: хто, коли і чому."
+        /*
+          Підпис теж залежить від ролі, і це не косметика: «Виставте загальну і підправте
+          окремі» — це інструкція до дії, якої в приймальника немає. Лишити її над рядком
+          «ціну виставляє керівник» означало б, що екран каже дві протилежні речі одна під
+          одною.
+        */
+        description={
+          canSetPrice
+            ? 'Ціна на кожну точку своя: «чим дальше воно знаходиться, тим більше розтрат», де конкуренція — дорожче. Виставте загальну і підправте окремі. Змінювати можна кілька разів на день — кожна зміна лишає слід: хто, коли і чому.'
+            : 'Ціна на кожну точку своя: «чим дальше воно знаходиться, тим більше розтрат», де конкуренція — дорожче. Мінятися вона може кілька разів на день, і квитанції до зміни лишаються за старою ціною.'
+        }
       />
+
+      {/*
+        ОДИН РЯДОК НА ВЕСЬ ЕКРАН, а не підпис під кожною коміркою: правило одне, і
+        повторене сімнадцять разів воно перестає читатися. Замок стоїть біля кожного
+        значення нижче — він показує, ЩО саме нередаговане; цей абзац каже ЧОМУ.
+      */}
+      {canSetPrice ? null : (
+        <div className="mb-4 flex items-start gap-2 rounded-xl border border-dashed border-border p-3 text-sm text-muted-foreground">
+          <Lock className="mt-0.5 size-4 shrink-0" />
+          <span>
+            Ціну дня виставляє керівник — тут вона лише показана. Кожна зміна лишає слід:
+            хто, коли і чому, і цей журнал видно вам так само, як йому.
+          </span>
+        </div>
+      )}
 
       {activePointId === 'all' ? (
         <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
@@ -184,17 +230,9 @@ export function PricesPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           {day === null ? (
-                            <button
-                              onClick={() => openEdit(b, 'all')}
-                              className="text-xs text-muted-foreground underline decoration-dotted"
-                            >
-                              встановити
-                            </button>
+                            <PriceMissing editable={canSetPrice} onEdit={() => openEdit(b, 'all')} />
                           ) : (
-                            <button
-                              onClick={() => openEdit(b, 'all')}
-                              className="group inline-flex items-center gap-1.5"
-                            >
+                            <PriceCell editable={canSetPrice} onEdit={() => openEdit(b, 'all')}>
                               {day.common !== undefined ? (
                                 <span className="font-mono font-medium">{num(day.common)} ₴</span>
                               ) : (
@@ -211,8 +249,7 @@ export function PricesPage() {
                                   </span>
                                 </>
                               )}
-                              <Pencil className="size-3 opacity-0 transition-opacity group-hover:opacity-50" />
-                            </button>
+                            </PriceCell>
                           )}
                         </TableCell>
                         {tradingPoints.map((p) => {
@@ -222,23 +259,14 @@ export function PricesPage() {
                           return (
                             <TableCell key={p.id} className="text-right">
                               {price === undefined ? (
-                                <button
-                                  onClick={() => openEdit(b, p.id)}
-                                  className="text-xs text-muted-foreground underline decoration-dotted"
-                                >
-                                  встановити
-                                </button>
+                                <PriceMissing editable={canSetPrice} onEdit={() => openEdit(b, p.id)} />
                               ) : (
-                                <button
-                                  onClick={() => openEdit(b, p.id)}
-                                  className="group inline-flex items-center gap-1.5"
-                                >
+                                <PriceCell editable={canSetPrice} onEdit={() => openEdit(b, p.id)}>
                                   <span className="font-mono font-medium">{num(price)} ₴</span>
                                   {changed ? (
                                     <PriceDelta from={hist[0].price} to={price} />
                                   ) : null}
-                                  <Pencil className="size-3 opacity-0 transition-opacity group-hover:opacity-50" />
-                                </button>
+                                </PriceCell>
                               )}
                             </TableCell>
                           )
@@ -286,10 +314,25 @@ export function PricesPage() {
                             ) : null}
                           </div>
                         </div>
-                        <Button variant="outline" size="sm" onClick={() => openEdit(b, pointId)}>
-                          <Pencil className="size-3.5" />
-                          Змінити
-                        </Button>
+                        {canSetPrice ? (
+                          <Button variant="outline" size="sm" onClick={() => openEdit(b, pointId)}>
+                            <Pencil className="size-3.5" />
+                            Змінити
+                          </Button>
+                        ) : (
+                          /*
+                            Підпис РІВНО тієї форми, яку називає `06 §5.4`: «значення +
+                            іконка замка + підпис «ціна дня, встановила Таня о 07:40»».
+                            Автор і час беруться з ОСТАННЬОГО запису журналу (`priceHistory`
+                            віддає за зростанням часу), бо саме він і є діюча ціна.
+                          */
+                          <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+                            <Lock className="size-3.5" />
+                            {hist.length
+                              ? `ціна дня · ${hist[hist.length - 1].author} о ${hist[hist.length - 1].time}`
+                              : 'ціна дня'}
+                          </span>
+                        )}
                       </div>
 
                       {hist.length ? (
@@ -387,6 +430,56 @@ export function PricesPage() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+/**
+ * ОБОЛОНКА КОМІРКИ ЦІНИ — одна розмітка на дві ролі, і різниця рівно в оболонці.
+ *
+ * Керівникові — кнопка з олівцем, як було. Приймальникові — те саме значення й замок
+ * поруч (`06 §5.4`). Значення НЕ ховається і не сіріє: ціна дня — це те, за чим він
+ * приймає ягоду, і сховати її означало б зламати екран заради права, якого він і так не
+ * має.
+ *
+ * Спільний компонент, а не два дерева поруч: інакше зміна формату числа мусила б
+ * потрапити у два місця, і рано чи пізно потрапила б в одне.
+ */
+function PriceCell({
+  editable,
+  onEdit,
+  children,
+}: {
+  editable: boolean
+  onEdit: () => void
+  children: React.ReactNode
+}) {
+  if (!editable) {
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        {children}
+        <Lock className="size-3 text-muted-foreground/60" />
+      </span>
+    )
+  }
+  return (
+    <button onClick={onEdit} className="group inline-flex items-center gap-1.5">
+      {children}
+      <Pencil className="size-3 opacity-0 transition-opacity group-hover:opacity-50" />
+    </button>
+  )
+}
+
+/**
+ * Ціни на цей пункт ще немає. Керівникові це запрошення («встановити»), приймальникові —
+ * факт: прочерк. Кнопки «встановити» для нього тут не малюють з тієї самої причини, з якої
+ * прибрано «Перерахувати касу» в `CashCountPanel`: це ціле ДІЙСТВО, а не поле.
+ */
+function PriceMissing({ editable, onEdit }: { editable: boolean; onEdit: () => void }) {
+  if (!editable) return <span className="text-xs text-muted-foreground">—</span>
+  return (
+    <button onClick={onEdit} className="text-xs text-muted-foreground underline decoration-dotted">
+      встановити
+    </button>
   )
 }
 
