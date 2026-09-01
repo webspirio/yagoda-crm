@@ -1,0 +1,1199 @@
+<mxfile host="65bd71144e">
+    <diagram id="p1" name="1 · Доменна модель — усі сутності">
+        <mxGraphModel dx="538" dy="518" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2560" pageHeight="1820" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="p1_t" value="Доменна модель: усі сутності (7 доменів)" style="text;html=1;fontSize=19;fontStyle=1;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="20" width="1000" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_s" value="Колір = домен. Суцільна = склад/володіння (aggregate). Пунктир сірий = FK. Пунктир рожевий = join за НАЗВОЮ (не FK). * = знімок або редаговане поле." style="text;html=1;fontSize=11;fontColor=#555555;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="50" width="1500" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_bR" value="ДОВІДНИКИ / ПАРАМЕТРИ" style="text;html=1;fontSize=13;fontStyle=1;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="82" width="300" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_point" value="&lt;b&gt;Point (пункт)&lt;/b&gt;&#xa;id; name; village&#xa;kind: reception | base&#xa;isMain; active&#xa;points[]=11: 10 прийому + Склад(base,active)&#xa;5 із 10 прийому active&#xa;ЧИТАННЯ: команди створити/активувати НЕМАЄ" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#e7ecf7;strokeColor=#4263eb;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="110" width="250" height="102" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_product" value="&lt;b&gt;Product (товар)&lt;/b&gt;&#xa;id; name&#xa;10 товарів (назви унікальні)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#e7ecf7;strokeColor=#4263eb;" parent="1" vertex="1">
+                    <mxGeometry x="330" y="110" width="250" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_berry" value="&lt;b&gt;Berry (сорт)&lt;/b&gt;&#xa;id; name; short&#xa;product = НАЗВА товару (не FK!)&#xa;wholesale (ОПТ = окремий сорт)&#xa;from / to; basePrice&#xa;retired? (з довідника зникає,&#xa;  історія лишається) · 18 сортів" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#e7ecf7;strokeColor=#4263eb;" parent="1" vertex="1">
+                    <mxGeometry x="560" y="110" width="250" height="102" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_tare" value="&lt;b&gt;TareType (тара)&lt;/b&gt;&#xa;id; name&#xa;weight кг *редаг. керівником&#xa;price ₴ *редаг. (база завдатку)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#e7ecf7;strokeColor=#4263eb;" parent="1" vertex="1">
+                    <mxGeometry x="880" y="110" width="250" height="63" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_supplier" value="&lt;b&gt;Supplier (постачальник)&lt;/b&gt;&#xa;id; name; phone?&#xa;village (транскрипція, дублікати)&#xa;homePointId → Point&#xa;kind: none | wholesale | farmer&#xa;note?; createdAt&#xa;НЕМАЄ is_active (§5.6 не реаліз.)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#e7ecf7;strokeColor=#4263eb;" parent="1" vertex="1">
+                    <mxGeometry x="1140" y="110" width="250" height="102" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_user" value="&lt;b&gt;User (обліковий запис)&lt;/b&gt;&#xa;id; name; login&#xa;role: operator | owner&#xa;pointId? → Point&#xa;секрету НЕМАЄ (у auth-mock)&#xa;7 записів (owner, p1..p5, p1b)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#e7ecf7;strokeColor=#4263eb;" parent="1" vertex="1">
+                    <mxGeometry x="1460" y="110" width="250" height="89" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_config" value="&lt;b&gt;AppConfig&lt;/b&gt;&#xa;businessToday (бізнес-дата)&#xa;seasonStart; cashBookFrom&#xa;crateTareId → TareType" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#e7ecf7;strokeColor=#4263eb;" parent="1" vertex="1">
+                    <mxGeometry x="1780" y="110" width="250" height="63" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_settings" value="&lt;b&gt;Settings&lt;/b&gt;&#xa;surchargeMin; surchargeMax&#xa;сід −30…+30 (симетрія лише сіду)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#e7ecf7;strokeColor=#4263eb;" parent="1" vertex="1">
+                    <mxGeometry x="2040" y="110" width="250" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_enums" value="&lt;b&gt;Enums&lt;/b&gt;&#xa;PointKind; SupplierKind&#xa;CrateIssueMode: deposit|receipt&#xa;ReweighStatus: draft|posted|voided&#xa;TransferStatus: sent|accepted|&#xa;  disputed|void&#xa;Shift.status: open|&#xa;  awaiting_explanation|closed&#xa;DayExpenseKind: manual|shortfall&#xa;Role: operator|owner" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#e7ecf7;strokeColor=#4263eb;" parent="1" vertex="1">
+                    <mxGeometry x="2300" y="110" width="250" height="141" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_bV" value="ПРИЙОМКА · БОРГ" style="text;html=1;fontSize=13;fontStyle=1;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="430" width="300" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_price" value="&lt;b&gt;PriceRecord (ціна дня)&lt;/b&gt;&#xa;id; date; pointId →; berryId →&#xa;price; time; author*(імʼя); reason?&#xa;append-only; ключ (date,point,сорт)&#xa;остання за time перемагає" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#d3f9d8;strokeColor=#2f9e44;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="458" width="250" height="76" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_recept" value="&lt;b&gt;Reception (квитанція)&lt;/b&gt;&#xa;id; code; date; time&#xa;pointId →; supplierId →; berryId →&#xa;gross; pallet; tare: TareLine[]&#xa;tareWeight *(знімок)&#xa;net(кеш); price *(знімок); bonus&#xa;amount(кеш); paid; debt(кеш+детект.)&#xa;carriedIn(лише 1-й рядок); visitId?&#xa;operator*(імʼя); synced&#xa;СТОРНО НЕМАЄ (voidReception відсутня)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#d3f9d8;strokeColor=#2f9e44;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="458" width="250" height="141" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_tareline" value="&lt;b&gt;TareLine&lt;/b&gt;&#xa;tareId → TareType&#xa;count" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#d3f9d8;strokeColor=#2f9e44;" parent="1" vertex="1">
+                    <mxGeometry x="660" y="458" width="250" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_payout" value="&lt;b&gt;Payout (виплата)&lt;/b&gt;&#xa;id; code; date; time&#xa;pointId →; supplierId →&#xa;amount(кеш)&#xa;allocations: Allocation[]&#xa;visitId?; operator*; synced&#xa;СТОРНО НЕМАЄ" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#d3f9d8;strokeColor=#2f9e44;" parent="1" vertex="1">
+                    <mxGeometry x="660" y="620" width="250" height="102" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_alloc" value="&lt;b&gt;Allocation&lt;/b&gt;&#xa;receptionId → Reception&#xa;originDate (яку дату закрито)&#xa;amount" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#d3f9d8;strokeColor=#2f9e44;" parent="1" vertex="1">
+                    <mxGeometry x="960" y="620" width="250" height="63" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_bC" value="ЯЩИКИ" style="text;html=1;fontSize=13;fontStyle=1;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="780" width="300" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_callot" value="&lt;b&gt;CrateAllotment (наділ)&lt;/b&gt;&#xa;id; pointId →&#xa;units (ЦІЛЕ)&#xa;effectiveFrom (лексичне ISO)&#xa;setBy*; setDate/Time&#xa;reason? (обов. якщо наділ вже є)&#xa;ІСТОРІЯ, не поле точки" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#ffe8cc;strokeColor=#e8590c;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="808" width="250" height="102" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_cissue" value="&lt;b&gt;CrateIssue (видача)&lt;/b&gt;&#xa;id; date; time; pointId →; supplierId →&#xa;units; mode: deposit|receipt&#xa;depositPerUnit *(знімок ціни)&#xa;depositTaken; receiptNo?(лише receipt)&#xa;operatorId*; voided*?" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#ffe8cc;strokeColor=#e8590c;" parent="1" vertex="1">
+                    <mxGeometry x="330" y="808" width="250" height="89" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_creturn" value="&lt;b&gt;CrateReturn (повернення)&lt;/b&gt;&#xa;id; date; time; pointId →; supplierId →&#xa;units&#xa;allocations: CrateReturnAllocation[]&#xa;depositRefund; operatorId*&#xa;voided*?" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#ffe8cc;strokeColor=#e8590c;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="808" width="250" height="89" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_cralloc" value="&lt;b&gt;CrateReturnAllocation&lt;/b&gt;&#xa;issueId → CrateIssue&#xa;units&#xa;perUnit *(зі знімка видачі)&#xa;amount" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#ffe8cc;strokeColor=#e8590c;" parent="1" vertex="1">
+                    <mxGeometry x="910" y="808" width="250" height="76" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_cship" value="&lt;b&gt;CrateShipment (відправлення)&lt;/b&gt;&#xa;id; date (день ягоди); pointId →&#xa;withBerryUnits *(знімок рушія)&#xa;receptionCount&#xa;brokenUnits (руками); operatorId*&#xa;postedDate/Time; voided*?" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#ffe8cc;strokeColor=#e8590c;" parent="1" vertex="1">
+                    <mxGeometry x="1200" y="808" width="250" height="89" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_bK" value="КАСА · ЗМІНА · ПЕРЕКАЗ" style="text;html=1;fontSize=13;fontStyle=1;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="1120" width="300" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_cfloat" value="&lt;b&gt;CashFloat (наділ каси)&lt;/b&gt;&#xa;id; pointId →&#xa;amount (FINITE + round2, не ціле)&#xa;effectiveFrom; setBy*; setDate/Time&#xa;reason?&#xa;дзеркальне до CrateAllotment" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#fff3bf;strokeColor=#f08c00;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="1148" width="250" height="89" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_shift" value="&lt;b&gt;Shift (зміна)&lt;/b&gt;&#xa;id; pointId →; operatorId*&#xa;date; openedTime; openingFloat&#xa;closedTime?; countedCash?&#xa;discrepancy? (обчисл.)&#xa;status: open|awaiting_explanation|closed&#xa;explanation?; closedBy*?(хто натиснув)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#fff3bf;strokeColor=#f08c00;" parent="1" vertex="1">
+                    <mxGeometry x="330" y="1148" width="250" height="102" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_ccount" value="&lt;b&gt;CashCount (перерахунок)&lt;/b&gt;&#xa;id; shiftId → Shift; pointId →&#xa;date; at; countedCash&#xa;expectedAtCount (знімок)&#xa;discrepancy; countedBy*(хто натиснув)&#xa;note? · фіксує факт, не виправляє" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#fff3bf;strokeColor=#f08c00;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="1148" width="250" height="89" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_transfer" value="&lt;b&gt;Transfer (переказ база→точка)&lt;/b&gt;&#xa;id; date; pointId →&#xa;crates; cash; carrier (текст)&#xa;sentBy*; sentTime&#xa;status: sent|accepted|disputed|void&#xa;acceptedBy*?; acceptedDate/Time?&#xa;reported*? (лише disputed — інфо)&#xa;correctionOf? → Transfer; voided*?" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#fff3bf;strokeColor=#f08c00;" parent="1" vertex="1">
+                    <mxGeometry x="910" y="1148" width="250" height="115" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_bB" value="БАЗА · СОБІВАРТІСТЬ" style="text;html=1;fontSize=13;fontStyle=1;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="1470" width="300" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_reweigh" value="&lt;b&gt;Reweigh (переважування)&lt;/b&gt;&#xa;id; berryDate (день ягоди)&#xa;fromPointId →(reception); atPointId →(база)&#xa;weighedDate/Time; status: draft|posted|voided&#xa;lines: ReweighLine[]&#xa;snapshot[] {product,kgPoint,avgPoint*немокругл}&#xa;operator*; voided*?; synced&#xa;народжується posted (draft не пишеться)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#ffe3e3;strokeColor=#e03131;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="1498" width="250" height="115" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_rwline" value="&lt;b&gt;ReweighLine&lt;/b&gt;&#xa;id; order; berryId →&#xa;product; grossKg; palletKg&#xa;tare[]; tareWeightKg; tareUnits&#xa;netKg; note?" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#ffe3e3;strokeColor=#e03131;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="1498" width="250" height="76" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_expense" value="&lt;b&gt;DayExpense (витрата дня)&lt;/b&gt;&#xa;id; date; pointId →&#xa;kind: manual | shortfall(синтез., не в стані)&#xa;label; amount&#xa;createdBy*; createdDate/Time; note?&#xa;касу НЕ рухає" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#ffe3e3;strokeColor=#e03131;" parent="1" vertex="1">
+                    <mxGeometry x="680" y="1498" width="250" height="89" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_policy" value="&lt;b&gt;ExpensePolicy&lt;/b&gt;&#xa;(date, pointId) →&#xa;basis: byWeight | byValue&#xa;singleProduct: string|null (ОКРЕМЕ поле)&#xa;належить ДНЮ" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#ffe3e3;strokeColor=#e03131;" parent="1" vertex="1">
+                    <mxGeometry x="980" y="1498" width="250" height="76" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_session" value="&lt;b&gt;Session (хто за компʼютером)&lt;/b&gt;&#xa;userId → User&#xa;startedDate = businessToday&#xa;startedTime = годинник пристрою&#xa;токена немає (форма мока)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#eebefa;strokeColor=#9c36b5;" parent="1" vertex="1">
+                    <mxGeometry x="1300" y="1498" width="250" height="76" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_authres" value="&lt;b&gt;AuthResult&lt;/b&gt;&#xa;ok:true + session&#xa;ok:false + reason:&#xa;  unknown-login | wrong-secret |&#xa;  no-account&#xa;(перші дві сервер зіллє)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=9;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;spacingRight=4;fillColor=#eebefa;strokeColor=#9c36b5;" parent="1" vertex="1">
+                    <mxGeometry x="1580" y="1498" width="250" height="89" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_e36" value="homePointId" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=8;endArrow=open;dashed=1;strokeColor=#adb5bd;" parent="1" source="p1_supplier" target="p1_point" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_e37" value="pointId" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=8;endArrow=open;dashed=1;strokeColor=#adb5bd;" parent="1" source="p1_user" target="p1_point" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_e38" value="crateTareId" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=8;endArrow=open;dashed=1;strokeColor=#adb5bd;" parent="1" source="p1_config" target="p1_tare" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_e39" value="product = НАЗВА (інваріант: унікальні)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=8;endArrow=open;dashed=1;dashPattern=2 3;strokeColor=#e64980;" parent="1" source="p1_berry" target="p1_product" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_e40" value="tare[]" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" parent="1" source="p1_recept" target="p1_tareline" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_e41" value="allocations[]" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" parent="1" source="p1_payout" target="p1_alloc" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_e42" value="receptionId" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=8;endArrow=open;dashed=1;strokeColor=#adb5bd;" parent="1" source="p1_alloc" target="p1_recept" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_e43" value="allocations[]" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" parent="1" source="p1_creturn" target="p1_cralloc" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_e44" value="issueId" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=8;endArrow=open;dashed=1;strokeColor=#adb5bd;" parent="1" source="p1_cralloc" target="p1_cissue" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_e45" value="lines[]" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" parent="1" source="p1_reweigh" target="p1_rwline" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_e46" value="shiftId" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=8;endArrow=open;dashed=1;strokeColor=#adb5bd;" parent="1" source="p1_ccount" target="p1_shift" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_e47" value="correctionOf" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=8;endArrow=open;dashed=1;strokeColor=#adb5bd;exitX=1;exitY=0.15;exitDx=0;exitDy=0;entryX=1;entryY=0.4;entryDx=0;entryDy=0;" parent="1" source="p1_transfer" target="p1_transfer" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_e48" value="userId" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=8;endArrow=open;dashed=1;strokeColor=#adb5bd;" parent="1" source="p1_session" target="p1_user" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_e49" value="session" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=8;endArrow=open;dashed=1;strokeColor=#adb5bd;" parent="1" source="p1_authres" target="p1_session" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_e50" value="berryId" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=8;endArrow=open;dashed=1;strokeColor=#adb5bd;" parent="1" source="p1_price" target="p1_berry" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p1_ernote" value="ПІДПИСИ (author/operator/setBy/…/voidedBy) зберігають ІМʼЯ (string), не UserId — свідома розбіжність (types.ts:263-295), борг переходу «разом із сервером». Ім&#39;я бере auth.ts:actorName(users, session)." style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" parent="1" vertex="1">
+                    <mxGeometry x="1300" y="1600" width="700" height="90" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="p2" name="2 · Актори і потоки ресурсів">
+        <mxGraphModel dx="1434" dy="830" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="800" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="p2_t" value="Актори: База · Точка · Постачальник — потоки" style="text;html=1;fontSize=19;fontStyle=1;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="15" width="1000" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_s" value="Гроші: База→Точка→Постачальник. Ягоди: назад. Ящики: цикл. Числа — Шипинки 04.08." style="text;html=1;fontSize=11;fontColor=#555555;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="46" width="1300" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_lA" value="ГРОШІ" style="text;html=1;fontSize=13;fontStyle=1;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="158" width="90" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_aBh" value="База" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;fillColor=#ffffff;strokeColor=#495057;verticalAlign=middle;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="130" y="120" width="240" height="38" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_aBb" value="джерело переказів" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fontSize=11;fillColor=#51cf66;strokeColor=#2f9e44;fontColor=#08300f;verticalAlign=middle;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="130" y="158" width="240" height="46" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_aPh" value="Точка" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;fillColor=#ffffff;strokeColor=#495057;verticalAlign=middle;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="660" y="120" width="240" height="38" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_aPb" value="каса за ягоду 1 616,10 ₴" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fontSize=11;fillColor=#51cf66;strokeColor=#2f9e44;fontColor=#08300f;verticalAlign=middle;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="660" y="158" width="240" height="46" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_aSh" value="Постачальник" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;fillColor=#ffffff;strokeColor=#495057;verticalAlign=middle;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="1190" y="120" width="240" height="38" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_aSb" value="отримувач виплат" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fontSize=11;fillColor=#51cf66;strokeColor=#2f9e44;fontColor=#08300f;verticalAlign=middle;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="1190" y="158" width="240" height="46" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_e9" value="переказ +100 000 ₴ (по «Прийняв»)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;strokeWidth=2;" parent="1" source="p2_aBb" target="p2_aPb" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_e10" value="виплата −125 000 ₴ + борги −7 400 ₴ (FIFO)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;strokeWidth=2;" parent="1" source="p2_aPb" target="p2_aSb" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_aN" value="наділ каси 500 000 → база винна точці 498 383,90 ₴" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffec99;strokeColor=#f08c00;" parent="1" vertex="1">
+                    <mxGeometry x="660" y="228" width="540" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_lB" value="ЯГОДИ" style="text;html=1;fontSize=13;fontStyle=1;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="338" width="90" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_bBh" value="База" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;fillColor=#ffffff;strokeColor=#495057;verticalAlign=middle;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="130" y="300" width="240" height="38" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_bBb" value="приймає з точок" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ff6b6b;strokeColor=#c92a2a;fontColor=#3d0000;verticalAlign=middle;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="130" y="338" width="240" height="46" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_bPh" value="Точка" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;fillColor=#ffffff;strokeColor=#495057;verticalAlign=middle;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="660" y="300" width="240" height="38" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_bPb" value="приймає від постачальників" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ff6b6b;strokeColor=#c92a2a;fontColor=#3d0000;verticalAlign=middle;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="660" y="338" width="240" height="46" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_bSh" value="Постачальник" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;fillColor=#ffffff;strokeColor=#495057;verticalAlign=middle;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="1190" y="300" width="240" height="38" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_bSb" value="здає ягоду" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ff6b6b;strokeColor=#c92a2a;fontColor=#3d0000;verticalAlign=middle;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="1190" y="338" width="240" height="46" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_e19" value="здав (kgPoint 865 · 131 900 ₴)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;strokeWidth=2;" parent="1" source="p2_bSb" target="p2_bPb" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_e20" value="відправлення 142 ящ. ≈ 800 кг" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;strokeWidth=2;" parent="1" source="p2_bPb" target="p2_bBb" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_bN" value="переважування: 800 кг (точка) → 790 кг (база) = недостача −10 кг" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffec99;strokeColor=#f08c00;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="408" width="700" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_lC" value="ЯЩИКИ" style="text;html=1;fontSize=13;fontStyle=1;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="528" width="90" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_cBh" value="База" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;fillColor=#ffffff;strokeColor=#495057;verticalAlign=middle;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="130" y="490" width="240" height="38" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_cBb" value="тримає ящики (atBase)" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffa94d;strokeColor=#e8590c;fontColor=#4d2600;verticalAlign=middle;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="130" y="528" width="240" height="46" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_cPh" value="Точка" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;fillColor=#ffffff;strokeColor=#495057;verticalAlign=middle;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="660" y="490" width="240" height="38" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_cPb" value="наділ 800 (незмінний)" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffa94d;strokeColor=#e8590c;fontColor=#4d2600;verticalAlign=middle;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="660" y="528" width="240" height="46" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_cSh" value="Постачальник" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;fillColor=#ffffff;strokeColor=#495057;verticalAlign=middle;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="1190" y="490" width="240" height="38" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_cSb" value="ящики у людей" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffa94d;strokeColor=#e8590c;fontColor=#4d2600;verticalAlign=middle;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="1190" y="528" width="240" height="46" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_cPb2" value="onHand 341 + inField 195 + atBase 264 = наділ 800" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" parent="1" vertex="1">
+                    <mxGeometry x="660" y="574" width="240" height="34" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_e30" value="переказ порожніх (accept → onHand↑, atBase↓)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;strokeWidth=2;exitX=1;exitY=0.3;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;" parent="1" source="p2_cBb" target="p2_cPb" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_e31" value="з ягодою на базу 142 (+ бій)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;strokeWidth=2;exitX=0;exitY=0.6;exitDx=0;exitDy=0;entryX=1;entryY=0.8;entryDx=0;entryDy=0;" parent="1" source="p2_cPb2" target="p2_cBb" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_e32" value="видача ≤50 завдаток / ≥51 розписка" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;strokeWidth=2;exitX=1;exitY=0.3;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;" parent="1" source="p2_cPb" target="p2_cSb" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_e33" value="повернення (FIFO за ціною видачі)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;strokeWidth=2;exitX=0;exitY=0.6;exitDx=0;exitDy=0;entryX=1;entryY=0.6;entryDx=0;entryDy=0;" parent="1" source="p2_cSb" target="p2_cPb2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2_note2" value="ПРИЙОМ переказу рухає: +cash→каса за ягоду; +crates→onHand (наділ НЕ міняється)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" parent="1" vertex="1">
+                    <mxGeometry x="1190" y="228" width="240" height="60" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="p3" name="3 · Прийомка + борг — усі кейси">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2100" pageHeight="1320" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="p3_t" value="Прийомка одного візиту — усі кейси і розгалуження" style="text;html=1;fontSize=19;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="20" y="15" width="1300" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_s" value="Схема відбиває КОД; розбіжності з ТЗ — рожеві. Візит → N квитанцій + optional 1 виплата." style="text;html=1;fontSize=11;fontColor=#555555;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="20" y="46" width="2040" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_s1" value="① Обрати постачальника → «попередній залишок» (openDebts, ПОПУНКТНО, лише якщо &gt;0,009)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="100" width="320" height="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_d1" value="Ціна дня для сорту є?" style="rhombus;whiteSpace=wrap;html=1;fontSize=10;align=center;fillColor=#fff9db;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="170" width="320" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_s2" value="② брутто → ③ тара → ④ ЧИСТА вага = max(0,(брутто−піддон)−тара) · weigh(), кожен round2" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="276" width="320" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_d2" value="Валідно? (§9.1 заборони)" style="rhombus;whiteSpace=wrap;html=1;fontSize=10;align=center;fillColor=#fff9db;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="362" width="320" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_s3" value="⑤ сорт + дод. ціна (bonus): checkSurcharge проти settings.surchargeMin/Max" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="468" width="320" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_s4" value="⑥ РАЗОМ = round2(Σamount + carriedIn); carriedIn=includeBalance? max(0,balance):0" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="554" width="320" height="48" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_s5" value="⑦ «Прийняти» → visitMath: paidToday/paidToPast; квитанція, підпис = operator (імʼя)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="628" width="320" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_e9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p3_s1" target="p3_d1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_e10" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p3_d1" target="p3_s2">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_e11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p3_s2" target="p3_d2">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_e12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p3_d2" target="p3_s3">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_e13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p3_s3" target="p3_s4">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_e14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p3_s4" target="p3_s5">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_b1" value="НІ → форма замінена на «Встановіть ціни»; сорт без ціни не показується (ЦН-10)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffc9c9;strokeColor=#c92a2a;" vertex="1" parent="1">
+                    <mxGeometry x="400" y="190" width="340" height="54" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_e16" value="ні" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p3_d1" target="p3_b1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_e17" value="так" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p3_d1" target="p3_s2">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_b2" value="БЛОК (кнопка неактивна):&#xa;• чиста вага ≤ 0 (піддон+тара зʼїли брутто)&#xa;• позиція без сорту / без тари&#xa;• літери/мінус у грош. полях (maskDecimalInput)&#xa;  — АЛЕ bonus мінус ДОЗВОЛЕНО (відʼємна надбавка)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffc9c9;strokeColor=#c92a2a;" vertex="1" parent="1">
+                    <mxGeometry x="400" y="300" width="360" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_e19" value="ні" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p3_d2" target="p3_b2">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_e20" value="так" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p3_d2" target="p3_s3">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_w2" value="ПЕРЕПИТАТИ (реально в коді): брутто&gt;750; тари 0; кг/ящик ∉ 2…14" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffec99;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="400" y="430" width="360" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_w2g" value="§9.2 ТЗ: піддон&gt;50%, дубль&lt;60с — У КОДІ ВІДСУТНІ" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="400" y="510" width="360" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_e23" value="warn" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=8;endArrow=open;dashed=1;strokeColor=#adb5bd;" edge="1" parent="1" source="p3_d2" target="p3_w2">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_sc" value="дод. ціна ПОЗА межами → ВІДМОВА: bonus→0, рядок за базовою ціною, «потрібен дозвіл керівника». НЕ обрізається до межі" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffc9c9;strokeColor=#c92a2a;" vertex="1" parent="1">
+                    <mxGeometry x="780" y="290" width="360" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_scg" value="§2.9 ТЗ каже «коригується до межі» (clamp) — код ВІДХИЛЯЄ. clamped-поле мертве" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="780" y="388" width="360" height="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_e26" value="поза межами" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p3_s3" target="p3_sc">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_pm1" value="visitMath: payCap = РАЗОМ. paid = clamp(0, payCap). Видати &gt; РАЗОМ не можна (обрізається)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="780" y="470" width="360" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_pm2" value="КАСА ЗА ЯГОДУ — checkBerryPayout(cashLeaving, berryCash): amount&gt;0 &amp; ≤berryCash. НЕ trim — ВЕСЬ ВІЗИТ ВІДХИЛЕНО (undefined). min(·,berryCash) — лише UI-передзаповнення" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffc9c9;strokeColor=#c92a2a;" vertex="1" parent="1">
+                    <mxGeometry x="780" y="560" width="360" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_pm2n" value="порожня каса НЕ спиняє (guard cashLeaving&gt;0): різниця в залишок, касу відновить переказ" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="780" y="660" width="360" height="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_fifo" value="FIFO allocatePayout / openDebts: найстаріший борг першим; кожна алокація памʼятає originDate; кредити (переплата) нетяться до max(0,balance)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="780" y="720" width="360" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_e31" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p3_s5" target="p3_pm1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_e32" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p3_pm1" target="p3_pm2">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_e33" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p3_pm2" target="p3_pm2n">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_e34" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p3_pm2n" target="p3_fifo">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_r1" value="= РАЗОМ → залишок 0" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="1160" y="470" width="360" height="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_r2" value="&lt; РАЗОМ → недоплата: debt=amount−split на СЬОГОДНІШНІЙ квитанції (splitPaidAcrossLines)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="1160" y="532" width="360" height="54" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_r3" value="надлишок над сьогодні → addPayout(scopePointId): paidToPast=min(max(0,paid−accrued), openTotal) — clamp у СТОРІ, попунктно; закриває старі з originDate" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="1160" y="604" width="360" height="66" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_r4" value="0 → усе в залишок; старі дати збережені" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="1160" y="688" width="360" height="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_e39" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p3_fifo" target="p3_r1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_e40" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p3_fifo" target="p3_r2">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_e41" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p3_fifo" target="p3_r3">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_e42" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p3_fifo" target="p3_r4">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_bal" value="ДВА «залишки»: пікер/SettleDialog = Σopen = max(0,balance) (≥0); картка/квитанція = supplierBalanceAt (по алокаціях, МОЖЕ бути &lt;0)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="1160" y="700" width="360" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_storno" value="§9.3 СТОРНО квитанції/виплати — НЕ РЕАЛІЗОВАНО: немає voidReception/voidPayout, у Reception/Payout немає voided*, correctionOf лише в Transfer. Уся гілка «сторно+нова квитанція / розкрутка назад / очікуване повернення» — лише специфікація" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="940" width="720" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_inv" value="reconcileDay.drift = Σ(amount−paid−debt) — самоперевірка дня; «Інваріант дня»: нараховано = видано за сьогодні + приріст боргів" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="1050" width="720" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_gate3" value="ГЕЙТ: addVisit/addPayout — лише actorAt(point) (owner/operator згорнуто в canActOnPoint). Ціна — окремий РОЛЬОВИЙ гейт owner" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="780" y="940" width="360" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_pr3" value="Ціна: остання за time; Reception.price — знімок, заднім числом не перераховується (§4.6); «загальна» пише лише active&amp;reception (склад окремо); товар без активного/цінового сорту не показується" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="780" y="1010" width="360" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_s210" value="Межі надбавки ПОКАЗУЮТЬСЯ приймальнику (ReceptionPage/SupplierPicker), хоча §2.10 ТЗ каже «число межі не показувати»" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="780" y="1090" width="360" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_lg_t" value="Легенда" style="text;html=1;fontSize=13;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="1160" y="790" width="360" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_lg0" value="крок / потік" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="1160" y="816" width="112" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_lg1" value="рішення" style="rhombus;whiteSpace=wrap;html=1;fontSize=10;align=center;fillColor=#fff9db;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="1280" y="816" width="112" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_lg2" value="заборона (відмова)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffc9c9;strokeColor=#c92a2a;" vertex="1" parent="1">
+                    <mxGeometry x="1400" y="816" width="112" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_lg3" value="результат / інваріант" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="1160" y="850" width="112" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_lg4" value="попередження (дозволяємо)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffec99;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="1280" y="850" width="112" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_lg5" value="нотатка / механізм" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="1400" y="850" width="112" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_lg6" value="стан (машина станів)" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;fillColor=#d0bfff;strokeColor=#7048e8;" vertex="1" parent="1">
+                    <mxGeometry x="1160" y="884" width="112" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_lg7" value="ТЗ ≠ код / не реалізовано / поза MVP" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="1280" y="884" width="112" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3_lg8" value="відкрите питання замовнику" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e5dbff;strokeColor=#7048e8;fontColor=#5f3dc4;" vertex="1" parent="1">
+                    <mxGeometry x="1400" y="884" width="112" height="28" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="p4" name="4 · Ящики — усі кейси">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2100" pageHeight="1360" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="p4_t" value="Ящики: наділ, видача, повернення, відправлення, склад" style="text;html=1;fontSize=19;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="20" y="15" width="1300" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_s" value="Тільки INSERT; сторно = новий стан зі слідом. Баланс людини — МЕРЕЖЕВИЙ (не по точці!)." style="text;html=1;fontSize=11;fontColor=#555555;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="20" y="46" width="2040" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_al" value="НАДІЛ setCrateAllotment (owner ∧ point):&#xa;• effectiveFrom — ISO (лексичне порівняння effectiveAt)&#xa;• units — ЦІЛЕ ≥ 0&#xa;• причина обовʼязкова, якщо наділ уже є&#xa;Новий запис (історія), баланс не перераховується" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="100" width="380" height="96" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_al2" value="наділ &lt; наявного (у людей+дорозі) → ДОЗВОЛЕНО з попередженням, не заборона" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffec99;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="440" y="110" width="380" height="54" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_cf" value="НАДІЛ КАСИ setCashFloat (owner ∧ point): amount — FINITE + round2 (гроші, не ціле), причина при зміні" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="214" width="380" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_is" value="ВИДАЧА issueCrates (actorAt point)&#xa;checkCrateIssue(units, onHand)" style="rhombus;whiteSpace=wrap;html=1;fontSize=10;align=center;fillColor=#fff9db;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="290" width="380" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_isb" value="БЛОК:&#xa;• onHand = null (наділу на дату немає) → зникли б з обліку&#xa;• НЕ (int &amp; units&gt;0 &amp; units ≤ max(0,onHand))&#xa;  пробита точка (onHand&lt;0) → max 0, нічого видати&#xa;• deposit без Чешки в довіднику → блок" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffc9c9;strokeColor=#c92a2a;" vertex="1" parent="1">
+                    <mxGeometry x="440" y="270" width="420" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_isd" value="mode = mode ?? crateIssueMode(units): units&gt;50 → receipt, інакше deposit (≤50 завдаток / ≥51 розписка). Ручний mode перемагає" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="378" width="380" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_iok1" value="deposit → depositPerUnit=round2(ціна Чешки) знімок; depositTaken → КАСА ЗА ЯЩИКИ" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="440" y="378" width="420" height="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_iok2" value="receipt → 0 ₴; receiptNo руками; каса НЕ рухається; у UI «—», не «0,00»" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="440" y="432" width="420" height="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_e10" value="ні" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p4_is" target="p4_isb">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_e11" value="так" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p4_is" target="p4_isd">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_e12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p4_isd" target="p4_iok1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_e13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p4_isd" target="p4_iok2">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_rt" value="ПОВЕРНЕННЯ returnCrates (actorAt point)&#xa;checkCrateReturn(units, balance)" style="rhombus;whiteSpace=wrap;html=1;fontSize=10;align=center;fillColor=#fff9db;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="470" width="380" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_rtb" value="НЕ (int &amp; units&gt;0 &amp; ≤max) → «брала 20, повернути 25 не можна»" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffc9c9;strokeColor=#c92a2a;" vertex="1" parent="1">
+                    <mxGeometry x="440" y="490" width="420" height="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_rtd" value="balance = crateBalance(supplier) — ПО ЛЮДИНІ, МЕРЕЖЕВО (без фільтра точки!). FIFO allocateCrateReturn (порядок журналу); perUnit — зі ЗНІМКА кожної видачі" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="558" width="380" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_rtdg" value="взяв на p1, повернув на p3 → p1.inField=20, p3.inField=−20 (нетто 0). InFieldTable малює червоний банер розбіжності; crateBalance.drift ловить units≠Σalloc" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="440" y="558" width="420" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_rtc" value="refund ≤ каса за ЯЩИКИ?&#xa;checkCrateRefund (≥0!)" style="rhombus;whiteSpace=wrap;html=1;fontSize=10;align=center;fillColor=#fff9db;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="650" width="380" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_rtcb" value="refund &gt; crateCash → БЛОК. Впирається в касу за ЯЩИКИ і НІКОЛИ в касу за ягоду (refund 0 проходить; berry-payout — &gt;0)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffc9c9;strokeColor=#c92a2a;" vertex="1" parent="1">
+                    <mxGeometry x="440" y="650" width="420" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_e20" value="ні" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p4_rt" target="p4_rtb">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_e21" value="так" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p4_rt" target="p4_rtd">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_e22" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p4_rtd" target="p4_rtc">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_e23" value="ні" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p4_rtc" target="p4_rtcb">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_sh" value="ВІДПРАВЛЕННЯ postShipment (actorAt point):&#xa;• date ≤ сьогодні&#xa;• brokenUnits — ЦІЛЕ ≥ 0 (0 валідний)&#xa;• withBerryUnits = знімок рушія (Σ Чешок дня), НЕ поле; receptionCount" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="730" width="380" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_sh2" value="пізніша квитанція після відправлення → «було 142, стало 145» (warn, тихо не переписує). Два відправлення = прогноз 2-го рейсу. Бій теж їде на базу" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffec99;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="440" y="730" width="420" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_st" value="СКЛАД crateStanding (mine: pointId &amp; date≤date, voided виключені):&#xa;• onHand = наділ − inField − atBase (порожні на точці)&#xa;• inField = issued − returned (по точці)&#xa;• atBase = shipped(Σ withBerry+broken) − returnedToPoint(лише accepted перекази, за transferDay=acceptedDate??date)&#xa;• shortfall = inField + atBase — існує НАВІТЬ без наділу (onHand=null); пробите (onHand&lt;0) → червоним, не блок" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="840" width="820" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_vd" value="СТОРНО ящиків voidCrateIssue/Return/Shipment (спільний voidCrateDoc):&#xa;• owner&#xa;• причина непорожня&#xa;• не вже-сторновано (друге сторно — відмова)&#xa;• підпис зі stampOf (сесія), не параметр" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="100" width="400" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_vdg" value="«сторнувати видачу, на яку лягло повернення» — блок ЛИШЕ в UI (PersonCrateDocs). Рушій пропустив би → drift" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="200" width="400" height="54" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_tp" value="ПЕРЕКАЗИ (що рухають наділ/касу) — стор. 5. accept — єдине, що рухає onHand/atBase" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="270" width="400" height="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_cp" value="§9.1 клієнтські «Правки» (заплановані, ще НЕ в коді): наділ не встановлено → warn, не блок; приймати всі 25 при 20 узятих (20 у систему, 5 порожніх в обмін)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="330" width="400" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_lg_t" value="Легенда" style="text;html=1;fontSize=13;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="440" width="400" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_lg0" value="крок / потік" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="466" width="125" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_lg1" value="рішення" style="rhombus;whiteSpace=wrap;html=1;fontSize=10;align=center;fillColor=#fff9db;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="1033" y="466" width="125" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_lg2" value="заборона (відмова)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffc9c9;strokeColor=#c92a2a;" vertex="1" parent="1">
+                    <mxGeometry x="1166" y="466" width="125" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_lg3" value="результат / інваріант" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="500" width="125" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_lg4" value="попередження (дозволяємо)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffec99;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="1033" y="500" width="125" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_lg5" value="нотатка / механізм" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="1166" y="500" width="125" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_lg6" value="стан (машина станів)" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;fillColor=#d0bfff;strokeColor=#7048e8;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="534" width="125" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_lg7" value="ТЗ ≠ код / не реалізовано / поза MVP" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="1033" y="534" width="125" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4_lg8" value="відкрите питання замовнику" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e5dbff;strokeColor=#7048e8;fontColor=#5f3dc4;" vertex="1" parent="1">
+                    <mxGeometry x="1166" y="534" width="125" height="28" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="p5" name="5 · Каса + зміна + переказ — усі кейси">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1360" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="p5_t" value="Каса точки (підзвіт), зміна, переказ база→точка" style="text;html=1;fontSize=19;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="20" y="15" width="1300" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_s" value="Дві книги в одній шухляді (АЛЕ див. відкрите питання). Гейти: відкрити/рахувати/закрити — operator; закрити з розбіжністю — owner." style="text;html=1;fontSize=11;fontColor=#555555;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="20" y="46" width="2140" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_two" value="ДВІ КНИГИ, РІЗНІ ВІКНА (cashStanding):&#xa;• openedOn = max(config.cashBookFrom, перший float точки)&#xa;• berryCash = round2(openingBalance@openedOn + cashIn − berryOut); вікно [openedOn … date]&#xa;• crateCash = завдатки взяті − повернені; вікно [−∞ … date] (БЕЗ нижньої межі: завдаток липня лежить у шухляді в серпні)&#xa;• expectedCash = berryCash + crateCash;  floatShortfall = float@date − berryCash&#xa;• cashIn = Σ accepted переказів за transferDay = acceptedDate ?? date;  float=null → «—»&#xa;• розклад дня: paidToday, paidForPastDays, cashInToday" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="100" width="760" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_op" value="openShift (operator ∧ point): openingFloat≥0 (перерахунок на РАНОК, не «має бути»); друга ВІДКРИТА зміна на точці → відмова" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="250" width="360" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_cnt" value="countCash (серед дня; шухляда з shift.pointId): зміна open; expectedCash — ЗНІМОК; фіксує факт; багато разів" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="354" width="360" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_cl" value="closeShift (operator ∧ shift.pointId): discrepancy = counted − expected (shiftDiscrepancy)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="458" width="360" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_dcl" value="розбіжність = 0? (порогів НЕМАЄ)" style="rhombus;whiteSpace=wrap;html=1;fontSize=10;align=center;fillColor=#fff9db;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="542" width="360" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_e7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p5_op" target="p5_cnt">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_e8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p5_cnt" target="p5_cl">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_e9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p5_cl" target="p5_dcl">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_clc" value="= 0 → «closed», closedBy = приймальник (хто натиснув)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="440" y="470" width="360" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_cla" value="≠ 0 (будь-яке, навіть 1 коп.) → «awaiting_explanation», closedBy порожній" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffec99;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="440" y="540" width="360" height="54" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_settle" value="settleShift (owner, пояснення ОБОВʼЯЗКОВЕ): awaiting_explanation → closed; розбіжність ЛИШАЄТЬСЯ (не підганяють); closedBy = керівник" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="440" y="610" width="360" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_e13" value="=0" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p5_dcl" target="p5_clc">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_e14" value="≠0" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p5_dcl" target="p5_cla">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_e15" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p5_cla" target="p5_settle">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_ssm" value="Зміна — стани" style="text;html=1;fontSize=13;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="560" width="340" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_s_open" value="open" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;fillColor=#d0bfff;strokeColor=#7048e8;" vertex="1" parent="1">
+                    <mxGeometry x="60" y="590" width="220" height="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_s_await" value="awaiting_explanation" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;fillColor=#d0bfff;strokeColor=#7048e8;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="660" width="300" height="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_s_closed" value="closed" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;fillColor=#d0bfff;strokeColor=#7048e8;" vertex="1" parent="1">
+                    <mxGeometry x="80" y="730" width="220" height="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_e20" value="=0" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p5_s_open" target="p5_s_closed">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_e21" value="≠0" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p5_s_open" target="p5_s_await">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_e22" value="settleShift(owner)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p5_s_await" target="p5_s_closed">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_tsm" value="Переказ база→точка — стани" style="text;html=1;fontSize=13;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="860" y="90" width="300" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_tsend" value="sendTransfer (owner ∧ point): cash finite≥0; checkCrateTransfer(crates, atBase) — база повертає лише те, що ТРИМАЄ (atBase, int≥0), не shortfall. Народжується «sent», не рухає нічого" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="860" y="120" width="420" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_s_sent" value="sent" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;fillColor=#d0bfff;strokeColor=#7048e8;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="230" width="220" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_s_acc" value="accepted" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;fillColor=#d0bfff;strokeColor=#7048e8;" vertex="1" parent="1">
+                    <mxGeometry x="1300" y="230" width="220" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_s_dis" value="disputed" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;fillColor=#d0bfff;strokeColor=#7048e8;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="360" width="220" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_s_void" value="void" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;fillColor=#d0bfff;strokeColor=#7048e8;" vertex="1" parent="1">
+                    <mxGeometry x="1300" y="360" width="220" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_e29" value="accept" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p5_s_sent" target="p5_s_acc">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_e30" value="dispute" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p5_s_sent" target="p5_s_dis">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_e31" value="void" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p5_s_sent" target="p5_s_void">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_e32" value="void" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p5_s_acc" target="p5_s_void">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_e33" value="void" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p5_s_dis" target="p5_s_void">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_e34" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p5_tsend" target="p5_s_sent">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_tacc" value="acceptTransfer (operator ∧ point, лише зі «sent», один раз):&#xa;+cash → каса за ягоду; +crates → onHand (порожні), atBase↓; НАДІЛ НЕ міняється; зараховано ДНЕМ ПРИЙНЯТТЯ (acceptedDate). Owner «Прийняв» за точку не може" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="860" y="440" width="420" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_tdis" value="disputeTransfer (operator ∧ point, причина): reportedCrates/reportedCash — ЛИШЕ інформація, у формули НЕ входить. Точка далі read-only" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="860" y="540" width="420" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_tcorr" value="Закриває СПІРНИЙ керівник: voidTransfer (owner, причина; зі sent/accepted/disputed) + новий sendTransfer({correctionOf}). Виправлені числа входять у формулу" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="860" y="630" width="420" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_e38" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p5_s_acc" target="p5_tacc">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_e39" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p5_s_dis" target="p5_tdis">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_owed" value="ТАБЛИЦЯ «скільки мережа винна точкам» owedToPoints → PointDebtRow{pointId, float, berryCash, owed(=floatShortfall), crateShortfall}; РАЗОМ = sum(owed). Стан переказу — окрема колонка (stateOf у сторінці)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="830" width="760" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_owedn" value="Точки БЕЗ наділу каси відсіює СТОРІНКА (TransfersPage), не рушій (owedToPoints віддає owed=null)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="930" width="760" height="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_mov" value="Касу за ягоду рухають ЛИШЕ: виплати (−) і прийняті перекази (+). Ручної видачі «не за ягоду» немає; інкасації немає; витрати дня касу НЕ рухають; наділ каси/ящиків — обчислювані, поля вводу немає (I70)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="860" y="830" width="420" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_oq" value="ВІДКРИТЕ ПИТАННЯ: §1:144 і §7.6:1004 кажуть «гроші за ягоду і за ящики НЕ в одній шухляді». Код = ОДНА шухляда (expectedCash=berryCash+crateCash, одне countedCash). Не вирішено" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e5dbff;strokeColor=#7048e8;fontColor=#5f3dc4;" vertex="1" parent="1">
+                    <mxGeometry x="860" y="930" width="420" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_lg_t" value="Легенда" style="text;html=1;fontSize=13;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="1000" width="760" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_lg0" value="крок / потік" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="1026" width="245" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_lg1" value="рішення" style="rhombus;whiteSpace=wrap;html=1;fontSize=10;align=center;fillColor=#fff9db;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="293" y="1026" width="245" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_lg2" value="заборона (відмова)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffc9c9;strokeColor=#c92a2a;" vertex="1" parent="1">
+                    <mxGeometry x="546" y="1026" width="245" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_lg3" value="результат / інваріант" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="1060" width="245" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_lg4" value="попередження (дозволяємо)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffec99;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="293" y="1060" width="245" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_lg5" value="нотатка / механізм" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="546" y="1060" width="245" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_lg6" value="стан (машина станів)" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;fillColor=#d0bfff;strokeColor=#7048e8;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="1094" width="245" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_lg7" value="ТЗ ≠ код / не реалізовано / поза MVP" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="293" y="1094" width="245" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5_lg8" value="відкрите питання замовнику" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e5dbff;strokeColor=#7048e8;fontColor=#5f3dc4;" vertex="1" parent="1">
+                    <mxGeometry x="546" y="1094" width="245" height="28" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="p6" name="6 · База: переважування, собівартість, звіти">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1400" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="p6_t" value="База — переважування, недостача/надлишок, собівартість, розподіл, мережа, аркуш, зведення, журнал" style="text;html=1;fontSize=19;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="20" y="15" width="1300" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_s" value="Гейт переважування/сторно — РОЛЬ owner (точки немає). Витрати: addExpense — лише точка; removeExpense/policy — без гейта. День = ДЕНЬ ЯГОДИ." style="text;html=1;fontSize=11;fontColor=#555555;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="20" y="46" width="2140" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_pd" value="productDay(date, point): згортає квитанції у рядки ТОВАРУ {kgPoint, paid=Σamount, avgPoint НЕМОКРУГЛ, lineCount}, сорт. за вагою↓" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="100" width="400" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_rw" value="ПЕРЕВАЖУВАННЯ addReweigh (owner; ТОЧКОВОГО гейта НЕМАЄ):&#xa;• berryDate = день ЯГОДИ (партія 04.08, важена 05.08 → 04.08)&#xa;• snapshot = productDay(...) РАЗ (avgPoint немокругл; paid = kgPoint×avgPoint)&#xa;• народжується «posted» (draft у типі є, документа немає); джерело — лише reception-пункти" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="184" width="400" height="96" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_nd" value="НЕДОСТАЧА (синтез. рядок shortfall, у стані немає): по ТОВАРУ; shortKg = kgBase − kgPoint (відʼємний на недостачі); shortfallTotal = −Σ shortUah (додатний у pool). Звірка ВИДНА до проведення" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="304" width="400" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_cost" value="СОБІВАРТІСТЬ costOfDay:&#xa;• pool = Σ manual-витрат + shortfallTotal&#xa;• rate = pool / kgBase (переважена вага) → на ВСІ товари (напр. 5460÷854=6,39)&#xa;• на товар: avgPoint («було») і avgFinal («собівартість»)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="408" width="400" height="96" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_e6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p6_pd" target="p6_rw">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_e7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p6_rw" target="p6_nd">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_e8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p6_nd" target="p6_cost">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_over" value="НАДЛИШОК — реалізовано і протестовано (не «неможливо»): pool&lt;0, allocateByLargestRemainder симетрично, I47 «так буває тільки при надлишку», UI «Надлишок»" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="480" y="180" width="400" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_overg" value="§8.2 клієнтська «Правка»: «надлишок неможливий, функціонал не потрібен» — суперечить коду" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="480" y="268" width="400" height="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_rwv" value="СТОРНО voidReweigh (owner, причина): posted → voided (слід); друге сторно — відмова; неіснуючий id — відмова" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="480" y="330" width="400" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_alloc" value="РОЗПОДІЛ allocateByLargestRemainder: pool по товарах у ЦІЛИХ копійках (ваги: грами для byWeight, копійки для byValue, 1/0 для singleProduct), найбільший залишок, Σ = pool точно, симетрично для pool&lt;0" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="480" y="420" width="400" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_pol" value="ExpensePolicy (належить ДНЮ, заднім числом не міняється):&#xa;basis: byWeight (дефолт) | byValue&#xa;singleProduct: ОКРЕМЕ поле, не третій basis" style="rhombus;whiteSpace=wrap;html=1;fontSize=10;align=center;fillColor=#fff9db;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="540" width="400" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_polg" value="singleProduct: якщо товар того дня не важили → тихий fallback на byWeight з warn «policy-fallback»; результат рапортує ФАКТИЧНИЙ basis" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="480" y="540" width="400" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_e15" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p6_cost" target="p6_over">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_e16" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p6_cost" target="p6_rwv">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_e17" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p6_cost" target="p6_alloc">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_e18" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p6_cost" target="p6_pol">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_e19" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p6_pol" target="p6_polg">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_exp" value="ВИТРАТИ addExpense (actorAt point; kind лише manual, shortfall→відмова; касу НЕ рухає). removeExpense — виняток-видалення. setExpensePolicy — upsert" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="650" width="400" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_expg" value="addExpense у СТОРІ гейтований лише точкою; «лише керівник» (§8.3/§10.2) — тільки в UI. removeExpense і setExpensePolicy — БЕЗ гейта взагалі" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="480" y="650" width="400" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_rep" value="ЗВІТИ" style="text;html=1;fontSize=13;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="760" width="300" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_net" value="СЕРЕДНЯ ПО МЕРЕЖІ networkAverage: сума ÷ вага (зважена), НІКОЛИ середнє з середніх. Порожня клітинка (kgBase≤0 або avg=null) ≠ 0. База включена як selfWeighed (kgBase=kgPoint). + reconciliation/awaitingReweigh" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="790" width="400" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_sheet" value="АРКУШ КЕРІВНИКА: 4 колонки (товар·вага·₴/кг·сума); ₴/кг = сума÷вага; сходиться до копійки. Показує лише банер неповноти (!reconciliation.ok), НЕ список порушень" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="480" y="790" width="400" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_viol" value="Список Violation[] (I42 block, I45/46/47/49/50/51/55) — на NetworkAverage і CostOfDay, НЕ на Аркуші. warns: policy-fallback, не-перезважено, день змінено, поріг недостачі 3%" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="480" y="880" width="400" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_svod" value="ЗВЕДЕННЯ (Dashboard): періоди 7/14/30/сезон; 5 плиток (вага·нараховано·видано·залишок·середня); нерозкриті точки = картка «+N у реєстрі», не рядки з нулями; від фільтра не залежить" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="890" width="400" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_jrn" value="ЖУРНАЛ = журнал ПРИЙОМОК (лише receptions, з фільтрами). Журналу подій/аудиту НЕМАЄ — слід лише підпис+час на кожному документі" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="970" width="400" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_rwsm" value="Переважування — стани" style="text;html=1;fontSize=13;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="100" width="300" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_rs1" value="posted" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;fillColor=#d0bfff;strokeColor=#7048e8;" vertex="1" parent="1">
+                    <mxGeometry x="940" y="130" width="220" height="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_rs2" value="voided" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;fillColor=#d0bfff;strokeColor=#7048e8;" vertex="1" parent="1">
+                    <mxGeometry x="940" y="200" width="220" height="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_e31" value="voidReweigh(owner)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p6_rs1" target="p6_rs2">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_rwn" value="draft — у типі є, але документ народжується одразу posted; чернетка живе у формі, не в сторі. fromSnapshot; status: awaiting-reweigh | summed" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="270" width="360" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_inv6" value="Інваріант дня (DayPage): reconcileDay.drift = Σ(amount−paid−debt); нараховано = видано за сьогодні + приріст боргів" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="350" width="360" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_lg_t" value="Легенда" style="text;html=1;fontSize=13;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="440" width="400" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_lg0" value="крок / потік" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="466" width="125" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_lg1" value="рішення" style="rhombus;whiteSpace=wrap;html=1;fontSize=10;align=center;fillColor=#fff9db;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="1033" y="466" width="125" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_lg2" value="заборона (відмова)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffc9c9;strokeColor=#c92a2a;" vertex="1" parent="1">
+                    <mxGeometry x="1166" y="466" width="125" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_lg3" value="результат / інваріант" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="500" width="125" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_lg4" value="попередження (дозволяємо)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffec99;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="1033" y="500" width="125" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_lg5" value="нотатка / механізм" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="1166" y="500" width="125" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_lg6" value="стан (машина станів)" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;fillColor=#d0bfff;strokeColor=#7048e8;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="534" width="125" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_lg7" value="ТЗ ≠ код / не реалізовано / поза MVP" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="1033" y="534" width="125" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6_lg8" value="відкрите питання замовнику" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e5dbff;strokeColor=#7048e8;fontColor=#5f3dc4;" vertex="1" parent="1">
+                    <mxGeometry x="1166" y="534" width="125" height="28" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="p7" name="7 · Доступ, ролі, сесія — усі кейси">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2300" pageHeight="1500" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="p7_t" value="Хто за компʼютером, ролі, гейти (роль + точка), persist" style="text;html=1;fontSize=19;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="20" y="15" width="1300" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_s" value="auth.ts — окрема вісь від грошей. Гейт у сторі, не лише «сховати меню». Таблиця гейтів нижче — з коду." style="text;html=1;fontSize=11;fontColor=#555555;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="20" y="46" width="2240" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_start" value="Відкриття / перезавантаження" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="100" width="320" height="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_g0" value="user є? sessionUser(users, session)" style="rhombus;whiteSpace=wrap;html=1;fontSize=10;align=center;fillColor=#fff9db;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="170" width="320" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_signin" value="Екран входу: login + secret → signIn → authenticate (auth-mock)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="266" width="320" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_ag" value="ok?" style="rhombus;whiteSpace=wrap;html=1;fontSize=10;align=center;fillColor=#fff9db;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="342" width="320" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_e6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p7_start" target="p7_g0">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_e7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p7_g0" target="p7_signin">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_e8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p7_signin" target="p7_ag">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_reh" value="rehydrate merge (21 ключ; session ×2, activePointId ×2 звуження; guard порожнього/null payload перед усіма): session дійсна ЛИШЕ якщо isSession(payload) І userIds.has(userId) (Р4-6) → інакше null (решта ключів → свіжий сід). activePointId: зламаний operator (rawPoint≠pointId) → «» (програє); решта, у т.ч. owner → rawPoint без змін. owner→«all» робить лише scopeAfterSignIn (вхід), НЕ merge" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="400" y="90" width="540" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_e10" value="session" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=8;endArrow=open;dashed=1;strokeColor=#adb5bd;" edge="1" parent="1" source="p7_reh" target="p7_g0">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_fail" value="reason: unknown-login | wrong-secret | no-account. Тексти на екрані. login нормалізується (trim+lower); секрет — чутливий до регістру/пробілів. ACCOUNTS(login) окремо від users → no-account, коли секрет збігся, а User немає" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffc9c9;strokeColor=#c92a2a;" vertex="1" parent="1">
+                    <mxGeometry x="400" y="300" width="420" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_e12" value="ні" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p7_ag" target="p7_fail">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_scope" value="scopeAfterSignIn: owner → «all» + dashboard; operator → своя точка (pointId ?? «») + reception. signIn також ставить scope + робить 2-гу перевірку no-account" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="470" width="360" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_e14" value="так" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p7_ag" target="p7_scope">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_shell" value="Оболонка + навігація за роллю (стор. 8-нав). Роль ПОХІДНА: roleOf(users, session); null → найсуворіше (нічого)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="90" width="420" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_e16" value="так" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p7_g0" target="p7_shell">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_e17" value="ні" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p7_g0" target="p7_signin">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_out" value="signOut → session=null + route→reception. Заміна касира = Вийти → Вхід під іншим (НЕ перемикач). countedBy/closedBy = хто НАТИСНУВ" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="180" width="420" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_sess" value="session {userId, startedDate=businessToday, startedTime=годинник пристрою} — токена немає (форма мока)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="260" width="420" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_nots" value="НЕ захист (22-tz §17.2): пароль звіряє той самий браузер; реєстр і сесія в одному localStorage; секрет лише в auth-mock.ts (на місці сервера)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e5dbff;strokeColor=#7048e8;fontColor=#5f3dc4;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="330" width="420" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_gt" value="ГЕЙТ КОЖНОЇ КОМАНДИ (з коду): роль ∧/∨ точка" style="text;html=1;fontSize=13;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="580" width="880" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_g_role" value="ГЕЙТ РОЛІ (17 команд):&#xa;owner (12): setPrice, setPriceEverywhere, setCrateAllotment*, setCashFloat*, addReweigh, voidReweigh, sendTransfer*, voidTransfer, voidCrateIssue/Return/Shipment (через voidCrateDoc), settleShift&#xa;operator (5): acceptTransfer*, disputeTransfer*, openShift*, countCash*, closeShift*&#xa;(* = ще й точка → BOTH)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffec99;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="610" width="430" height="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_g_point" value="ГЕЙТ ТОЧКИ actorAt/canActOnPoint (14 команд):&#xa;BOTH (8, роль∧точка): setCrateAllotment, setCashFloat, sendTransfer, acceptTransfer, disputeTransfer, openShift, countCash, closeShift&#xa;ТІЛЬКИ точка (6): addVisit, addPayout, addExpense, issueCrates, returnCrates, postShipment&#xa;(owner/operator згорнуто в canActOnPoint — окремого рольового рядка немає)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffec99;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="490" y="610" width="430" height="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_g_none" value="БЕЗ гейта (UI-only або жодного): addSupplier, updateSupplier, updateTareType, updateSettings, removeExpense, setExpensePolicy, syncAll, resetDemo(читає сесію лише для scope). setActivePoint — окремий inline-гейт точки. go/setOnline/setWorkDate — жодного. Queries — read-only" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="770" width="880" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_g_gap" value="ЛАТЕНТНІ ДІРИ: addExpense — коментар/§10.2 кажуть «лише керівник», у коді лише точка (operator міг би). updateTareType/updateSettings — §10.2 owner, у коді без гейта. Сторно квитанції прийомки (§10.2) — команди взагалі немає" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="850" width="880" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_key7" value="КЛЮЧОВЕ: гейт точки НІКОЛИ не заміняє гейт ролі — canActOnPoint(owner,·)=true. Порядок: спершу роль, потім точка. Підпис = actor (імʼя), null → відмова" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="920" width="880" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_lg_t" value="Легенда" style="text;html=1;fontSize=13;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="960" y="610" width="420" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_lg0" value="крок / потік" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="960" y="636" width="132" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_lg1" value="рішення" style="rhombus;whiteSpace=wrap;html=1;fontSize=10;align=center;fillColor=#fff9db;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="1100" y="636" width="132" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_lg2" value="заборона (відмова)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffc9c9;strokeColor=#c92a2a;" vertex="1" parent="1">
+                    <mxGeometry x="1240" y="636" width="132" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_lg3" value="результат / інваріант" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="960" y="670" width="132" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_lg4" value="попередження (дозволяємо)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffec99;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="1100" y="670" width="132" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_lg5" value="нотатка / механізм" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="1240" y="670" width="132" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_lg6" value="стан (машина станів)" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;fillColor=#d0bfff;strokeColor=#7048e8;" vertex="1" parent="1">
+                    <mxGeometry x="960" y="704" width="132" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_lg7" value="ТЗ ≠ код / не реалізовано / поза MVP" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="1100" y="704" width="132" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7_lg8" value="відкрите питання замовнику" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e5dbff;strokeColor=#7048e8;fontColor=#5f3dc4;" vertex="1" parent="1">
+                    <mxGeometry x="1240" y="704" width="132" height="28" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="p8" name="8 · Постачальники — кейси">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1180" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="p8_t" value="Життєвий цикл постачальника і довідник людей" style="text;html=1;fontSize=19;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="20" y="15" width="1300" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_s" value="Багатий домен ТЗ. Багато правил ще НЕ реалізовано (рожеве) або поза MVP." style="text;html=1;fontSize=11;fontColor=#555555;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="20" y="46" width="1940" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_c1" value="Людина = ЗАПИС довідника, не текст. Прізвище набрати неможливо — лише вибір зі списку; «не знайдено» не існує — заводять карткою прямо з прийомки (ПС-01/14)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="100" width="520" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_c2" value="Пошук за прізвищем АБО селом одночасно; у рядку видно маркер і суму відкритого залишку ДО вибору (ПС-10/11)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="184" width="520" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_c3" value="Маркер ОПТ / Фермер / без позначки — взаємовиключний, ставить/міняє ПРИЙМАЛЬНИК без погодження (updateSupplier БЕЗ гейта). Підказка «додайте дод. ціну» — базову ціну НЕ міняє, надбавку НЕ підставляє (ПС-22/25/27)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="268" width="520" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_c4" value="Борг ПОПУНКТНИЙ (supplierBalanceAt по activePointId): борг на одній точці не забрати на іншій. Один запис людини + попунктні книги (§3.9)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="362" width="520" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_e6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p8_c1" target="p8_c2">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_e7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p8_c2" target="p8_c3">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_e8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=9;endArrow=block;strokeColor=#495057;" edge="1" parent="1" source="p8_c3" target="p8_c4">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_card" value="КАРТКА ЛЮДИНИ (§3.10): маркер · село · домашня точка · телефон; плитки (здач/кг/нараховано/залишок); розклад по точках; ВІДКРИТІ ЗАЛИШКИ порядково (не однією сумою); історія здач+виплат одним потоком — кожна виплата показує, яку ягоду закрила" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="600" y="110" width="420" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_top" value="ТОП ЗДАВАЛЬНИКІВ (owner, OwnerTable): село·прізвище·вага·основний ТОВАР·маркер; сорт. за вагою↓ + перемикач «за сумою»; вага по ВСІХ пунктах; ФІЛЬТРА за маркером НЕМАЄ (клієнт відмовився)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="600" y="240" width="420" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_price8" value="ЦІНИ: ключ ціни = СОРТ, звітність = ТОВАР; append-only, остання за time; «загальна» = кнопка «поставити всім active&amp;reception пунктам», СКЛАД окремо (вища ціна); товар без активного/цінового сорту приймальнику не показується" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="600" y="340" width="420" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_gh" value="Правила ТЗ, ще НЕ в коді / поза MVP" style="text;html=1;fontSize=13;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="1080" y="80" width="420" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_gp1" value="Село — ТЗ §5.3 «лише зі списку»; у коді ВІЛЬНИЙ текст (Input). Розбіжність" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="1080" y="110" width="420" height="54" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_gp2" value="Телефон — примітка §5.7: обовʼязкове поле + чекбокс «без номера»→null. У коді: опційний вільний текст, чекбокса немає" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="1080" y="180" width="420" height="54" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_gp3" value="Дублікати на вводі ПС-15…19 (розпізнати «інша людина», запамʼятати назавжди) — НЕ реалізовано. Сід сіє 25 близнюків/≥23 написання для майбутнього екрана" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="1080" y="250" width="420" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_gp4" value="Обʼєднання дублікатів §5.5 (owner, 5 кроків: головний→канонічні поля→перегляд→КОНФЛІКТИ→причина; сума боргу не змінюється; незворотне) — ПОЗА MVP" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="1080" y="326" width="420" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_gp5" value="Видалення §5.6 → неактивна картка (is_active) — НЕ реалізовано (немає поля/команди)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="1080" y="412" width="420" height="54" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_gp6" value="Пошук за номером телефону (примітка §5.4/§5.7) — план на майбутнє, ще немає" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="1080" y="482" width="420" height="54" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_lg_t" value="Легенда" style="text;html=1;fontSize=13;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="600" y="450" width="420" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_lg0" value="крок / потік" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="600" y="476" width="132" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_lg1" value="рішення" style="rhombus;whiteSpace=wrap;html=1;fontSize=10;align=center;fillColor=#fff9db;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="740" y="476" width="132" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_lg2" value="заборона (відмова)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffc9c9;strokeColor=#c92a2a;" vertex="1" parent="1">
+                    <mxGeometry x="880" y="476" width="132" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_lg3" value="результат / інваріант" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="600" y="510" width="132" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_lg4" value="попередження (дозволяємо)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffec99;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="740" y="510" width="132" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_lg5" value="нотатка / механізм" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="880" y="510" width="132" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_lg6" value="стан (машина станів)" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;fillColor=#d0bfff;strokeColor=#7048e8;" vertex="1" parent="1">
+                    <mxGeometry x="600" y="544" width="132" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_lg7" value="ТЗ ≠ код / не реалізовано / поза MVP" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="740" y="544" width="132" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8_lg8" value="відкрите питання замовнику" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e5dbff;strokeColor=#7048e8;fontColor=#5f3dc4;" vertex="1" parent="1">
+                    <mxGeometry x="880" y="544" width="132" height="28" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="p9" name="9 · Навігація за роллю + карта екранів">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1000" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="p9_t" value="17 маршрутів + екран входу, 3 групи меню, доступ за роллю" style="text;html=1;fontSize=19;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="20" y="15" width="1300" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_s" value="Приховати пункт меню НЕ достатньо (гейт у сторі); але навігація формує щоденний шлях кожної ролі." style="text;html=1;fontSize=11;fontColor=#555555;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="20" y="46" width="1640" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_gr1" value="Група «Робота на точці» — ОБИДВІ ролі" style="text;html=1;fontSize=13;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="100" width="760" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_gr1i" value="reception (Прийомка) · crates (Ящики) · day (Каса за день) · pointcash (Каса точки) · prices (Ціни дня — operator лише читає)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="130" width="760" height="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_gr2" value="Група «Люди та гроші»" style="text;html=1;fontSize=13;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="190" width="760" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_gr2i" value="suppliers (Постачальники — обидві) · debts (Залишки — обидві) · journal (Журнал — ЛИШЕ owner)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="220" width="760" height="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_gr3" value="Група «Керівництву» — ЛИШЕ owner" style="text;html=1;fontSize=13;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="280" width="760" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_gr3i" value="dashboard (Зведення) · cost (Собівартість) · reweigh (Переважування) · network (Середня по мережі) · sheet (Аркуш) · transfers (Перекази) · points (Точки) · refs (Тара і сорти)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="310" width="760" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_cross" value="ПЕРЕХРЕСТЯ: меню «Перекази» лише в owner, АЛЕ команди acceptTransfer/disputeTransfer — operator: точка приймає/оспорює переказ на екрані «Каса точки» (pointcash), не на «Переказах»" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="390" width="760" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_supcard" value="Маршрут supplier (картка) — БЕЗ пункту меню; відкривається зі списку «Постачальники»" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="470" width="760" height="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_appn" value="App: гейт на !user (не !session) — реєстр міг змінитися (resetDemo). Suspense+lazy для керівницьких чанків; ErrorBoundary key=route (самолікування впалого чанка); SignInPage у головному чанку; Toaster в обох гілках" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="530" width="760" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_scr" value="Хто на чому сидить" style="text;html=1;fontSize=13;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="100" width="700" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_opflow" value="ПРИЙМАЛЬНИК (одна своя точка): вхід → reception; протягом дня crates / day / pointcash / prices(читання) / suppliers / debts. Приймає перекази на pointcash." style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="130" width="700" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_owflow" value="КЕРІВНИК (усі точки): вхід → dashboard. Ставить ціни (prices), наділи (crates/pointcash), шле перекази (transfers), переважує (reweigh), рахує собівартість (cost), дивиться network/sheet/journal, закриває зміни з розбіжністю, керує points/refs" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="230" width="700" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_lg_t" value="Легенда" style="text;html=1;fontSize=13;fontStyle=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="360" width="700" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_lg0" value="крок / потік" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e7f5ff;strokeColor=#1c7ed6;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="386" width="225" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_lg1" value="рішення" style="rhombus;whiteSpace=wrap;html=1;fontSize=10;align=center;fillColor=#fff9db;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="1133" y="386" width="225" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_lg2" value="заборона (відмова)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffc9c9;strokeColor=#c92a2a;" vertex="1" parent="1">
+                    <mxGeometry x="1366" y="386" width="225" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_lg3" value="результат / інваріант" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#d3f9d8;strokeColor=#2f9e44;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="420" width="225" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_lg4" value="попередження (дозволяємо)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#ffec99;strokeColor=#f08c00;" vertex="1" parent="1">
+                    <mxGeometry x="1133" y="420" width="225" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_lg5" value="нотатка / механізм" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#f1f3f5;strokeColor=#868e96;" vertex="1" parent="1">
+                    <mxGeometry x="1366" y="420" width="225" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_lg6" value="стан (машина станів)" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;fillColor=#d0bfff;strokeColor=#7048e8;" vertex="1" parent="1">
+                    <mxGeometry x="900" y="454" width="225" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_lg7" value="ТЗ ≠ код / не реалізовано / поза MVP" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;dashed=1;dashPattern=6 4;fillColor=#fff0f6;strokeColor=#e64980;fontColor=#a61e4d;" vertex="1" parent="1">
+                    <mxGeometry x="1133" y="454" width="225" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9_lg8" value="відкрите питання замовнику" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=middle;spacingLeft=8;spacingTop=3;spacingBottom=3;fillColor=#e5dbff;strokeColor=#7048e8;fontColor=#5f3dc4;" vertex="1" parent="1">
+                    <mxGeometry x="1366" y="454" width="225" height="28" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
