@@ -1,0 +1,404 @@
+// Ягода CRM — схема БД (чернетка). Діаграма: 28-db-schema.drawio, стиль: 28-db-schema.md.
+// Джерело правил — 26-rules-by-example.md; посилання «§N» у нотатках ведуть саме туди,
+// «правка N» — у 26-правки-і-запитання.md.
+//
+// Це НЕ 27-entities.dbml: там інша модель (text-ключі, пари бізнес-дата/час, berries,
+// ціна дня в price_records). Тут — uuid, timestamp і ціна дня на ЗМІНІ.
+//
+// Конвенції, зафіксовані навмисно:
+//   * гроші numeric(12,2), ціни за кг numeric(10,2), ваги numeric(10,2);
+//   * знімок замість перерахунку: те, що надруковано на папері, не рухається (§2.7);
+//   * сторно — це поля void_*, а не DELETE; виправлення — новий документ (§9.3);
+//   * похідні суми (залишок, «Разом») НЕ зберігаються — їх рахують (§3.2).
+//
+// Іменування (перейменовано 02.09.2026, причини записані, щоб їх не «полагодили» назад):
+//   * intakes, а НЕ receipts: «receipt» уже зайняте розпискою за ящики
+//     (crate_issuances.receipt_no, §6.4). Два різні документи одним словом — гірше.
+//     І не receptions: англійською це стійка або прийом-вечірка, не прийомка.
+//   * shift_grade_prices, а НЕ shift_product_settings: таблиця тримає ЦІНУ дня, а не
+//     «налаштування», і ключ у неї СОРТ, не товар — §4.1 робить цю різницю несучою.
+//   * crate_issuances, а НЕ crate_issues: «issue» першим значенням читається як
+//     «проблема/тікет».
+//   * intake_line_tare_types — у множині, як решта 16 таблиць, і повним іменем
+//     звʼязки на tare_types.
+//   * units скрізь, де лічильник: у чотирьох таблицях одне слово, і жодного `count`,
+//     який у запиті читається як виклик функції.
+//   * user_role = point_operator | network_owner, а НЕ point_manager | network_admin:
+//     колишні значення називали людину НА ТОЧЦІ «менеджером», а керівника мережі —
+//     «адміністратором». §10.1 знає рівно дві ролі: приймальник і керівник.
+// Перегляд: dbdiagram.io або `npx @dbml/cli dbml2sql 28-db-schema.dbml --postgres`.
+
+Project yagoda_crm {
+  database_type: 'PostgreSQL'
+  Note: 'Прийомка ягоди: мережа пунктів, зміна як робочий день точки, борг постачальника і ящики як завдаток.'
+}
+
+/* ------------------------------ enum-и ------------------------------ */
+
+Enum user_role {
+  network_owner
+  point_operator
+}
+
+Enum supplier_kind {
+  none
+  wholesale
+  farmer
+}
+
+Enum crate_issuance_mode {
+  deposit
+  receipt
+}
+
+/* --------------------------- мережа і люди --------------------------- */
+
+Table users {
+  id uuid [pk]
+
+  first_name varchar [not null]
+  last_name varchar [not null]
+  email varchar [unique, not null]
+
+  role user_role [not null]
+
+  collection_point_id uuid [ref: > collection_points.id]
+
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+
+Table collection_points {
+  id uuid [pk]
+
+  name varchar [not null]
+
+  is_active boolean [not null, default: true]
+
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+  target_cash numeric(12,2) [not null, default: 0]
+
+  target_crates int [not null, default: 0]
+}
+
+Table shifts {
+  id uuid [pk]
+
+  collection_point_id uuid [not null, ref: > collection_points.id]
+
+  opened_by_user_id uuid [not null, ref: > users.id]
+  closed_by_user_id uuid [ref: > users.id]
+
+  business_date date [not null]
+
+  opened_at timestamp [not null]
+  closed_at timestamp
+
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+
+/* ------------------------------ довідники ------------------------------ */
+
+Table villages {
+  id uuid [pk]
+
+  name varchar [not null, unique]
+
+  is_active boolean [not null, default: true]
+
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+
+  Note: '§5.3 — село ВИБИРАЄТЬСЯ зі списку, вільний текст заборонений. У книзі клієнта одне село написане 4 способами: «копайгород» 571 рядок, «Копайгород» 175, «Копайгород » з пробілом 45, «Копай». Довідник — єдине, що це зупиняє.'
+}
+
+Table suppliers {
+  id uuid [pk]
+
+  collection_point_id uuid [not null, ref: > collection_points.id]
+
+  first_name varchar [not null]
+  last_name varchar [not null]
+
+  village_id uuid [not null, ref: > villages.id]
+
+  phone varchar
+  note text
+
+  kind supplier_kind [not null, default: 'none']
+
+  is_active boolean [not null, default: true]
+
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+
+  indexes {
+    (collection_point_id, phone) [unique]
+    (collection_point_id, last_name)
+  }
+
+  Note: '§3.9 — запис прибитий до ТОЧКИ: людина, яка возить на дві точки, заводиться на кожній окремо, і борг з однієї не гаситься на іншій. §5.6 — видалення немає, тільки is_active. §5.7 + правка 8 — phone null дозволено лише через явний чекбокс «без номеру телефону» на формі; окремого поля під цей факт немає навмисно. Пошук за телефоном (правка 5) — звідси унікальність у межах точки. §5.4 і §5.5 (розпізнавання й обʼєднання дублікатів) скасовані правками 5 і 6, тому таблиць під них тут НЕМАЄ.'
+}
+
+Table products {
+  id uuid [pk]
+
+  name varchar [not null, unique]
+
+  display_order int
+
+  is_active boolean [not null, default: true]
+
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+
+Table product_grades {
+  id uuid [pk]
+
+  product_id uuid [not null, ref: > products.id]
+
+  name varchar [not null]
+  // Наприклад:
+  // 1 сорт
+  // 2 сорт
+  // Екстра
+  // ОПТ
+
+  display_order int
+
+  is_active boolean [not null, default: true]
+
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+
+  indexes {
+    (product_id, name) [unique]
+  }
+
+  Note: '§4.1 — ключ ціни це СОРТ, ключ звітності — товар.'
+}
+
+Table tare_types {
+  id uuid [pk]
+
+  name varchar [not null, unique]
+
+  weight_kg numeric(10,2) [not null]
+  deposit_price numeric(12,2) [not null]
+
+  is_crate boolean [not null, default: false]
+
+  is_active boolean [not null, default: true]
+
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+
+  Note: '§2.5 — вага тари підставляється сама. Обидва числа РЕДАГУЮТЬСЯ керівником, тому і intake_lines.tare_weight_kg, і crate_issuances.deposit_per_unit є знімками (§2.7). is_crate — яка тара вважається «ящиком» для цільового значення й завдатків; ЗАПИТАННЯ 12 (чи «Ящик» і «Чешка» одна одиниця) не закрите.'
+}
+
+Table shift_grade_prices {
+  id uuid [pk]
+
+  shift_id uuid [not null, ref: > shifts.id]
+
+  product_grade_id uuid [not null, ref: > product_grades.id]
+
+  base_price numeric(10,2) [not null]
+
+  operator_price_delta numeric(10,2) [not null]
+
+  is_enabled boolean [not null, default: true]
+
+  indexes {
+    (shift_id, product_grade_id) [unique]
+  }
+
+  Note: 'Ціна дня = base_price + operator_price_delta. §4.5 — поки цін дня немає, прийомка заблокована.'
+}
+
+/* ------------------------- прийомка ягоди ------------------------- */
+
+Table intakes {
+  id uuid [pk]
+
+  code varchar [not null, unique]
+
+  shift_id uuid [not null, ref: > shifts.id]
+  supplier_id uuid [not null, ref: > suppliers.id]
+
+  amount numeric(12,2) [not null]
+
+  received_by_user_id uuid [not null, ref: > users.id]
+
+  voided_at timestamp
+  voided_by_user_id uuid [ref: > users.id]
+  void_reason text
+
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+
+  indexes {
+    (supplier_id, created_at)
+    (shift_id)
+  }
+
+  Note: '§2.3 — один візит із кількома сортами це ОДИН документ із кількома рядками (стеля 5), а не кілька прийомок; amount = Σ intake_lines.amount, те саме число, що надруковане на папері. Точка й бізнес-дата беруться зі зміни, автор транзакції — окремо (правка 16): хто відкрив зміну і хто провів квитанцію, це різні люди. Виплачене й залишок ТУТ НЕ ЗБЕРІГАЮТЬСЯ (§3.2): залишок = amount − Σ payout_allocations.amount. §9.3 — сторно повне, з обовʼязковою причиною, документ лишається в журналі назавжди.'
+}
+
+Table intake_lines {
+  id uuid [pk]
+
+  intake_id uuid [not null, ref: > intakes.id]
+
+  line_order int [not null]
+
+  product_grade_id uuid [not null, ref: > product_grades.id]
+
+  gross_kg numeric(10,2) [not null]
+  pallet_kg numeric(10,2) [not null, default: 0]
+  tare_weight_kg numeric(10,2) [not null]
+  net_kg numeric(10,2) [not null]
+
+  price numeric(10,2) [not null]
+  bonus numeric(10,2) [not null, default: 0]
+  amount numeric(12,2) [not null]
+
+  indexes {
+    (intake_id, line_order) [unique]
+  }
+
+  Note: '§2.4 — піддон віднімається ПЕРШИМ, тара другою: net = (gross − pallet) − tare_weight. Поля net людина не вводить ніколи. §2.8 — price це ЗНІМОК ціни дня (base_price + operator_price_delta на мить прийомки), bonus живе НА РЯДКУ, а не на людині: одна людина може здати два сорти з різними надбавками, і від’ємний bonus це мʼята чи цвіла ягода. §2.9 — межа мережі ±30 ₴/кг обрізає bonus, але самої межі в цій схемі поки НЕМАЄ де зберігати.'
+}
+
+Table intake_line_tare_types {
+  line_id uuid [not null, ref: > intake_lines.id]
+  tare_type_id uuid [not null, ref: > tare_types.id]
+
+  units int [not null]
+
+  indexes {
+    (line_id, tare_type_id) [pk]
+  }
+
+  Note: '§2.6 — ящики В КВИТАНЦІЇ (вага, що знімається) і ящики НА РУКАХ (майно, crate_issuances) ніде не складаються в одне.'
+}
+
+/* --------------------------- виплати --------------------------- */
+
+Table payouts {
+  id uuid [pk]
+
+  code varchar [not null, unique]
+
+  shift_id uuid [not null, ref: > shifts.id]
+  supplier_id uuid [not null, ref: > suppliers.id]
+
+  amount numeric(12,2) [not null]
+
+  paid_by_user_id uuid [not null, ref: > users.id]
+
+  voided_at timestamp
+  voided_by_user_id uuid [ref: > users.id]
+  void_reason text
+
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+
+  indexes {
+    (supplier_id, created_at)
+  }
+
+  Note: '§3.5 — видати більше за «Разом» неможливо, сума обрізається; від’ємного залишку виплата не створює. §3.6 — стеля подвійна: min(Разом, каса за ягоду). §3.7 — дозволена будь-яка сума від 0 до «Разом». §9.3 — сторно виплати НЕ повертає готівку в касу само: створюється очікуване повернення під фізичне внесення (сутності під нього тут ще немає).'
+}
+
+Table payout_allocations {
+  payout_id uuid [not null, ref: > payouts.id]
+  intake_id uuid [not null, ref: > intakes.id]
+
+  amount numeric(12,2) [not null]
+
+  indexes {
+    (payout_id, intake_id) [pk]
+    (intake_id)
+  }
+
+  Note: '§3.3 — FIFO: гаситься найстаріший борг першим, і кожне погашення памʼятає, ЯКУ САМЕ дату воно закрило. §3.4 — недоплата осідає на СЬОГОДНІШНІЙ квитанції, а не розмазується по старих рядках. §9.3 — сторно розкручує розподіл назад, і залишки повертаються з ПОЧАТКОВИМИ датами.'
+}
+
+/* ---------------------------- ящики ---------------------------- */
+
+Table crate_issuances {
+  id uuid [pk]
+
+  shift_id uuid [not null, ref: > shifts.id]
+  supplier_id uuid [not null, ref: > suppliers.id]
+
+  units int [not null]
+
+  mode crate_issuance_mode [not null]
+
+  deposit_per_unit numeric(12,2) [not null, default: 0]
+  deposit_taken numeric(12,2) [not null, default: 0]
+
+  receipt_no varchar
+
+  issued_by_user_id uuid [not null, ref: > users.id]
+
+  voided_at timestamp
+  voided_by_user_id uuid [ref: > users.id]
+  void_reason text
+
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+
+  indexes {
+    (supplier_id, created_at)
+  }
+
+  Note: '§6.2 — спосіб система підставляє сама (до 50 завдаток, від 51 розписка), приймальник може перемкнути: екран перепитає, але не заблокує. §6.3 — завдаток = units × deposit_per_unit лягає в КАСУ ЗА ЯЩИКИ. §6.4 — за розписку грошей немає взагалі (deposit_* = 0, на екрані «—», не «0,00»), номер розписки вписується руками; ЗАПИТАННЯ 2 (генерувати чи вводити) не закрите. §2.7 — deposit_per_unit це ЗНІМОК: зміна ціни ящика зі 120 на 130 не переписує липневу видачу. §9.4 — ящиковий документ сторнує ТІЛЬКИ керівник.'
+}
+
+Table crate_returns {
+  id uuid [pk]
+
+  shift_id uuid [not null, ref: > shifts.id]
+  supplier_id uuid [not null, ref: > suppliers.id]
+
+  units int [not null]
+
+  deposit_refund numeric(12,2) [not null, default: 0]
+
+  accepted_by_user_id uuid [not null, ref: > users.id]
+
+  voided_at timestamp
+  voided_by_user_id uuid [ref: > users.id]
+  void_reason text
+
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+
+  indexes {
+    (supplier_id, created_at)
+  }
+
+  Note: '§6.5 — повернення часткове дозволене, повернути більше, ніж узято, не можна. Правка 15: якщо привезли 25 при виданих 20 — у систему йдуть тільки 20, решта 5 це обмін порожніми на ящики постачальника, і в обліку його немає. §6.7 — гроші виходять із каси за ящики; порожня каса за ягоду цьому не заважає, а порожня каса за ящики БЛОКУЄ повернення.'
+}
+
+Table crate_return_allocations {
+  return_id uuid [not null, ref: > crate_returns.id]
+  issuance_id uuid [not null, ref: > crate_issuances.id]
+
+  units int [not null]
+  per_unit numeric(12,2) [not null]
+  amount numeric(12,2) [not null]
+
+  indexes {
+    (return_id, issuance_id) [pk]
+    (issuance_id)
+  }
+
+  Note: '§6.5 — гаситься найстаріша видача першою, і per_unit береться З ТІЄЇ видачі, а не з довідника: людина, яка брала по 120 і по 130, отримує назад саме те, що платила. Приймальник при цьому нічого не питає і не обирає. §6.6 — розписка й завдаток не змішуються навіть у поверненні. §9.3 — видачу, на яку вже лягло повернення, сторнувати не можна, поки не сторновано повернення.'
+}
