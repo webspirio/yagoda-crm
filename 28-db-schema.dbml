@@ -58,7 +58,8 @@ Table users {
 
   first_name varchar [not null]
   last_name varchar [not null]
-  email varchar [unique, not null]
+  login varchar [unique, not null]
+  password_hash varchar [not null]
 
   role user_role [not null]
 
@@ -66,6 +67,8 @@ Table users {
 
   created_at timestamp [not null]
   updated_at timestamp [not null]
+
+  Note: 'Вхід за login, не за e-mail (правка в діаграмі 03.09.2026): адреси в приймальників може не бути взагалі, а логін на точці — це те, що людина справді набирає. UNIQUE стоїть на login і ТІЛЬКИ на ньому: унікальний індекс по хешу пароля відхиляв би другого користувача з тим самим паролем, тобто сам факт збігу ставав би видимим ззовні. Поле зветься password_hash, а не password, бо назва — єдине місце, де схема каже, що зберігати треба хеш; §17.2 при цьому нагадує, що пароль, який звіряють на самій точці, не підтверджує нічого. Це поле скасувало рядок 28-tables.md «Пароля немає навмисно» — причина скасування за власником, тут записано лише сам факт.'
 }
 
 Table collection_points {
@@ -75,11 +78,11 @@ Table collection_points {
 
   is_active boolean [not null, default: true]
 
+  target_cash numeric(12,2) [not null, default: 0]
+  target_crates int [not null, default: 0]
+
   created_at timestamp [not null]
   updated_at timestamp [not null]
-  target_cash numeric(12,2) [not null, default: 0]
-
-  target_crates int [not null, default: 0]
 }
 
 Table shifts {
