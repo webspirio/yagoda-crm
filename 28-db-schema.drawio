@@ -1,32 +1,11 @@
 <mxfile host="65bd71144e">
     <diagram id="db1" name="Схема БД">
-        <mxGraphModel dx="1304" dy="976" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2150" pageHeight="5166" background="#ffffff" math="0" shadow="0">
+        <mxGraphModel dx="1422" dy="798" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="4120" pageHeight="2960" background="#ffffff" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
-                <mxCell id="fr_598" value="МЕРЕЖА · пункти, люди, зміни" style="rounded=1;arcSize=2;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=14;fontStyle=1;fontColor=#4472c4;fillColor=#fafbfc;strokeColor=#4472c4;strokeWidth=2;dashed=1;dashPattern=8 4;" parent="1" vertex="1">
-                    <mxGeometry x="806" y="138" width="398" height="1002" as="geometry"/>
-                </mxCell>
-                <mxCell id="fr_599" value="НОМЕНКЛАТУРА І ТАРА" style="rounded=1;arcSize=2;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=14;fontStyle=1;fontColor=#7a5b93;fillColor=#fafbfc;strokeColor=#7a5b93;strokeWidth=2;dashed=1;dashPattern=8 4;" parent="1" vertex="1">
-                    <mxGeometry x="216" y="828" width="398" height="836" as="geometry"/>
-                </mxCell>
-                <mxCell id="fr_600" value="ЦІНИ ДНЯ" style="rounded=1;arcSize=2;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=14;fontStyle=1;fontColor=#4f9153;fillColor=#fafbfc;strokeColor=#4f9153;strokeWidth=2;dashed=1;dashPattern=8 4;" parent="1" vertex="1">
-                    <mxGeometry x="216" y="1668" width="398" height="378" as="geometry"/>
-                </mxCell>
-                <mxCell id="fr_601" value="ПОСТАЧАЛЬНИК" style="rounded=1;arcSize=2;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=14;fontStyle=1;fontColor=#c07b17;fillColor=#fafbfc;strokeColor=#c07b17;strokeWidth=2;dashed=1;dashPattern=8 4;" parent="1" vertex="1">
-                    <mxGeometry x="806" y="1668" width="398" height="666" as="geometry"/>
-                </mxCell>
-                <mxCell id="fr_602" value="ПРИЙОМКА І ВИПЛАТИ" style="rounded=1;arcSize=2;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=14;fontStyle=1;fontColor=#2a7f8f;fillColor=#fafbfc;strokeColor=#2a7f8f;strokeWidth=2;dashed=1;dashPattern=8 4;" parent="1" vertex="1">
-                    <mxGeometry x="1576" y="138" width="398" height="1654" as="geometry"/>
-                </mxCell>
-                <mxCell id="fr_603" value="ЯЩИКИ · окрема каса" style="rounded=1;arcSize=2;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=14;fontStyle=1;fontColor=#a4573f;fillColor=#fafbfc;strokeColor=#a4573f;strokeWidth=2;dashed=1;dashPattern=8 4;" parent="1" vertex="1">
-                    <mxGeometry x="1576" y="1826" width="398" height="1120" as="geometry"/>
-                </mxCell>
-                <mxCell id="fr_997" value="КАСА І ПЕРЕКАЗИ" style="rounded=1;arcSize=2;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=14;fontStyle=1;fontColor=#9c4a6f;fillColor=#fafbfc;strokeColor=#9c4a6f;strokeWidth=2;dashed=1;dashPattern=8 4;" parent="1" vertex="1">
-                    <mxGeometry x="1576" y="2966" width="398" height="1158" as="geometry"/>
-                </mxCell>
                 <mxCell id="t_1" value="villages" style="shape=table;startSize=32;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=13;fontColor=#ffffff;align=center;verticalAlign=middle;resizeLast=1;html=1;strokeColor=#c07b17;fillColor=#c07b17;" parent="1" vertex="1">
-                    <mxGeometry x="830" y="1730" width="350" height="162" as="geometry"/>
+                    <mxGeometry x="2230" y="1646" width="350" height="162" as="geometry"/>
                 </mxCell>
                 <mxCell id="r_2" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#fdf2e4;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_1" vertex="1">
                     <mxGeometry y="32" width="350" height="26" as="geometry"/>
@@ -89,7 +68,7 @@
                     <mxGeometry x="209" width="141" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="t_2001" value="collection_points" style="shape=table;startSize=32;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=13;fontColor=#ffffff;align=center;verticalAlign=middle;resizeLast=1;html=1;strokeColor=#4472c4;fillColor=#4472c4;" parent="1" vertex="1">
-                    <mxGeometry x="830" y="200" width="350" height="240" as="geometry"/>
+                    <mxGeometry x="2230" y="140" width="350" height="240" as="geometry"/>
                 </mxCell>
                 <mxCell id="r_2002" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#e9f0fb;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_2001" vertex="1">
                     <mxGeometry y="32" width="350" height="26" as="geometry"/>
@@ -188,7 +167,7 @@
                     <mxGeometry x="209" width="141" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="t_3001" value="suppliers" style="shape=table;startSize=32;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=13;fontColor=#ffffff;align=center;verticalAlign=middle;resizeLast=1;html=1;strokeColor=#c07b17;fillColor=#c07b17;" parent="1" vertex="1">
-                    <mxGeometry x="830" y="1940" width="350" height="370" as="geometry"/>
+                    <mxGeometry x="2230" y="1216" width="350" height="370" as="geometry"/>
                 </mxCell>
                 <mxCell id="r_3002" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#fdf2e4;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_3001" vertex="1">
                     <mxGeometry y="32" width="350" height="26" as="geometry"/>
@@ -341,7 +320,7 @@
                     <mxGeometry x="34" width="316" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="t_102" value="users" style="shape=table;startSize=32;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=13;fontColor=#ffffff;align=center;verticalAlign=middle;resizeLast=1;html=1;strokeColor=#4472c4;fillColor=#4472c4;" parent="1" vertex="1">
-                    <mxGeometry x="830" y="460" width="350" height="266" as="geometry"/>
+                    <mxGeometry x="2230" y="440" width="350" height="266" as="geometry"/>
                 </mxCell>
                 <mxCell id="r_103" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#e9f0fb;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_102" vertex="1">
                     <mxGeometry y="32" width="350" height="26" as="geometry"/>
@@ -506,7 +485,7 @@
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="t_1126" value="shifts" style="shape=table;startSize=32;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=13;fontColor=#ffffff;align=center;verticalAlign=middle;resizeLast=1;html=1;strokeColor=#4472c4;fillColor=#4472c4;" parent="1" vertex="1">
-                    <mxGeometry x="830" y="746" width="350" height="370" as="geometry"/>
+                    <mxGeometry x="2230" y="766" width="350" height="370" as="geometry"/>
                 </mxCell>
                 <mxCell id="r_1127" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#e9f0fb;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_1126" vertex="1">
                     <mxGeometry y="32" width="350" height="26" as="geometry"/>
@@ -659,7 +638,7 @@
                     <mxGeometry x="34" width="316" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="t_701" value="grade_prices" style="shape=table;startSize=32;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=13;fontColor=#ffffff;align=center;verticalAlign=middle;resizeLast=1;html=1;strokeColor=#4f9153;fillColor=#4f9153;" parent="1" vertex="1">
-                    <mxGeometry x="240" y="1730" width="350" height="292" as="geometry"/>
+                    <mxGeometry x="1480" y="1222" width="350" height="292" as="geometry"/>
                 </mxCell>
                 <mxCell id="r_702" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#ebf4ea;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_701" vertex="1">
                     <mxGeometry y="32" width="350" height="26" as="geometry"/>
@@ -779,70 +758,100 @@
                     <mxGeometry x="34" width="316" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="t_200" value="products" style="shape=table;startSize=32;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=13;fontColor=#ffffff;align=center;verticalAlign=middle;resizeLast=1;html=1;strokeColor=#7a5b93;fillColor=#7a5b93;" parent="1" vertex="1">
-                    <mxGeometry x="240" y="890" width="350" height="162" as="geometry"/>
+                    <mxGeometry x="100" y="140" width="350" height="162" as="geometry"/>
                 </mxCell>
                 <mxCell id="r_201" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#f3edf7;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_200" vertex="1">
                     <mxGeometry y="32" width="350" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="c_202" value="&lt;b&gt;PK&lt;/b&gt;" style="shape=partialRectangle;connectable=0;fillColor=none;strokeColor=none;overflow=hidden;html=1;verticalAlign=middle;align=center;fontSize=9;fontColor=#7a5b93;" parent="r_201" vertex="1">
-                    <mxGeometry width="34" height="26" as="geometry"/>
+                    <mxGeometry width="34" height="26" as="geometry">
+                        <mxRectangle width="34" height="26" as="alternateBounds"/>
+                    </mxGeometry>
                 </mxCell>
                 <mxCell id="c_203" value="&lt;b&gt;id&lt;/b&gt;" style="shape=partialRectangle;connectable=0;fillColor=none;strokeColor=none;overflow=hidden;html=1;verticalAlign=middle;align=left;spacingLeft=2;fontSize=11.5;fontColor=#1f2328;" parent="r_201" vertex="1">
-                    <mxGeometry x="34" width="175" height="26" as="geometry"/>
+                    <mxGeometry x="34" width="175" height="26" as="geometry">
+                        <mxRectangle width="175" height="26" as="alternateBounds"/>
+                    </mxGeometry>
                 </mxCell>
                 <mxCell id="c_204" value="uuid" style="shape=partialRectangle;connectable=0;fillColor=none;strokeColor=none;overflow=hidden;html=1;verticalAlign=middle;align=left;spacingLeft=4;fontSize=10;fontColor=#6b7280;" parent="r_201" vertex="1">
-                    <mxGeometry x="209" width="141" height="26" as="geometry"/>
+                    <mxGeometry x="209" width="141" height="26" as="geometry">
+                        <mxRectangle width="141" height="26" as="alternateBounds"/>
+                    </mxGeometry>
                 </mxCell>
                 <mxCell id="r_205" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#ffffff;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_200" vertex="1">
                     <mxGeometry y="58" width="350" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="c_206" value="" style="shape=partialRectangle;connectable=0;fillColor=none;strokeColor=none;overflow=hidden;html=1;verticalAlign=middle;align=center;fontSize=9;fontColor=#8a8f98;" parent="r_205" vertex="1">
-                    <mxGeometry width="34" height="26" as="geometry"/>
+                    <mxGeometry width="34" height="26" as="geometry">
+                        <mxRectangle width="34" height="26" as="alternateBounds"/>
+                    </mxGeometry>
                 </mxCell>
                 <mxCell id="c_207" value="name" style="shape=partialRectangle;connectable=0;fillColor=none;strokeColor=none;overflow=hidden;html=1;verticalAlign=middle;align=left;spacingLeft=2;fontSize=11.5;fontColor=#1f2328;" parent="r_205" vertex="1">
-                    <mxGeometry x="34" width="175" height="26" as="geometry"/>
+                    <mxGeometry x="34" width="175" height="26" as="geometry">
+                        <mxRectangle width="175" height="26" as="alternateBounds"/>
+                    </mxGeometry>
                 </mxCell>
                 <mxCell id="c_208" value="varchar · UQ" style="shape=partialRectangle;connectable=0;fillColor=none;strokeColor=none;overflow=hidden;html=1;verticalAlign=middle;align=left;spacingLeft=4;fontSize=10;fontColor=#6b7280;" parent="r_205" vertex="1">
-                    <mxGeometry x="209" width="141" height="26" as="geometry"/>
+                    <mxGeometry x="209" width="141" height="26" as="geometry">
+                        <mxRectangle width="141" height="26" as="alternateBounds"/>
+                    </mxGeometry>
                 </mxCell>
                 <mxCell id="r_209" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#ffffff;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_200" vertex="1">
                     <mxGeometry y="84" width="350" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="c_210" value="" style="shape=partialRectangle;connectable=0;fillColor=none;strokeColor=none;overflow=hidden;html=1;verticalAlign=middle;align=center;fontSize=9;fontColor=#8a8f98;" parent="r_209" vertex="1">
-                    <mxGeometry width="34" height="26" as="geometry"/>
+                    <mxGeometry width="34" height="26" as="geometry">
+                        <mxRectangle width="34" height="26" as="alternateBounds"/>
+                    </mxGeometry>
                 </mxCell>
                 <mxCell id="c_211" value="display_order&lt;font color=&quot;#9aa0a6&quot;&gt;?&lt;/font&gt;" style="shape=partialRectangle;connectable=0;fillColor=none;strokeColor=none;overflow=hidden;html=1;verticalAlign=middle;align=left;spacingLeft=2;fontSize=11.5;fontColor=#1f2328;" parent="r_209" vertex="1">
-                    <mxGeometry x="34" width="175" height="26" as="geometry"/>
+                    <mxGeometry x="34" width="175" height="26" as="geometry">
+                        <mxRectangle width="175" height="26" as="alternateBounds"/>
+                    </mxGeometry>
                 </mxCell>
                 <mxCell id="c_212" value="int" style="shape=partialRectangle;connectable=0;fillColor=none;strokeColor=none;overflow=hidden;html=1;verticalAlign=middle;align=left;spacingLeft=4;fontSize=10;fontColor=#6b7280;" parent="r_209" vertex="1">
-                    <mxGeometry x="209" width="141" height="26" as="geometry"/>
+                    <mxGeometry x="209" width="141" height="26" as="geometry">
+                        <mxRectangle width="141" height="26" as="alternateBounds"/>
+                    </mxGeometry>
                 </mxCell>
                 <mxCell id="r_217" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#ffffff;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_200" vertex="1">
                     <mxGeometry y="110" width="350" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="c_218" value="" style="shape=partialRectangle;connectable=0;fillColor=none;strokeColor=none;overflow=hidden;html=1;verticalAlign=middle;align=center;fontSize=9;fontColor=#8a8f98;" parent="r_217" vertex="1">
-                    <mxGeometry width="34" height="26" as="geometry"/>
+                    <mxGeometry width="34" height="26" as="geometry">
+                        <mxRectangle width="34" height="26" as="alternateBounds"/>
+                    </mxGeometry>
                 </mxCell>
                 <mxCell id="c_219" value="created_at" style="shape=partialRectangle;connectable=0;fillColor=none;strokeColor=none;overflow=hidden;html=1;verticalAlign=middle;align=left;spacingLeft=2;fontSize=11.5;fontColor=#1f2328;" parent="r_217" vertex="1">
-                    <mxGeometry x="34" width="175" height="26" as="geometry"/>
+                    <mxGeometry x="34" width="175" height="26" as="geometry">
+                        <mxRectangle width="175" height="26" as="alternateBounds"/>
+                    </mxGeometry>
                 </mxCell>
                 <mxCell id="c_220" value="timestamp" style="shape=partialRectangle;connectable=0;fillColor=none;strokeColor=none;overflow=hidden;html=1;verticalAlign=middle;align=left;spacingLeft=4;fontSize=10;fontColor=#6b7280;" parent="r_217" vertex="1">
-                    <mxGeometry x="209" width="141" height="26" as="geometry"/>
+                    <mxGeometry x="209" width="141" height="26" as="geometry">
+                        <mxRectangle width="141" height="26" as="alternateBounds"/>
+                    </mxGeometry>
                 </mxCell>
                 <mxCell id="r_221" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#ffffff;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_200" vertex="1">
                     <mxGeometry y="136" width="350" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="c_222" value="" style="shape=partialRectangle;connectable=0;fillColor=none;strokeColor=none;overflow=hidden;html=1;verticalAlign=middle;align=center;fontSize=9;fontColor=#8a8f98;" parent="r_221" vertex="1">
-                    <mxGeometry width="34" height="26" as="geometry"/>
+                    <mxGeometry width="34" height="26" as="geometry">
+                        <mxRectangle width="34" height="26" as="alternateBounds"/>
+                    </mxGeometry>
                 </mxCell>
                 <mxCell id="c_223" value="updated_at" style="shape=partialRectangle;connectable=0;fillColor=none;strokeColor=none;overflow=hidden;html=1;verticalAlign=middle;align=left;spacingLeft=2;fontSize=11.5;fontColor=#1f2328;" parent="r_221" vertex="1">
-                    <mxGeometry x="34" width="175" height="26" as="geometry"/>
+                    <mxGeometry x="34" width="175" height="26" as="geometry">
+                        <mxRectangle width="175" height="26" as="alternateBounds"/>
+                    </mxGeometry>
                 </mxCell>
                 <mxCell id="c_224" value="timestamp" style="shape=partialRectangle;connectable=0;fillColor=none;strokeColor=none;overflow=hidden;html=1;verticalAlign=middle;align=left;spacingLeft=4;fontSize=10;fontColor=#6b7280;" parent="r_221" vertex="1">
-                    <mxGeometry x="209" width="141" height="26" as="geometry"/>
+                    <mxGeometry x="209" width="141" height="26" as="geometry">
+                        <mxRectangle width="141" height="26" as="alternateBounds"/>
+                    </mxGeometry>
                 </mxCell>
                 <mxCell id="t_225" value="product_grades" style="shape=table;startSize=32;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=13;fontColor=#ffffff;align=center;verticalAlign=middle;resizeLast=1;html=1;strokeColor=#7a5b93;fillColor=#7a5b93;" parent="1" vertex="1">
-                    <mxGeometry x="240" y="1120" width="350" height="240" as="geometry"/>
+                    <mxGeometry x="100" y="362" width="350" height="240" as="geometry"/>
                 </mxCell>
                 <mxCell id="r_226" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#f3edf7;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_225" vertex="1">
                     <mxGeometry y="32" width="350" height="26" as="geometry"/>
@@ -938,7 +947,7 @@
                     <mxGeometry x="34" width="316" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="t_257" value="intakes" style="shape=table;startSize=32;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=13;fontColor=#ffffff;align=center;verticalAlign=middle;resizeLast=1;html=1;strokeColor=#2a7f8f;fillColor=#2a7f8f;" parent="1" vertex="1">
-                    <mxGeometry x="1600" y="200" width="350" height="344" as="geometry"/>
+                    <mxGeometry x="1480" y="140" width="350" height="344" as="geometry"/>
                 </mxCell>
                 <mxCell id="r_258" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#e6f3f5;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_257" vertex="1">
                     <mxGeometry y="32" width="350" height="26" as="geometry"/>
@@ -1082,7 +1091,7 @@
                     <mxGeometry x="34" width="316" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="t_2034" value="payouts" style="shape=table;startSize=32;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=13;fontColor=#ffffff;align=center;verticalAlign=middle;resizeLast=1;html=1;strokeColor=#2a7f8f;fillColor=#2a7f8f;" parent="1" vertex="1">
-                    <mxGeometry x="1600" y="1170" width="350" height="422" as="geometry"/>
+                    <mxGeometry x="1480" y="544" width="350" height="422" as="geometry"/>
                 </mxCell>
                 <mxCell id="r_2035" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#e6f3f5;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_2034" vertex="1">
                     <mxGeometry y="32" width="350" height="26" as="geometry"/>
@@ -1262,7 +1271,7 @@
                     <mxGeometry x="34" width="316" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="t_353" value="crate_issuances" style="shape=table;startSize=32;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=13;fontColor=#ffffff;align=center;verticalAlign=middle;resizeLast=1;html=1;strokeColor=#a4573f;fillColor=#a4573f;" parent="1" vertex="1">
-                    <mxGeometry x="1600" y="1888" width="350" height="422" as="geometry"/>
+                    <mxGeometry x="2960" y="851" width="350" height="422" as="geometry"/>
                 </mxCell>
                 <mxCell id="r_354" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#fbeeea;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_353" vertex="1">
                     <mxGeometry y="32" width="350" height="26" as="geometry"/>
@@ -1442,7 +1451,7 @@
                     <mxGeometry x="34" width="316" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="t_413" value="crate_returns" style="shape=table;startSize=32;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=13;fontColor=#ffffff;align=center;verticalAlign=middle;resizeLast=1;html=1;strokeColor=#a4573f;fillColor=#a4573f;" parent="1" vertex="1">
-                    <mxGeometry x="1600" y="2350" width="350" height="344" as="geometry"/>
+                    <mxGeometry x="2960" y="1333" width="350" height="344" as="geometry"/>
                 </mxCell>
                 <mxCell id="r_414" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#fbeeea;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_413" vertex="1">
                     <mxGeometry y="32" width="350" height="26" as="geometry"/>
@@ -1586,7 +1595,7 @@
                     <mxGeometry x="34" width="316" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="t_461" value="intake_items" style="shape=table;startSize=32;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=13;fontColor=#ffffff;align=center;verticalAlign=middle;resizeLast=1;html=1;strokeColor=#2a7f8f;fillColor=#2a7f8f;" parent="1" vertex="1">
-                    <mxGeometry x="1600" y="610" width="350" height="344" as="geometry"/>
+                    <mxGeometry x="790" y="460" width="350" height="344" as="geometry"/>
                 </mxCell>
                 <mxCell id="r_462" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#e6f3f5;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_461" vertex="1">
                     <mxGeometry y="32" width="350" height="26" as="geometry"/>
@@ -1730,7 +1739,7 @@
                     <mxGeometry x="34" width="316" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="t_509" value="intake_item_tare_types" style="shape=table;startSize=32;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=13;fontColor=#ffffff;align=center;verticalAlign=middle;resizeLast=1;html=1;strokeColor=#2a7f8f;fillColor=#2a7f8f;" parent="1" vertex="1">
-                    <mxGeometry x="1600" y="994" width="350" height="136" as="geometry"/>
+                    <mxGeometry x="790" y="864" width="350" height="136" as="geometry"/>
                 </mxCell>
                 <mxCell id="r_510" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#e6f3f5;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_509" vertex="1">
                     <mxGeometry y="32" width="350" height="26" as="geometry"/>
@@ -1778,7 +1787,7 @@
                     <mxGeometry x="34" width="316" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="t_525" value="tare_types" style="shape=table;startSize=32;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=13;fontColor=#ffffff;align=center;verticalAlign=middle;resizeLast=1;html=1;strokeColor=#7a5b93;fillColor=#7a5b93;" parent="1" vertex="1">
-                    <mxGeometry x="240" y="1400" width="350" height="240" as="geometry"/>
+                    <mxGeometry x="100" y="662" width="350" height="240" as="geometry"/>
                 </mxCell>
                 <mxCell id="r_526" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#f3edf7;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_525" vertex="1">
                     <mxGeometry y="32" width="350" height="26" as="geometry"/>
@@ -1877,7 +1886,7 @@
                     <mxGeometry x="209" width="141" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="t_558" value="payout_allocations" style="shape=table;startSize=32;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=13;fontColor=#ffffff;align=center;verticalAlign=middle;resizeLast=1;html=1;strokeColor=#2a7f8f;fillColor=#2a7f8f;" parent="1" vertex="1">
-                    <mxGeometry x="1600" y="1632" width="350" height="136" as="geometry"/>
+                    <mxGeometry x="1480" y="1026" width="350" height="136" as="geometry"/>
                 </mxCell>
                 <mxCell id="r_559" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#e6f3f5;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_558" vertex="1">
                     <mxGeometry y="32" width="350" height="26" as="geometry"/>
@@ -1925,7 +1934,7 @@
                     <mxGeometry x="34" width="316" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="t_574" value="crate_return_allocations" style="shape=table;startSize=32;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=13;fontColor=#ffffff;align=center;verticalAlign=middle;resizeLast=1;html=1;strokeColor=#a4573f;fillColor=#a4573f;" parent="1" vertex="1">
-                    <mxGeometry x="1600" y="2734" width="350" height="188" as="geometry"/>
+                    <mxGeometry x="2960" y="525" width="350" height="188" as="geometry"/>
                 </mxCell>
                 <mxCell id="r_575" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#fbeeea;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_574" vertex="1">
                     <mxGeometry y="32" width="350" height="26" as="geometry"/>
@@ -1997,7 +2006,7 @@
                     <mxGeometry x="34" width="316" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="t_2197" value="cash_counts" style="shape=table;startSize=32;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=13;fontColor=#ffffff;align=center;verticalAlign=middle;resizeLast=1;html=1;strokeColor=#9c4a6f;fillColor=#9c4a6f;" parent="1" vertex="1">
-                    <mxGeometry x="1600" y="3028" width="350" height="318" as="geometry"/>
+                    <mxGeometry x="3670" y="140" width="350" height="318" as="geometry"/>
                 </mxCell>
                 <mxCell id="r_2198" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#f7ecf1;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_2197" vertex="1">
                     <mxGeometry y="32" width="350" height="26" as="geometry"/>
@@ -2126,7 +2135,7 @@
                     <mxGeometry x="34" width="316" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="t_2094" value="transfers" style="shape=table;startSize=32;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=13;fontColor=#ffffff;align=center;verticalAlign=middle;resizeLast=1;html=1;strokeColor=#9c4a6f;fillColor=#9c4a6f;" parent="1" vertex="1">
-                    <mxGeometry x="1600" y="3392" width="350" height="708" as="geometry"/>
+                    <mxGeometry x="3670" y="518" width="350" height="708" as="geometry"/>
                 </mxCell>
                 <mxCell id="r_2095" style="shape=partialRectangle;collapsible=0;dropTarget=0;fillColor=#f7ecf1;strokeColor=#d9dde2;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;html=1;" parent="t_2094" vertex="1">
                     <mxGeometry y="32" width="350" height="26" as="geometry"/>
@@ -2434,391 +2443,391 @@
                 <mxCell id="c_2196" value="&lt;i&gt;(status)&lt;/i&gt;" style="shape=partialRectangle;connectable=0;fillColor=none;strokeColor=none;overflow=hidden;html=1;verticalAlign=middle;align=left;spacingLeft=2;fontSize=10;fontColor=#6b7280;" parent="r_2194" vertex="1">
                     <mxGeometry x="34" width="316" height="26" as="geometry"/>
                 </mxCell>
-                <mxCell id="e_604" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_123" target="r_2002" edge="1">
+                <mxCell id="e_604" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_123" target="r_2002" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="620" y="661"/>
-                            <mxPoint x="620" y="245"/>
+                            <mxPoint x="2686" y="641"/>
+                            <mxPoint x="2686" y="185"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="e_605" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_3006" target="r_2002" edge="1">
+                <mxCell id="e_605" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_3006" target="r_2002" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="638" y="2011"/>
-                            <mxPoint x="638" y="245"/>
+                            <mxPoint x="2710" y="1287"/>
+                            <mxPoint x="2710" y="185"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="e_606" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_3018" target="r_2" edge="1">
+                <mxCell id="e_606" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_3018" target="r_2" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="620" y="2089"/>
-                            <mxPoint x="620" y="1775"/>
+                            <mxPoint x="2710" y="1365"/>
+                            <mxPoint x="2710" y="1691"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="e_607" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_1131" target="r_2002" edge="1">
+                <mxCell id="e_607" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_1131" target="r_2002" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="690" y="817"/>
-                            <mxPoint x="690" y="245"/>
+                            <mxPoint x="2734" y="837"/>
+                            <mxPoint x="2734" y="185"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_608" value="відкрив" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_1135" target="r_103" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="730" y="843"/>
-                            <mxPoint x="730" y="505"/>
+                            <mxPoint x="2030" y="863"/>
+                            <mxPoint x="2030" y="485"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_609" value="закрив" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_1139" target="r_103" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="770" y="869"/>
-                            <mxPoint x="770" y="505"/>
+                            <mxPoint x="2054" y="889"/>
+                            <mxPoint x="2054" y="485"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_612" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_230" target="r_201" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="170" y="1191"/>
-                            <mxPoint x="170" y="935"/>
+                            <mxPoint x="50" y="433"/>
+                            <mxPoint x="50" y="185"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="e_613" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_266" target="r_1127" edge="1">
+                <mxCell id="e_613" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_266" target="r_1127" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1212" y="297"/>
-                            <mxPoint x="1212" y="791"/>
+                            <mxPoint x="1934" y="237"/>
+                            <mxPoint x="1934" y="811"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="e_614" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_270" target="r_3002" edge="1">
+                <mxCell id="e_614" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_270" target="r_3002" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1226" y="323"/>
-                            <mxPoint x="1226" y="1985"/>
+                            <mxPoint x="1958" y="263"/>
+                            <mxPoint x="1958" y="1261"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="e_615" value="прийняв" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_278" target="r_103" edge="1">
+                <mxCell id="e_615" value="прийняв" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_278" target="r_103" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1240" y="375"/>
-                            <mxPoint x="1240" y="505"/>
+                            <mxPoint x="1982" y="315"/>
+                            <mxPoint x="1982" y="485"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="e_616" value="сторнував" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_286" target="r_103" edge="1">
+                <mxCell id="e_616" value="сторнував" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_286" target="r_103" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1254" y="427"/>
-                            <mxPoint x="1254" y="505"/>
+                            <mxPoint x="2006" y="367"/>
+                            <mxPoint x="2006" y="485"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="e_617" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_2043" target="r_1127" edge="1">
+                <mxCell id="e_617" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_2043" target="r_1127" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1240" y="1267"/>
-                            <mxPoint x="1240" y="791"/>
+                            <mxPoint x="1982" y="641"/>
+                            <mxPoint x="1982" y="811"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="e_618" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_2047" target="r_3002" edge="1">
+                <mxCell id="e_618" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_2047" target="r_3002" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1212" y="1293"/>
-                            <mxPoint x="1212" y="1985"/>
+                            <mxPoint x="2006" y="667"/>
+                            <mxPoint x="2006" y="1261"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="e_619" value="видав" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_2055" target="r_103" edge="1">
+                <mxCell id="e_619" value="видав" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_2055" target="r_103" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1268" y="1345"/>
-                            <mxPoint x="1268" y="505"/>
+                            <mxPoint x="2078" y="719"/>
+                            <mxPoint x="2078" y="485"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="e_620" value="сторнував" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_2063" target="r_103" edge="1">
+                <mxCell id="e_620" value="сторнував" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_2063" target="r_103" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1282" y="1397"/>
-                            <mxPoint x="1282" y="505"/>
+                            <mxPoint x="2102" y="771"/>
+                            <mxPoint x="2102" y="485"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_621" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_358" target="r_1127" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1254" y="1959"/>
-                            <mxPoint x="1254" y="791"/>
+                            <mxPoint x="2686" y="922"/>
+                            <mxPoint x="2686" y="811"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_622" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_362" target="r_3002" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1240" y="1985"/>
-                            <mxPoint x="1240" y="1985"/>
+                            <mxPoint x="2734" y="948"/>
+                            <mxPoint x="2734" y="1261"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_623" value="видав" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_386" target="r_103" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1296" y="2141"/>
-                            <mxPoint x="1296" y="505"/>
+                            <mxPoint x="2758" y="1104"/>
+                            <mxPoint x="2758" y="485"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_624" value="сторнував" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_394" target="r_103" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1310" y="2193"/>
-                            <mxPoint x="1310" y="505"/>
+                            <mxPoint x="2782" y="1156"/>
+                            <mxPoint x="2782" y="485"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_625" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_418" target="r_1127" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1324" y="2421"/>
-                            <mxPoint x="1324" y="791"/>
+                            <mxPoint x="2854" y="1404"/>
+                            <mxPoint x="2854" y="811"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_626" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_422" target="r_3002" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1254" y="2447"/>
-                            <mxPoint x="1254" y="1985"/>
+                            <mxPoint x="2686" y="1430"/>
+                            <mxPoint x="2686" y="1261"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_627" value="прийняв" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_434" target="r_103" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1338" y="2525"/>
-                            <mxPoint x="1338" y="505"/>
+                            <mxPoint x="2806" y="1508"/>
+                            <mxPoint x="2806" y="485"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_628" value="сторнував" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_442" target="r_103" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1350" y="2577"/>
-                            <mxPoint x="1350" y="505"/>
+                            <mxPoint x="2830" y="1560"/>
+                            <mxPoint x="2830" y="485"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="e_629" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_466" target="r_258" edge="1">
+                <mxCell id="e_629" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_466" target="r_258" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1500" y="681"/>
-                            <mxPoint x="1500" y="245"/>
+                            <mxPoint x="1274" y="531"/>
+                            <mxPoint x="1274" y="185"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_630" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_474" target="r_226" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1490" y="733"/>
-                            <mxPoint x="1490" y="1165"/>
+                            <mxPoint x="620" y="583"/>
+                            <mxPoint x="620" y="407"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="e_631" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_510" target="r_462" edge="1">
+                <mxCell id="e_631" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_510" target="r_462" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1550" y="1039"/>
-                            <mxPoint x="1550" y="655"/>
+                            <mxPoint x="1346" y="909"/>
+                            <mxPoint x="1346" y="505"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_632" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_514" target="r_526" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1550" y="1065"/>
-                            <mxPoint x="1550" y="1445"/>
+                            <mxPoint x="620" y="935"/>
+                            <mxPoint x="620" y="707"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_633" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_559" target="r_2035" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1510" y="1677"/>
-                            <mxPoint x="1510" y="1215"/>
+                            <mxPoint x="1274" y="1071"/>
+                            <mxPoint x="1274" y="589"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_634" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_563" target="r_258" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1530" y="1703"/>
-                            <mxPoint x="1530" y="245"/>
+                            <mxPoint x="1298" y="1097"/>
+                            <mxPoint x="1298" y="185"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="e_635" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_575" target="r_414" edge="1">
+                <mxCell id="e_635" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_575" target="r_414" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1540" y="2779"/>
-                            <mxPoint x="1540" y="2395"/>
+                            <mxPoint x="3562" y="570"/>
+                            <mxPoint x="3562" y="1378"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="e_636" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_579" target="r_354" edge="1">
+                <mxCell id="e_636" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_579" target="r_354" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1510" y="2805"/>
-                            <mxPoint x="1510" y="1933"/>
+                            <mxPoint x="3586" y="596"/>
+                            <mxPoint x="3586" y="896"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_998" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_710" target="r_2002" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="654" y="1827"/>
-                            <mxPoint x="654" y="245"/>
+                            <mxPoint x="1910" y="1319"/>
+                            <mxPoint x="1910" y="185"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="e_999" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_714" target="r_226" edge="1">
+                <mxCell id="e_999" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_714" target="r_226" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="180" y="1853"/>
-                            <mxPoint x="180" y="1165"/>
+                            <mxPoint x="1322" y="1345"/>
+                            <mxPoint x="1322" y="407"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_1000" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_726" target="r_103" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="672" y="1931"/>
-                            <mxPoint x="672" y="505"/>
+                            <mxPoint x="2126" y="1423"/>
+                            <mxPoint x="2126" y="485"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_1005" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_2202" target="r_1127" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1364" y="3099"/>
-                            <mxPoint x="1364" y="791"/>
+                            <mxPoint x="3418" y="211"/>
+                            <mxPoint x="3418" y="811"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_1006" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_2222" target="r_103" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1378" y="3229"/>
-                            <mxPoint x="1378" y="505"/>
+                            <mxPoint x="3442" y="341"/>
+                            <mxPoint x="3442" y="485"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_1007" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_2099" target="r_2002" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1392" y="3463"/>
-                            <mxPoint x="1392" y="245"/>
+                            <mxPoint x="3394" y="589"/>
+                            <mxPoint x="3394" y="185"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_1008" value="надіслав" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_2115" target="r_103" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1406" y="3567"/>
-                            <mxPoint x="1406" y="505"/>
+                            <mxPoint x="3466" y="693"/>
+                            <mxPoint x="3466" y="485"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_1009" value="прийняв" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_2127" target="r_103" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1420" y="3645"/>
-                            <mxPoint x="1420" y="505"/>
+                            <mxPoint x="3490" y="771"/>
+                            <mxPoint x="3490" y="485"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_1010" value="закрив спір" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_2159" target="r_103" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1434" y="3853"/>
-                            <mxPoint x="1434" y="505"/>
+                            <mxPoint x="3514" y="979"/>
+                            <mxPoint x="3514" y="485"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_1011" value="сторнував" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_2175" target="r_103" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1448" y="3957"/>
-                            <mxPoint x="1448" y="505"/>
+                            <mxPoint x="3538" y="1083"/>
+                            <mxPoint x="3538" y="485"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="e_1013" value="виправляє" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_2167" target="r_2095" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1586" y="3905"/>
-                            <mxPoint x="1586" y="3437"/>
+                            <mxPoint x="3442" y="1031"/>
+                            <mxPoint x="3442" y="563"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="e_2900" value="вніс" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_2075" target="r_103" edge="1">
+                <mxCell id="e_2900" value="вніс" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=ERmany;startFill=0;endArrow=ERmandOne;endFill=0;strokeColor=#8b93a1;strokeWidth=1.5;fontSize=10;fontColor=#4b5563;labelBackgroundColor=#ffffff;" parent="1" source="r_2075" target="r_103" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="1462" y="1475"/>
-                            <mxPoint x="1462" y="505"/>
+                            <mxPoint x="2150" y="849"/>
+                            <mxPoint x="2150" y="485"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="n_title" value="Ягода CRM — схема бази даних" style="text;html=1;fontSize=26;fontStyle=1;align=left;verticalAlign=middle;fontColor=#1f2328;" parent="1" vertex="1">
-                    <mxGeometry x="40" y="34" width="1200" height="34" as="geometry"/>
+                    <mxGeometry x="100" y="34" width="1200" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="n_sub" value="Чернетка з 28-db-schema.dbml. 19 таблиць, 43 зовнішні ключі, 8 enum-ів, 179 полів. Правила — 26-rules-by-example.md." style="text;html=1;fontSize=12;align=left;verticalAlign=middle;fontColor=#6b7280;" parent="1" vertex="1">
-                    <mxGeometry x="40" y="70" width="1200" height="20" as="geometry"/>
+                <mxCell id="n_sub" value="Чернетка з 28-db-schema.dbml. 19 таблиць, 43 зовнішні ключі, 8 enum-ів, 178 полів. Правила — 26-rules-by-example.md." style="text;html=1;fontSize=12;align=left;verticalAlign=middle;fontColor=#6b7280;" parent="1" vertex="1">
+                    <mxGeometry x="100" y="80" width="1200" height="22" as="geometry"/>
                 </mxCell>
-                <mxCell id="n_legend" value="&lt;b&gt;Як читати&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;PK&lt;/b&gt; — первинний ключ · &lt;i&gt;FK&lt;/i&gt; — зовнішній ключ&lt;br&gt;&lt;font color=&quot;#9aa0a6&quot;&gt;?&lt;/font&gt; після назви — поле може бути порожнім (NULL)&lt;br&gt;· UQ — унікальне · = x — значення за замовчуванням&lt;br&gt;&lt;font color=&quot;#9aa0a6&quot;&gt;◇&lt;/font&gt; — складений ключ або індекс&lt;br&gt;&lt;br&gt;Лінія: «лапка» = багато, «‖» = рівно один.&lt;br&gt;Читається від «лапки»: багато квитанцій —&lt;br&gt;в одного постачальника.&lt;br&gt;&lt;br&gt;&lt;b&gt;Колір заголовка = група&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#4472c4&quot;&gt;■&lt;/font&gt; мережа: пункти, люди, зміни&lt;br&gt;&lt;font color=&quot;#c07b17&quot;&gt;■&lt;/font&gt; постачальник і довідник сіл&lt;br&gt;&lt;font color=&quot;#7a5b93&quot;&gt;■&lt;/font&gt; номенклатура і тара&lt;br&gt;&lt;font color=&quot;#4f9153&quot;&gt;■&lt;/font&gt; ціни дня&lt;br&gt;&lt;font color=&quot;#2a7f8f&quot;&gt;■&lt;/font&gt; прийомка і виплати&lt;br&gt;&lt;font color=&quot;#a4573f&quot;&gt;■&lt;/font&gt; ящики&lt;br&gt;&lt;font color=&quot;#9c4a6f&quot;&gt;■&lt;/font&gt; каса і перекази&lt;br&gt;&lt;br&gt;&lt;b&gt;Рамка = група таблиць&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#9aa0a6&quot;&gt;Пунктирна рамка обводить таблиці однієї&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#9aa0a6&quot;&gt;групи; колір рамки той самий, що в її&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#9aa0a6&quot;&gt;заголовків. Колонки йдуть зліва направо за&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#9aa0a6&quot;&gt;потоком дня: довідники → мережа й люди →&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#9aa0a6&quot;&gt;документи, що виникають за день.&lt;/font&gt;" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;spacingRight=10;fontSize=11;fontColor=#374151;fillColor=#fbfcfd;strokeColor=#dfe3e8;" parent="1" vertex="1">
-                    <mxGeometry x="240" y="200" width="330" height="448" as="geometry"/>
+                <mxCell id="n_legend" value="&lt;b&gt;Як читати&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;PK&lt;/b&gt; — первинний ключ · &lt;i&gt;FK&lt;/i&gt; — зовнішній ключ&lt;br&gt;&lt;font color=&quot;#9aa0a6&quot;&gt;?&lt;/font&gt; після назви — поле може бути порожнім (NULL)&lt;br&gt;· UQ — унікальне · = x — значення за замовчуванням&lt;br&gt;&lt;font color=&quot;#9aa0a6&quot;&gt;◇&lt;/font&gt; — складений ключ або індекс&lt;br&gt;&lt;br&gt;Лінія: «лапка» = багато, «‖» = рівно один.&lt;br&gt;Читається від «лапки»: багато квитанцій —&lt;br&gt;в одного постачальника.&lt;br&gt;&lt;br&gt;&lt;b&gt;Колір заголовка = група&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#4472c4&quot;&gt;■&lt;/font&gt; мережа: пункти, люди, зміни&lt;br&gt;&lt;font color=&quot;#c07b17&quot;&gt;■&lt;/font&gt; постачальник і довідник сіл&lt;br&gt;&lt;font color=&quot;#7a5b93&quot;&gt;■&lt;/font&gt; номенклатура і тара&lt;br&gt;&lt;font color=&quot;#4f9153&quot;&gt;■&lt;/font&gt; ціни дня&lt;br&gt;&lt;font color=&quot;#2a7f8f&quot;&gt;■&lt;/font&gt; прийомка і виплати&lt;br&gt;&lt;font color=&quot;#a4573f&quot;&gt;■&lt;/font&gt; ящики&lt;br&gt;&lt;font color=&quot;#9c4a6f&quot;&gt;■&lt;/font&gt; каса і перекази&lt;br&gt;&lt;br&gt;&lt;b&gt;Колір заголовка — маркер групи&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#9aa0a6&quot;&gt;Пунктирних рамок немає: колір заголовка&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#9aa0a6&quot;&gt;каже про групу те саме. Колонки: посередині&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#9aa0a6&quot;&gt;— мережа, люди й постачальник, на них&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#9aa0a6&quot;&gt;посилається все; ліворуч номенклатура і&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#9aa0a6&quot;&gt;прийомка, праворуч ящики й каса.&lt;/font&gt;" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;spacingRight=10;fontSize=11;fontColor=#374151;fillColor=#fbfcfd;strokeColor=#dfe3e8;" parent="1" vertex="1">
+                    <mxGeometry x="100" y="1928" width="330" height="448" as="geometry"/>
                 </mxCell>
                 <mxCell id="n_fifo" value="&lt;b&gt;Дві таблиці розподілу — це два FIFO&lt;/b&gt;&lt;br&gt;payout_allocations — §3.3: виплата гасить найстаріший&lt;br&gt;борг першим і памʼятає, яку дату закрила.&lt;br&gt;crate_return_allocations — §6.5: повернення гасить&lt;br&gt;найстарішу видачу за ЇЇ ціною ящика, не сьогоднішньою." style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;spacingRight=10;fontSize=11;fontColor=#5b4a12;fillColor=#fdf8e3;strokeColor=#d9c56a;dashed=1;" parent="1" vertex="1">
-                    <mxGeometry x="240" y="672" width="330" height="112" as="geometry"/>
+                    <mxGeometry x="100" y="1000" width="330" height="112" as="geometry"/>
                 </mxCell>
                 <mxCell id="n_snapshot" value="&lt;b&gt;Знімок, а не перерахунок (§2.7)&lt;/b&gt;&lt;br&gt;price, tare_weight_kg, deposit_per_unit копіюються&lt;br&gt;у документ у мить проведення. Керівник міняє довідник —&lt;br&gt;липнева квитанція і липнева видача не рухаються." style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;spacingRight=10;fontSize=11;fontColor=#5b4a12;fillColor=#fdf8e3;strokeColor=#d9c56a;dashed=1;" parent="1" vertex="1">
-                    <mxGeometry x="830" y="1210" width="350" height="190" as="geometry"/>
+                    <mxGeometry x="790" y="1100" width="350" height="190" as="geometry"/>
                 </mxCell>
                 <mxCell id="n_derived" value="&lt;b&gt;Чого тут немає навмисно&lt;/b&gt;&lt;br&gt;«Залишок» і «Разом» не зберігаються (§3.2): залишок =&lt;br&gt;amount − Σ payout_allocations. Полів під §5.4 і §5.5&lt;br&gt;(дублікати, обʼєднання) немає — правки 5 і 6 їх зняли." style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;spacingRight=10;fontSize=11;fontColor=#5b4a12;fillColor=#fdf8e3;strokeColor=#d9c56a;dashed=1;" parent="1" vertex="1">
-                    <mxGeometry x="830" y="1480" width="350" height="160" as="geometry"/>
+                    <mxGeometry x="790" y="1350" width="350" height="160" as="geometry"/>
                 </mxCell>
                 <mxCell id="n_cash_title" value="КАСА ТОЧКИ — як вона рахується" style="text;html=1;fontSize=16;fontStyle=1;align=left;verticalAlign=middle;fontColor=#9c4a6f;" parent="1" vertex="1">
-                    <mxGeometry x="240" y="2970" width="900" height="24" as="geometry"/>
+                    <mxGeometry x="470" y="1886" width="900" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="n_cash_a" value="&lt;b&gt;1 · Дві книги, які не позичають одна в одної&lt;/b&gt;&lt;br&gt;&lt;br&gt;Фізично шухляда одна, книг &lt;b&gt;дві&lt;/b&gt; — і поле&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;cash_book&lt;/font&gt; робить це видимим у кожному запиті:&lt;br&gt;суму без &lt;font face=&quot;Courier New&quot;&gt;GROUP BY cash_book&lt;/font&gt; непомітно&lt;br&gt;не напишеш. Правка 1 знімає формулювання §1&lt;br&gt;«лежать в одній шухляді».&lt;br&gt;&lt;br&gt;Термінологія правок: каса на ягоду — просто&lt;br&gt;&lt;b&gt;каса&lt;/b&gt;, усе про ящики — &lt;b&gt;завдатки&lt;/b&gt;.&lt;br&gt;&lt;br&gt;&lt;b&gt;2 · Книга ягоди&lt;/b&gt; на точці. Нижньої межі в схемі немає:&lt;br&gt;день, з якого ведеться касова книга, — параметр застосунку.&lt;br&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;+ Σ transfers, у яких accepted_date &amp;lt;= D&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; &amp;nbsp; і voided_at IS NULL:&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; &amp;nbsp; status = &#39;accepted&#39; &amp;nbsp; &amp;nbsp;-&amp;gt; cash&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; &amp;nbsp; status = &#39;disputed&#39; AND resolved_at IS NOT NULL&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;-&amp;gt; resolved_cash&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;− Σ payouts.amount, де payouts -&amp;gt; shifts&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; дає цю точку і business_date &amp;lt;= D&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; &amp;nbsp; -- ВКЛЮЧНО ЗІ СТОРНОВАНИМИ&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;+ Σ payouts.amount, у яких&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; return_settled_at &amp;lt;= D&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;3 · Сторновані виплати з каси НЕ відсіюються&lt;/b&gt;&lt;br&gt;&lt;br&gt;…і це протилежно до формули боргу. Борг&lt;br&gt;(смуга нижче) вимагає відсіяти &lt;font face=&quot;Courier New&quot;&gt;voided_at IS&lt;br&gt;NOT NULL&lt;/font&gt; — гроші «не видали». Каса вимагає&lt;br&gt;протилежного: гроші &lt;b&gt;фізично вийшли з шухляди&lt;/b&gt;&lt;br&gt;і повертаються лише внесенням, тобто рядком&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;payouts.return_settled_at&lt;/font&gt;.&lt;br&gt;&lt;br&gt;Один і той самий &lt;font face=&quot;Courier New&quot;&gt;voided_at&lt;/font&gt; у двох запитах&lt;br&gt;читається по-різному — інакше сторно стає&lt;br&gt;способом красти (§9.3).&lt;br&gt;&lt;br&gt;&lt;b&gt;4 · Перерахунок нічого не виправляє&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;expected_amount&lt;/font&gt; — &lt;b&gt;знімок&lt;/b&gt; очікуваного на мить&lt;br&gt;перерахунку: без нього пізніша подія тихо&lt;br&gt;переписала б учорашню розбіжність.&lt;br&gt;Розбіжність = &lt;font face=&quot;Courier New&quot;&gt;counted − expected&lt;/font&gt; і &lt;b&gt;не&lt;br&gt;зберігається&lt;/b&gt;; поля вводу для неї немає в&lt;br&gt;жодної ролі (§7.7). Порогів «допустимої»&lt;br&gt;розбіжності немає взагалі.&lt;br&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;counted_by_user_id&lt;/font&gt; — той, &lt;b&gt;хто натиснув&lt;/b&gt;, а не&lt;br&gt;той, хто відкривав зміну (§10.6).&lt;br&gt;&lt;br&gt;Індекс частковий: &lt;font face=&quot;Courier New&quot;&gt;UNIQUE (shift_id, book,&lt;br&gt;kind) WHERE kind &amp;lt;&amp;gt; midday&lt;/font&gt; — DBML цього не&lt;br&gt;виражає, у SQL дописують руками. Звідси&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;midday&lt;/font&gt; поза унікальним індексом: перерахунок&lt;br&gt;можна робити скільки завгодно разів (§7.6)." style="rounded=1;arcSize=4;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=14;spacingTop=10;spacingRight=12;fontSize=11;fontColor=#1f2328;fillColor=#fbfcfd;strokeColor=#9c4a6f;strokeWidth=2;" parent="1" vertex="1">
-                    <mxGeometry x="240" y="3020" width="440" height="950" as="geometry"/>
+                    <mxGeometry x="470" y="1928" width="440" height="950" as="geometry"/>
                 </mxCell>
                 <mxCell id="n_cash_b" value="&lt;b&gt;5 · Книга ящиків&lt;/b&gt; — від першої видачі, без&lt;br&gt;нижньої межі по датах (§7.5):&lt;br&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;+ Σ crate_issuances.deposit_taken&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;− Σ crate_returns.deposit_refund&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; &amp;nbsp; обидві: voided_at IS NULL, і точку&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; &amp;nbsp; дають через shifts, як і виплати&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;6 · Асиметрія сторно — відкрите й не&lt;br&gt;полагоджене&lt;/b&gt;&lt;br&gt;&lt;br&gt;Для ящиків сторно трактується &lt;b&gt;протилежно&lt;/b&gt; до&lt;br&gt;виплати: відсторнована видача перестає давати&lt;br&gt;гроші в касу, хоч завдаток фізично в шухляді,&lt;br&gt;і жодного очікуваного повернення під це немає.&lt;br&gt;&lt;br&gt;Правила такого випадку не описують: §9.3 знає&lt;br&gt;очікуване повернення лише для &lt;b&gt;виплати&lt;/b&gt;, а §9.4&lt;br&gt;дозволяє сторнувати ящиковий документ тільки&lt;br&gt;керівникові й забороняє сторно видачі, на яку&lt;br&gt;вже лягло повернення.&lt;br&gt;&lt;br&gt;Асиметрія свідома й &lt;b&gt;названа&lt;/b&gt;, а не полагоджена.&lt;br&gt;&lt;br&gt;&lt;b&gt;7 · Що касу НЕ рухає&lt;/b&gt;&lt;br&gt;&lt;br&gt;· витрати дня — §7.2: «каса тільки ягодами, ті&lt;br&gt;&amp;nbsp; всі різні розтрати я передаю окремо»;&lt;br&gt;· ручна видача «не за ягоду» та інкасація — їх&lt;br&gt;&amp;nbsp; у системі немає взагалі (§7.3, список джерел&lt;br&gt;&amp;nbsp; закритий).&lt;br&gt;&lt;br&gt;Таблиці рухів каси теж немає: правка 9 —&lt;br&gt;«система рахує загальну суму в касі за&lt;br&gt;допомогою денних транзакцій». Збережений&lt;br&gt;залишок заборонений тією самою причиною, що й&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;remaining&lt;/font&gt; у &lt;font face=&quot;Courier New&quot;&gt;intakes&lt;/font&gt; (§3.2).&lt;br&gt;&lt;br&gt;&lt;b&gt;8 · Точки в cash_counts немає&lt;/b&gt;&lt;br&gt;&lt;br&gt;Вона у &lt;font face=&quot;Courier New&quot;&gt;shifts&lt;/font&gt;, і два примірники одного факту&lt;br&gt;в цьому проєкті заборонені за побудовою.&lt;br&gt;&lt;br&gt;&lt;b&gt;9 · Борг мережі перед точкою не зберігається&lt;/b&gt;&lt;br&gt;&lt;br&gt;Це &lt;font face=&quot;Courier New&quot;&gt;collection_points.target_cash&lt;/font&gt; мінус каса&lt;br&gt;точки (§7.10). Точки без цільового значення&lt;br&gt;каси в таблицю боргу мережі не потрапляють&lt;br&gt;узагалі — тому &lt;b&gt;порожній&lt;/b&gt; &lt;font face=&quot;Courier New&quot;&gt;target_cash&lt;/font&gt; значущий:&lt;br&gt;нуля там не буває.&lt;br&gt;&lt;br&gt;&lt;b&gt;10 · Ця записка живе тричі й навмисно&lt;/b&gt;&lt;br&gt;&lt;br&gt;Тут, розгорнутою &lt;font face=&quot;Courier New&quot;&gt;Note&lt;/font&gt; таблиці &lt;font face=&quot;Courier New&quot;&gt;cash_counts&lt;/font&gt; і&lt;br&gt;третьою копією в 28-tables.md. Правити треба &lt;b&gt;всі три&lt;/b&gt;:&lt;br&gt;розійтися вони можуть, і ніщо цього не ловить." style="rounded=1;arcSize=4;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=14;spacingTop=10;spacingRight=12;fontSize=11;fontColor=#1f2328;fillColor=#fbfcfd;strokeColor=#9c4a6f;strokeWidth=2;" parent="1" vertex="1">
-                    <mxGeometry x="700" y="3020" width="440" height="950" as="geometry"/>
+                    <mxGeometry x="950" y="1928" width="440" height="950" as="geometry"/>
                 </mxCell>
                 <mxCell id="n_debt_title" value="БОРГ ПОСТАЧАЛЬНИКА — як він рахується" style="text;html=1;fontSize=16;fontStyle=1;align=left;verticalAlign=middle;fontColor=#2a7f8f;" parent="1" vertex="1">
-                    <mxGeometry x="240" y="4196" width="900" height="24" as="geometry"/>
+                    <mxGeometry x="1430" y="1886" width="900" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="n_debt_sub" value="Той самий текст — розгорнутою Note таблиці payout_allocations у 28-db-schema.dbml." style="text;html=1;fontSize=11;align=left;verticalAlign=middle;fontColor=#6b7280;" parent="1" vertex="1">
-                    <mxGeometry x="1160" y="4198" width="840" height="20" as="geometry"/>
+                    <mxGeometry x="2350" y="1888" width="840" height="22" as="geometry"/>
                 </mxCell>
                 <mxCell id="n_debt_a" value="&lt;b&gt;1 · Що є що&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;intakes&lt;/b&gt; — квитанція: приймальник узяв ягоду і тим самим&lt;br&gt;створив борг. amount = Σ intake_items.amount — те саме&lt;br&gt;число, що надруковане на папері.&lt;br&gt;&lt;b&gt;payouts&lt;/b&gt; — видача готівки. Сама по собі нічого не&lt;br&gt;«закриває»: закривають рядки розподілу.&lt;br&gt;&lt;b&gt;payout_allocations&lt;/b&gt; — «яка виплата скільки поклала&lt;br&gt;на яку квитанцію». Багато-до-багатьох В ОБИДВА БОКИ:&lt;br&gt;одна виплата гасить кілька квитанцій (§3.3), і одна&lt;br&gt;квитанція закривається кількома виплатами в різні дні.&lt;br&gt;Часткова оплата тому не потребує нічого окремого —&lt;br&gt;це просто розподіл, менший за amount.&lt;br&gt;&lt;br&gt;&lt;b&gt;2 · Залишку в базі немає, його завжди рахують&lt;/b&gt;&lt;br&gt;&lt;br&gt;Колонок paid / debt / balance немає ані в intakes, ані&lt;br&gt;в suppliers, і додавати їх не можна: §3.2 — поля&lt;br&gt;«Залишок» не існує для ЖОДНОЇ ролі. Збережений кеш —&lt;br&gt;рівно те місце, де в книзі клієнта рвався ланцюжок:&lt;br&gt;&lt;b&gt;124 розриви з 1 473&lt;/b&gt;.&lt;br&gt;&lt;br&gt;&lt;b&gt;Залишок квитанції&lt;/b&gt; = amount − Σ розподілів, але тільки&lt;br&gt;за НЕсторнованими виплатами. У payout_allocations НЕМАЄ&lt;br&gt;власного поля сторно — рядок належить виплаті. Тому&lt;br&gt;кожен запит про гроші мусить приєднати payouts.&lt;br&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;SELECT i.id,&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; i.amount - COALESCE((&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; &amp;nbsp; SELECT SUM(pa.amount)&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; FROM payout_allocations pa&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; JOIN payouts p ON p.id = pa.payout_id&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp;WHERE pa.intake_id = i.id&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;AND p.voided_at IS NULL&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; ), 0) AS remaining&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; FROM intakes i&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp;WHERE i.voided_at IS NULL;&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Борг перед людиною&lt;/b&gt; = сума remaining по всіх її&lt;br&gt;НЕсторнованих квитанціях. suppliers — запис НА ТОЧЦІ&lt;br&gt;(§3.9), тому supplier_id уже означає точку: окремо&lt;br&gt;фільтрувати точку не треба й не можна." style="rounded=1;arcSize=4;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=14;spacingTop=10;spacingRight=12;fontSize=11;fontColor=#1f2328;fillColor=#fbfcfd;strokeColor=#2a7f8f;strokeWidth=2;" parent="1" vertex="1">
-                    <mxGeometry x="240" y="4246" width="560" height="740" as="geometry"/>
+                    <mxGeometry x="1430" y="1928" width="560" height="740" as="geometry"/>
                 </mxCell>
                 <mxCell id="n_debt_b" value="&lt;b&gt;3 · Статус — похідна, а не колонка&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;remaining = 0&lt;/font&gt; → &lt;b&gt;Paid&lt;/b&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;0 &amp;lt; remaining &amp;lt; amount&lt;/font&gt; → &lt;b&gt;Partially Paid&lt;/b&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;remaining = amount&lt;/font&gt; → &lt;b&gt;Open&lt;/b&gt;&lt;br&gt;&lt;br&gt;Зберігати статус полем не можна: він міняється від&lt;br&gt;ЧУЖОЇ події — нова виплата, сторно виплати, — і&lt;br&gt;збережений одразу почне розходитися з розподілом.&lt;br&gt;&lt;br&gt;&lt;b&gt;4 · FIFO&lt;/b&gt;&lt;br&gt;&lt;br&gt;Розподіл створює ЗАСТОСУНОК, не база: ані тригера, ані&lt;br&gt;обмеження тут немає. §3.3 — гаситься найстаріший борг&lt;br&gt;першим. Порядок беруть за БІЗНЕС-ДАТОЮ зміни, а не за&lt;br&gt;created_at:&lt;br&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;ORDER BY sh.business_date, i.created_at, i.id&lt;/font&gt;&lt;br&gt;&lt;br&gt;Сьогодні ці ключі збігаються, бо §4.7 забороняє&lt;br&gt;квитанцію заднім числом, — але це ПРАВИЛО, а не&lt;br&gt;обмеження схеми, і воно може змінитися.&lt;br&gt;&lt;br&gt;&lt;b&gt;5 · Сторно&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Виплати&lt;/b&gt; → її рядки розподілу перестають&lt;br&gt;враховуватися, і борги САМІ повертаються до попередніх&lt;br&gt;сум, з ПОЧАТКОВИМИ датами (§9.3). Рядки при цьому не&lt;br&gt;видаляють: документ лишається в журналі. Готівка в касу&lt;br&gt;сама не повертається (§9.3): під фізичне внесення&lt;br&gt;слугує трійка полів payouts.return_settled_at /&lt;br&gt;return_settled_by_user_id / return_note, і поки&lt;br&gt;return_settled_at порожній, каса лишається зменшеною.&lt;br&gt;&lt;b&gt;Квитанції&lt;/b&gt; → вона випадає з боргу цілком.&lt;br&gt;&lt;br&gt;&lt;b&gt;6 · Історія нерухома&lt;/b&gt;&lt;br&gt;&lt;br&gt;intake.amount після проведення не міняється НІКОЛИ —&lt;br&gt;ані при виплаті, ані при сторно, ані при зміні цін чи&lt;br&gt;довідників (§2.7). На баланс впливають рівно дві речі:&lt;br&gt;поява або зникнення рядків розподілу і поля void_*.&lt;br&gt;updated_at рухається лише через сторно, не через гроші." style="rounded=1;arcSize=4;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=14;spacingTop=10;spacingRight=12;fontSize=11;fontColor=#1f2328;fillColor=#fbfcfd;strokeColor=#2a7f8f;strokeWidth=2;" parent="1" vertex="1">
-                    <mxGeometry x="840" y="4246" width="560" height="740" as="geometry"/>
+                    <mxGeometry x="2030" y="1928" width="560" height="740" as="geometry"/>
                 </mxCell>
                 <mxCell id="n_debt_c" value="&lt;b&gt;7 · Приклад&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;Квитанції:  #1 = 2 000,00&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; #2 = 3 000,00&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; #3 =&amp;nbsp; &amp;nbsp;500,00&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; борг разом 5 500,00&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;Виплата:&amp;nbsp; &amp;nbsp; 4 000,00&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;Розподіл:&amp;nbsp; 2 000,00 → #1&amp;nbsp; (закрито)&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; 2 000,00 → #2&amp;nbsp; (2 000 з 3 000)&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; #3 не чіпали — гроші скінчилися&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;Залишки:&amp;nbsp; &amp;nbsp;#1 =&amp;nbsp; &amp;nbsp; &amp;nbsp;0,00&amp;nbsp; Paid&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; #2 = 1 000,00&amp;nbsp; Partially Paid&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; #3 =&amp;nbsp; &amp;nbsp;500,00&amp;nbsp; Open&lt;/font&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; борг разом 1 500,00&lt;/font&gt;&lt;br&gt;&lt;br&gt;Сторнували цю виплату → обидва рядки розподілу&lt;br&gt;перестають рахуватися, залишки САМІ стають&lt;br&gt;2 000 / 3 000 / 500, борг знову 5 500,00. Руками не&lt;br&gt;перераховують нічого, бо ніде й не зберігали.&lt;br&gt;&lt;br&gt;&lt;b&gt;8 · Інваріанти&lt;/b&gt;&lt;br&gt;&lt;br&gt;Тримає застосунок; у схемі їх не перевіряє ніщо.&lt;br&gt;&lt;br&gt;&lt;b&gt;1.&lt;/b&gt; Σ розподілів однієї виплати = payout.amount.&lt;br&gt;Виплата не може перевищити «Разом» (§3.5), а «Разом» —&lt;br&gt;це сьогоднішня квитанція плюс відкриті залишки, тому&lt;br&gt;кожна видана копійка має куди лягти.&lt;br&gt;&lt;b&gt;2.&lt;/b&gt; Для кожної квитанції Σ розподілів ≤ amount:&lt;br&gt;відʼємного залишку не буває (§3.5, і саме звідси&lt;br&gt;257 відʼємних рядків у книзі клієнта).&lt;br&gt;&lt;br&gt;&lt;b&gt;9 · Відкрите — огляд 02.09.2026, не полагоджено&lt;/b&gt;&lt;br&gt;&lt;br&gt;• Схема ДОЗВОЛЯЄ сторнувати квитанцію, на яку вже лягли&lt;br&gt;&amp;nbsp; розподіли. Тоді гроші зникають із боргу, хоч їх&lt;br&gt;&amp;nbsp; реально видали. Для ящиків §9.3 таке прямо&lt;br&gt;&amp;nbsp; забороняє; для квитанцій правила не записано.&lt;br&gt;• Обидва інваріанти — домовленість, а не CHECK.&lt;br&gt;&amp;nbsp; Найдешевша перевірка: нічний запит на&lt;br&gt;&amp;nbsp; payout.amount ≠ Σ розподілів і remaining &amp;lt; 0." style="rounded=1;arcSize=4;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=14;spacingTop=10;spacingRight=12;fontSize=11;fontColor=#1f2328;fillColor=#fbfcfd;strokeColor=#2a7f8f;strokeWidth=2;" parent="1" vertex="1">
-                    <mxGeometry x="1440" y="4246" width="560" height="740" as="geometry"/>
+                    <mxGeometry x="2630" y="1928" width="560" height="740" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
