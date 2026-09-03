@@ -373,7 +373,7 @@ Table cash_counts {
       status = 'accepted'                            -> cash
       status = 'disputed' AND resolved_at IS NOT NULL -> resolved_cash
 - Σ payouts.amount, де payouts -> shifts дає цю точку і shifts.business_date <= D
-      -- УКЛЮЧНО ЗІ СТОРНОВАНИМИ
+      -- ВКЛЮЧНО ЗІ СТОРНОВАНИМИ
 + Σ expected_cash_returns.amount, у яких settled_at <= D
 ```
 
