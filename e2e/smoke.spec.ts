@@ -288,10 +288,18 @@ test('один візит проходить від ваги до «Разом»
   // стояла кнопка «+10 ящ.», але швидкі кнопки з прийомки прибрано.
   await page.locator('input[inputmode="numeric"]').first().fill('10')
 
-  // 3 · сорт із цінами дня — беремо перший доступний
-  const berry = page.getByRole('button', { name: /₴\/кг$/ }).first()
-  await expect(berry).toBeVisible()
-  await berry.click()
+  // 3 · товар і сорт — тепер два випадаючі списки (issue #5), як тара у розділі 2, а не
+  // сітка кнопок. Тригер «Сорт» — єдиний combobox із текстом «₴/кг» у SelectValue (тара
+  // показує «кг» без «₴», товар — лише назву, постачальник — прізвище), тому фільтр по
+  // «₴/кг» вибирає саме його. Відкриваємо список і беремо перший сорт через role="option".
+  const sortSelect = page.getByRole('combobox').filter({ hasText: '₴/кг' })
+  await expect(sortSelect).toBeVisible()
+  await sortSelect.click()
+  const firstSort = page.getByRole('option').first()
+  await expect(firstSort).toBeVisible()
+  await firstSort.click()
+  // після вибору список закривається, а ціна дня лишається видимою в тригері
+  await expect(sortSelect).toContainText('₴/кг')
 
   // 4 · «Разом» мусить перестати бути нулем.
   //
