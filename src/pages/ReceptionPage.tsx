@@ -129,6 +129,10 @@ export function ReceptionPage() {
     }
   }, [availableBerries, berryId, lines.length])
 
+  // товар обраного сорту й сорти цього товару — два випадаючі списки з одного плаского berryId
+  const selectedProduct = berries.find((b) => b.id === berryId)?.product
+  const sortItems = berryGroups.find((g) => g.product === selectedProduct)?.items ?? []
+
   const price = berryId ? (priceFor(config.businessToday, pointId, berryId) ?? 0) : 0
   const bonusNum = parseNumeric(bonusInput)
   const surcharge = checkSurcharge(bonusNum, settings)
@@ -622,39 +626,54 @@ export function ReceptionPage() {
               {/* berry + surcharge */}
               <div className="border-b border-border/70 p-4">
                 <Eyebrow className="mb-2">3 · Товар, сорт і ціна дня</Eyebrow>
-                <div className="flex flex-col gap-2.5">
-                  {berryGroups.map((group) => (
-                    <div key={group.product}>
-                      <div className="mb-1.5 text-xs text-muted-foreground">{group.product}</div>
-                      <div className="flex flex-wrap gap-2">
-                        {group.items.map(({ berry, price: p }) => {
-                          const active = berryId === berry.id
-                          return (
-                            <button
-                              key={berry.id}
-                              onClick={() => setBerryId(berry.id)}
-                              className={cn(
-                                'flex min-w-[128px] flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left transition-colors',
-                                active
-                                  ? 'border-primary bg-primary/8 ring-1 ring-primary'
-                                  : 'border-border bg-background hover:bg-muted',
-                              )}
-                            >
-                              <span className="text-sm font-medium">{berry.name}</span>
-                              <span
-                                className={cn(
-                                  'font-mono text-xs',
-                                  active ? 'text-primary' : 'text-muted-foreground',
-                                )}
-                              >
-                                {num(p!)} ₴/кг
-                              </span>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  ))}
+                {/*
+                  Два випадаючі списки замість сітки кнопок — товар окремо, сорт окремо,
+                  як тара у розділі 2 (issue #5). Заощаджує висоту: сортів у товарі буває
+                  до чотирьох, а на екрані тепер рівно два рядки. Обраний сорт несе ціну
+                  дня прямо у своєму тригері (SelectValue), тому вона нікуди не зникає.
+                */}
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="grid min-w-[150px] flex-1 gap-1.5">
+                    <Label className="text-xs text-muted-foreground">Товар</Label>
+                    <Select
+                      value={selectedProduct ?? ''}
+                      onValueChange={(product) => {
+                        // зміна товару підставляє ПЕРШИЙ його сорт — інакше berryId лишився б
+                        // на сорті іншого товару, і сорт-список суперечив би товар-списку
+                        const group = berryGroups.find((g) => g.product === product)
+                        if (group?.items.length) setBerryId(group.items[0].berry.id)
+                      }}
+                    >
+                      <SelectTrigger className="h-10 w-full">
+                        <SelectValue placeholder="Оберіть товар" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {berryGroups.map((group) => (
+                          <SelectItem key={group.product} value={group.product}>
+                            {group.product}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid min-w-[200px] flex-1 gap-1.5">
+                    <Label className="text-xs text-muted-foreground">Сорт і ціна дня</Label>
+                    <Select value={berryId ?? ''} onValueChange={setBerryId}>
+                      <SelectTrigger className="h-10 w-full">
+                        <SelectValue placeholder="Оберіть сорт" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sortItems.map(({ berry, price: p }) => (
+                          <SelectItem key={berry.id} value={berry.id}>
+                            {berry.name}
+                            <span className="ml-1.5 font-mono text-muted-foreground">
+                              {num(p!)} ₴/кг
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-end gap-3">
