@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { SupplierPicker } from '@/components/reception/SupplierPicker'
+import { SupplierHistoryPanel } from '@/components/reception/SupplierHistoryPanel'
 import { ReceiptDialog } from '@/components/reception/ReceiptDialog'
 import { PointStatePanel } from '@/components/reception/PointStatePanel'
 import { Eyebrow, EmptyState } from '@/components/common/bits'
@@ -457,6 +458,9 @@ export function ReceptionPage() {
                     </span>
                   </div>
                 ) : null}
+
+                {/* #7/#9: щойно людину обрано — її історія здач, а не лише залишок */}
+                {supplier ? <SupplierHistoryPanel supplierId={supplier.id} /> : null}
               </div>
 
               {/* weight — M9 диктує: спочатку вага, і тільки потім сорт */}
