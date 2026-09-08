@@ -13,10 +13,11 @@ import type { ISODate, PointId, Uah } from '@/lib/types'
  * цих чисел тут не було, дізнатися їх можна було лише пішовши на «Касу точки» й «Ящики» —
  * тобто покинувши форму з наполовину набраним візитом.
  *
- * ЖОДНОГО ПІДРАХУНКУ ТУТ НЕМАЄ, і це головна властивість файлу. Усі сім чисел приходять
- * готовими: чотири касові — з `cashStanding()` через `useCashStanding()`, три ящикові — з
- * `crateStanding()` через `useCrateStanding()`, а «видано» й «залишків створено» — з
- * `reconcileDay()`, який сторінка вже порахувала для себе і передає пропами. Другий
+ * ЖОДНОГО ПІДРАХУНКУ ТУТ НЕМАЄ, і це головна властивість файлу. Усі числа приходять
+ * готовими: дві суми шухляди (на ранок і зараз) — з `cashStanding()` через
+ * `useCashStanding()`, склад наділу — з `crateStanding()` через `useCrateStanding()`, а
+ * «видано» й «залишків створено» — з `reconcileDay()`, який сторінка вже порахувала для
+ * себе і передає пропами. Другий
  * примірник арифметики розійшовся б із першим МОВЧКИ: `ratchet:money` міряє вираз у місці
  * виклику форматера, а різниця між двома згортками там не видна взагалі.
  *
@@ -32,9 +33,10 @@ import type { ISODate, PointId, Uah } from '@/lib/types'
  *    `berryCash`, тобто ЛИШЕ ягідна книга. Тут вісь інша: уся шухляда
  *    (`expectedCash = berryCash + crateCash`), бо приймальник перераховує одну купу
  *    готівки, а не дві. Два екрани не мають права називати різні числа одними словами,
- *    тому тут стоїть «у шухляді на ранок» і «у шухляді зараз», а розклад на дві книги —
- *    рядком під ними: саме `berryCash` обмежує виплату за ягоду (`G12`, `I58`), і сховати
- *    його було б небезпечно.
+ *    тому тут стоять «у шухляді на ранок» і «у шухляді зараз». Розклад на дві книги
+ *    (окремо `berryCash`, окремо `crateCash`) звідси прибрано заради компактності
+ *    (issue #6): повний розклад, де саме `berryCash` обмежує виплату за ягоду (`G12`,
+ *    `I58`), живе на «Касі точки» (`CashLedger`).
  * 2. **«Видано ЗА ЯГОДУ», а не «видано з каси».** `reconcileDay().cashOut` — це виплати за
  *    ягоду й нічого більше. Повернений завдаток за ящики теж виходить із тієї самої
  *    шухляди, але в це число не входить (`21 §3.5`), тому підпис «видано з каси»
@@ -96,31 +98,11 @@ export function PointStatePanel({
             tone={newDebt > 0.009 ? 'amber' : undefined}
           />
         </div>
-
-        <p className="mt-3 border-t border-border/60 pt-2.5 text-xs leading-relaxed text-muted-foreground">
-          {hasBook ? (
-            <>
-              за ягоду{' '}
-              <b
-                className={cn(
-                  'font-mono font-semibold',
-                  cash.berryCash < 0 ? 'text-destructive' : 'text-foreground',
-                )}
-              >
-                {uahAuto(cash.berryCash)}
-              </b>{' '}
-              · завдатків за ящики{' '}
-              <b className="font-mono font-semibold text-foreground">{uahAuto(cash.crateCash)}</b>
-            </>
-          ) : (
-            'Наділу каси цій точці не призначали — рахувати шухляду тут нема від чого.'
-          )}
-        </p>
       </section>
 
       <section className="p-4">
         <SectionHead title="Ящики" onOpen={() => go({ name: 'crates' })} />
-        <div className="mt-3">
+        <div className="mt-2">
           <CrateStandingBar standing={crates} compact />
         </div>
       </section>
